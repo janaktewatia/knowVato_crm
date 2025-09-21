@@ -1,7 +1,7 @@
 import "../css/navbar.css"; // Optional for extra styles
 import EnquiryForm from "./EnquiryForm.js";
 import { useState } from "react";
-
+import "../App.css"
 
 export default function Navbar() {
 
@@ -14,7 +14,7 @@ setShowform(true)
 
   return (
     <>
-    <nav className="navbar bg-dark px-3">
+    <nav className="navbar px-3 themeColor_Menu">
       <div className="d-flex align-items-center justify-content-center  w-100">
         
         {/* Left side: logo and name */}
@@ -32,7 +32,7 @@ setShowform(true)
         </ul>
 
         {/* Right side: Book Demo button */}
-        <button className="btn btn-success" onClick={bookDemo}>
+        <button className="btn themeColor_Buttons" onClick={bookDemo}>
           Book Demo
         </button>
       </div>

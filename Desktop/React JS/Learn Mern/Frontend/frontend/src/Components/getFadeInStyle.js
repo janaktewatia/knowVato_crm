@@ -12,5 +12,5 @@ export const getFadeInStyle = (
   transform: showdiv
     ? `translate3d(${x}px, ${y}px, ${z}px)`
     : `translate3d(${startX}px, ${startY}px, ${startZ}px)`,
-  transition: "opacity 0.5s ease-in-out, transform 0.5s ease-in-out",
+  transition: "opacity 0.6s ease-in-out, transform 0.5s ease-in-out",
 });

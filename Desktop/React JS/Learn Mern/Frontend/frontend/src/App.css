@@ -13,10 +13,29 @@
   }
 }
 
+.themeColor_Menu{
+  background-color: #36526b;
+}
 
+
+.themeColor_Buttons{
+background-color: #529daa;
+transition: background-color 0.5s ease-in-out, border-radius 0.5s ease-in-out, color 0.5s ease-in-out;
+
+}
+
+
+.themeColor_Buttons:hover{
+  
+  background-color: #74bdc9;
+  border-radius: 16px;
+  color: white;
+transition: background-color 0.3s ease-in-out, border-radius 0.3s ease-in-out, color 0.3s ease-in-out;
+
+}
 
 .App-header {
-  background-color: #282c34;
+
   min-height: 100vh;
   display: flex;
   flex-direction: column;
