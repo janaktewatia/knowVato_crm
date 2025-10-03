@@ -1,19 +1,23 @@
+// src/Components/Admin.js
 import React from "react";
 import SideMenuBar from "./SideMenuBar";
 
-function Admin() {
+const Admin = () => {
   return (
-    <div className="d-flex">
-      {/* Sidebar */}
+    <div
+      style={{
+        width: "250px",
+        backgroundColor: "#ffffffff",
+        color: "white",
+        minHeight: "100vh",
+        padding: "10px",
+        position: "sticky",
+        top: 0,
+      }}
+    >
       <SideMenuBar />
-
-      {/* Main Content */}
-      <main className="flex-fill p-4">
-        <h1>Main Content Area</h1>
-        <p>Yahan aapka page ka main content aayega.</p>
-      </main>
     </div>
   );
-}
+};
 
 export default Admin;

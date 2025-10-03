@@ -1,7 +1,7 @@
 .reg-container {
   display: flex;
   max-height: 92vh;
-  background: #4c49a7;
+  background: #ffffff;
   overflow: hidden;
   /* border-radius: 16px; */
 }
@@ -12,7 +12,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #4c49a7;
+  background: #ffffff;
   border-top-left-radius: 16px;
   border-bottom-left-radius: 16px; 
   position: relative;
@@ -27,7 +27,7 @@
   right: 0px; /* pushes diagonal out */
   bottom: 0;
   width: 100px;
-  background: #4c49a7;
+  background: #ffffff;
   transform: skewX(-10deg); /* Adjust diagonal angle */
   border-top-right-radius: 16px;
   border-bottom-right-radius: 16px; 
@@ -41,6 +41,10 @@
   position: relative;
   z-index: 2; /* keep image above diagonal */
   border-radius: 10px;
+  border: 5px;
+  border-width: 5px;
+border: 12px solid #4c49a7;
+
   min-height: 96%;
   transform: skewX(-3deg);
 }
@@ -49,11 +53,11 @@
 .reg-form-container {
   width: 35vw;
   max-width: 360px;
-  background: #4c49a7;
-  padding: 40px;
-  margin: 160px 20px;
+  background: #ffffff;
+  padding: 32px;
+  margin: 70px 20px;
   border-radius: 0 16px 16px 0;
-  color: white;
+  color: #4c49a7;
   position: relative;
   z-index: 2;
 }
@@ -61,6 +65,7 @@
 .form-control {
   background-color: #4c49a7;
   color: white;
+
   /* border: 1px solid #fff; */
 }
 

@@ -1,7 +1,7 @@
 const SideBarMenuData = [
   {
     title: " Management Dashboard",
-    icon: "bi bi-speedometer2",
+    icon: "bi bi-grid-1x2",
     path: "/dashboard",
   },
   {
@@ -38,7 +38,7 @@ const SideBarMenuData = [
    },
   {
     title: "Communications",
-    icon: "bi bi-upload",
+    icon: "bi bi-chat-left-dots",
     subMenu: [
       { title: "Send Communication", path: "/send-communication" },
       { title: "History", path: "/communication-history" },
@@ -46,7 +46,7 @@ const SideBarMenuData = [
   },
   {
     title: "Reports",
-    icon: "bi bi-upload",
+    icon: "bi bi-bar-chart",
     subMenu: [
       { title: "Reports", path: "/reports" },
       { title: "Insights", path: "/insights" },

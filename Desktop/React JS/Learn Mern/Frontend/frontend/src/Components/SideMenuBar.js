@@ -13,10 +13,10 @@ const SideMenuBar = () => {
   };
 
   return (
-    <aside className="sidebar-container themeColor_Menu m-1">
+    <aside className="sidebar-container m-1">
       <nav className="nav flex-column">
         {SideBarMenuData.map((menu, index) => (
-          <div key={index} className="mb-2 themeColor_Menu">
+          <div key={index} className="mb-1">
             {/* ===== Main Menu ===== */}
             {menu.subMenu ? (
               <div
@@ -29,12 +29,12 @@ const SideMenuBar = () => {
                   className={`bi ms-auto bi-chevron-down chevron ${
                     openMenu === index ? "rotate" : ""
                   }`}
-                  style={{ fontSize: "0.9rem" }}
+                  style={{ fontSize: "0.8rem" }}
                 ></i>
               </div>
             ) : (
               <Link to={menu.path} className="nav-link">
-                <i className={`${menu.icon} fs-5`}></i>
+                <i className={`${menu.icon} fs-6`}></i>
                 <span className="ms-3">{menu.title}</span>
               </Link>
             )}

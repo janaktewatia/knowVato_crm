@@ -1,7 +1,9 @@
 .App {
   text-align: center;
 }
-
+.body{
+  background-color: #f2f2f2ff;
+}
 .App-logo {
   height: 40vmin;
   pointer-events: none;
@@ -17,6 +19,9 @@
   background-color: #36526b;
 }
 
+.themeColor_MainCenter{
+  background-color: #f2f2f2ff;
+}
 
 .themeColor_Buttons{
 background-color: #529daa;
