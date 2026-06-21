@@ -657,5 +657,3 @@ export const TEMPLATES_50 = [
     ],
   },
 ];
-
-export { TEMPLATES_50 };
