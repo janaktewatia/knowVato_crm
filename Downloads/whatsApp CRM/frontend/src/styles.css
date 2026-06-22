@@ -1,0 +1,233 @@
+/* ============================================================
+   THEME — "Indigo Slate ERP"
+   Rich indigo primary, near-white slate background, always-dark
+   navy-indigo sidebar. Semantic status tokens. Derived from the
+   project's OKLCH design system (converted to sRGB hex).
+   Single source of truth for the whole application.
+   ============================================================ */
+:root {
+  /* brand / accent = rich indigo */
+  --accent:        #2249b7;  /* primary: oklch(0.45 0.18 265) */
+  --accent-hover:  #1d3f9e;
+  --accent-soft:   #e2ebff;  /* accent wash: oklch(0.94 0.04 265) */
+  --accent-ink:    #14295f;  /* accent-foreground */
+
+  /* neutrals / surfaces */
+  --page-bg:    #f8fafd;     /* background: oklch(0.985 0.005 250) */
+  --surface:    #ffffff;     /* card: pure white */
+  --surface-2:  #eff2f7;     /* muted wash */
+  --border:     #e1e5eb;     /* border: oklch(0.92 0.01 260) */
+  --border-2:   #d4dae3;
+  --divider:    #eef2f9;
+
+  /* text */
+  --text:       #0e1a30;     /* foreground: deep slate-indigo */
+  --text-2:     #2f3a4d;
+  --muted:      #596475;     /* muted-foreground */
+  --muted-2:    #8a93a3;
+
+  /* status pill (soft, neutral default) */
+  --pill-bg:    #eef2f9;
+  --pill-ink:   #16213a;
+
+  /* semantic status (success / warning / info / destructive) */
+  --ok:    #139948;  --ok-bg: #e3f6ea;          /* success oklch(0.6 0.16 150) */
+  --warn:  #b07400;  --warn-bg:#fdf1d8;          /* warning oklch(0.78 0.16 75) */
+  --err:   #e62b34;  --err-bg:#fde7e8;           /* destructive oklch(0.6 0.22 25) */
+  --info:  #009cce;  --info-bg:#e0f4fb;          /* info oklch(0.65 0.15 230) */
+
+  /* sidebar — always dark (deep navy-indigo) */
+  --sidebar:          #0f1932;  /* oklch(0.22 0.05 265) */
+  --sidebar-fg:       #e1e5eb;
+  --sidebar-muted:    #8893ad;
+  --sidebar-primary:  #5888fc;  /* active item bg */
+  --sidebar-accent:   #1f2d4c;  /* hover bg */
+  --sidebar-border:   #212d47;
+
+  /* charts */
+  --chart-1: #3c68d9;
+  --chart-2: #009cce;
+  --chart-3: #2ea957;
+  --chart-4: #e79d00;
+  --chart-5: #b24dc8;
+
+  /* radius per spec: cards/dialogs 14px (xl), containers 10px, controls 8px, chips 6px */
+  --radius:    14px;   /* cards, dialogs, drawers, tables */
+  --radius-md: 10px;
+  --radius-sm: 8px;    /* buttons, inputs, nav items */
+  --radius-xs: 6px;    /* small chips */
+  --shadow-sm: 0 1px 2px rgba(13,22,48,.06);
+  --shadow-md: 0 1px 3px rgba(13,22,48,.1), 0 1px 2px -1px rgba(13,22,48,.1);
+}
+
+* { box-sizing: border-box; }
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  background: var(--page-bg);
+  color: var(--text);
+  font-size: 14px;
+}
+
+/* ---------- bootstrap accent overrides ---------- */
+.btn-wa, .btn-primary {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+  font-weight: 500;
+}
+.btn-wa:hover, .btn-primary:hover,
+.btn-wa:focus, .btn-primary:focus {
+  background: var(--accent-hover); border-color: var(--accent-hover); color: #fff;
+}
+.btn-outline-secondary {
+  color: var(--text-2); border-color: var(--border-2); background: var(--surface); font-weight: 500;
+}
+.btn-outline-secondary:hover { background: var(--surface-2); color: var(--text); border-color: var(--border-2); }
+.btn-link { color: var(--accent); text-decoration: none; }
+.btn-link:hover { color: var(--accent-hover); }
+.text-wa, .text-accent { color: var(--accent) !important; }
+a { color: var(--accent); }
+.form-control:focus, .form-select:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.form-label { font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 4px; }
+
+/* ---------- layout ---------- */
+.app-shell { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 256px; flex-shrink: 0; background: var(--sidebar); color: var(--sidebar-fg);
+  display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh;
+  border-right: 1px solid var(--sidebar-border);
+}
+.sidebar .brand {
+  display: flex; align-items: center; gap: 10px; padding: 18px 20px;
+  border-bottom: 1px solid var(--sidebar-border); color: #fff; font-weight: 600;
+}
+.sidebar .brand .mark {
+  width: 34px; height: 34px; border-radius: 10px; background: var(--sidebar-primary);
+  display: grid; place-items: center; color: #fff;
+}
+.sidebar .nav-section { padding: 8px 12px 2px; }
+.sidebar .nav-label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--sidebar-muted); font-weight: 500; padding: 12px 10px 6px;
+}
+.sidebar .nav-link {
+  display: flex; align-items: center; gap: 12px; color: rgba(225,229,235,.8);
+  padding: 8px 12px; border-radius: var(--radius-sm); font-size: 14px;
+  cursor: pointer; font-weight: 400; margin-bottom: 2px;
+}
+.sidebar .nav-link:hover { background: var(--sidebar-accent); color: #fff; }
+.sidebar .nav-link.active { background: var(--sidebar-primary); color: #fff; font-weight: 500; box-shadow: var(--shadow-sm); }
+.sidebar .nav-link.active i { color: #fff; }
+.sidebar .nav-link i { color: var(--sidebar-muted); font-size: 16px; }
+.sidebar .nav-link.active i, .sidebar .nav-link:hover i { color: #fff; }
+.sidebar .side-footer {
+  margin-top: auto; padding: 14px; border-top: 1px solid var(--sidebar-border);
+  display: flex; align-items: center; gap: 8px; color: var(--sidebar-muted); font-size: 12px;
+}
+
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.topbar {
+  height: 56px; background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 22px; gap: 14px; position: sticky; top: 0; z-index: 10;
+}
+.content { padding: 22px; flex: 1; }
+
+/* ---------- cards ---------- */
+.card {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow-sm); background: var(--surface);
+}
+.card-header {
+  background: var(--surface); border-bottom: 1px solid var(--divider);
+  padding: 14px 16px; font-weight: 600; color: var(--text);
+}
+.card-body { padding: 16px; }
+
+/* ---------- page header ---------- */
+.page-title { font-size: 17px; font-weight: 600; color: var(--text); margin: 0; }
+.page-sub { font-size: 12.5px; color: var(--muted); margin: 2px 0 0; }
+
+/* ---------- filter bar (matches theme) ---------- */
+.filter-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 14px 16px; margin-bottom: 16px; }
+.filter-bar .field-label { font-size: 11.5px; font-weight: 500; color: var(--muted); margin-bottom: 5px; display: block; }
+
+/* ---------- tabs (pill track, like the theme) ---------- */
+.tab-track {
+  display: inline-flex; gap: 2px; background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 9px; padding: 3px;
+}
+.tab-track .tab {
+  border: none; background: transparent; color: var(--muted);
+  font-size: 13px; font-weight: 500; padding: 6px 16px; border-radius: 7px; cursor: pointer;
+}
+.tab-track .tab.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+.tab-track .tab:hover:not(.active) { color: var(--text-2); }
+
+/* ---------- tables (the core shared element) ---------- */
+.table { margin: 0; color: var(--text-2); }
+.table > thead > tr > th {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--muted); font-weight: 600; padding: 12px 16px;
+  border-bottom: 1px solid var(--border); background: var(--surface);
+  white-space: nowrap;
+}
+.table > tbody > tr > td { padding: 13px 16px; font-size: 13.5px; vertical-align: middle; border-bottom: 1px solid var(--divider); color: var(--text); }
+.table > tbody > tr:last-child > td { border-bottom: none; }
+.table-hover > tbody > tr:hover > td { background: var(--surface-2); }
+.table .row-name { font-weight: 500; color: var(--text); }
+.table .row-sub { font-size: 11.5px; color: var(--muted); }
+
+/* ---------- status pills (soft, neutral by default) ---------- */
+.pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--pill-bg); color: var(--pill-ink);
+  font-size: 11.5px; font-weight: 500; padding: 3px 10px; border-radius: 999px;
+}
+.pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+/* coloured pill uses an inline style for the colour; keep neutral structure */
+
+/* ---------- KPI cards ---------- */
+.kpi-card .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+.kpi-card .kpi-value { font-size: 23px; font-weight: 700; color: var(--text); margin-top: 2px; }
+.kpi-card .kpi-sub { font-size: 11.5px; color: var(--muted); }
+
+/* ---------- action buttons in rows ---------- */
+.btn-icon { border: none; background: transparent; color: var(--muted); padding: 4px 7px; border-radius: 6px; cursor: pointer; line-height: 1; }
+.btn-icon:hover { background: var(--surface-2); color: var(--accent); }
+.btn-icon.danger:hover { color: var(--err); background: var(--err-bg); }
+
+/* sizes / helpers */
+.btn-sm { font-size: 12.5px; }
+.cursor-pointer { cursor: pointer; }
+.min-w-0 { min-width: 0; }
+
+/* ---------- chat ---------- */
+.chat-grid { display: grid; grid-template-columns: 320px 1fr 300px; height: calc(100vh - 56px); background: var(--surface); }
+.chat-list { border-right: 1px solid var(--border); overflow-y: auto; }
+.chat-thread { display: flex; flex-direction: column; background: #eef3f6; min-height: 0; }
+.chat-thread .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+.bubble { max-width: 70%; padding: 7px 11px; border-radius: 10px; font-size: 13px; box-shadow: var(--shadow-sm); }
+.bubble.them { background: #fff; align-self: flex-start; }
+.bubble.me { background: var(--accent-soft); align-self: flex-end; }
+.chat-aside { border-left: 1px solid var(--border); overflow-y: auto; }
+.conv-item { padding: 11px 14px; border-bottom: 1px solid var(--divider); cursor: pointer; display: flex; gap: 10px; }
+.conv-item:hover { background: var(--surface-2); }
+.conv-item.active { background: var(--accent-soft); }
+
+/* badges as neutral pills unless semantic */
+.badge.text-bg-light { background: var(--pill-bg) !important; color: var(--pill-ink) !important; font-weight: 500; }
+
+/* ---------- Indigo Slate radius + control overrides ---------- */
+.btn, .btn-wa, .btn-primary, .btn-outline-secondary, .btn-secondary { border-radius: var(--radius-sm); font-weight: 500; }
+.form-control, .form-select, .input-group-text { border-radius: var(--radius-sm) !important; border-color: var(--border-2); }
+.form-control, .form-select { min-height: 36px; }
+.btn-secondary { background: var(--surface-2); border-color: var(--border-2); color: var(--text-2); }
+.btn-secondary:hover { background: var(--border); color: var(--text); }
+.modal-content, .offcanvas { border-radius: var(--radius); }
+.dropdown-menu { border-radius: var(--radius-md); border-color: var(--border); box-shadow: var(--shadow-md); }
+.tab-track { border-radius: var(--radius-sm); }
+.tab-track .tab { border-radius: var(--radius-xs); }
+/* status pills use semantic tokens */
+.pill { border-radius: var(--radius-xs); }
+/* focus ring = indigo */
+.form-control:focus, .form-select:focus, .btn:focus-visible { box-shadow: 0 0 0 3px rgba(60,104,217,.25); border-color: var(--accent); }

@@ -1,0 +1,171 @@
+### WhatsApp CRM API — request collection
+### Use with the VS Code "REST Client" extension, or adapt to curl/Postman.
+### 1) run `npm run seed`  2) run `npm run dev`  3) login below to get @token
+
+@host = http://localhost:4000
+@token = PASTE_TOKEN_FROM_LOGIN
+
+### Health
+GET {{host}}/health
+
+### Login (Administrator)
+# @name login
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "priya@greenwood.edu", "password": "password123" }
+
+### Who am I (paste token above first)
+GET {{host}}/api/auth/me
+Authorization: Bearer {{token}}
+
+### ── Leads ──
+GET {{host}}/api/leads?page=1&perPage=20
+Authorization: Bearer {{token}}
+
+### Leads filtered by owner + search
+GET {{host}}/api/leads?owner=Priya Kothari&q=aanya
+Authorization: Bearer {{token}}
+
+### Convert a reply/contact into a lead
+POST {{host}}/api/leads/convert
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "Test Parent", "phone": "+91 90000 11111", "source": "Inbound", "owner": "Ananya Saxena" }
+
+### Change a lead's status (triggers follow-up rule) — replace :id
+POST {{host}}/api/leads/LEAD_ID/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "statusId": "STATUS_ID" }
+
+### Add a note
+POST {{host}}/api/leads/LEAD_ID/notes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "text": "Called — interested, sending brochure" }
+
+### ── Follow-ups ──
+GET {{host}}/api/followups/buckets
+Authorization: Bearer {{token}}
+
+### Complete a follow-up
+POST {{host}}/api/followups/FOLLOWUP_ID/complete
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "outcome": "Reached, positive" }
+
+### ── Masters / Setup ──
+GET {{host}}/api/masters/statuses
+Authorization: Bearer {{token}}
+
+### Create a lead status
+POST {{host}}/api/masters/statuses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "Application Received", "color": "#16a34a", "followUpRequired": true, "order": 8 }
+
+### ── Users & roles ──
+GET {{host}}/api/usertypes
+Authorization: Bearer {{token}}
+
+### Create a user
+POST {{host}}/api/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "New Counsellor", "email": "new@greenwood.edu", "passwordHash": "TEMP", "userType": "USERTYPE_ID", "status": "Active" }
+
+### ── Campaigns ──
+GET {{host}}/api/campaigns
+Authorization: Bearer {{token}}
+
+### Create a campaign
+POST {{host}}/api/campaigns
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "December Fee Reminder", "template": "fee_due_reminder_v3", "category": "Fee" }
+
+### Launch it (sends via simulation; populates message log + funnel)
+POST {{host}}/api/campaigns/CAMPAIGN_ID/launch
+Authorization: Bearer {{token}}
+
+### ── Conversations (1:1, WABA) ──
+GET {{host}}/api/conversations
+Authorization: Bearer {{token}}
+
+### Reply with free text (only works if 24h window open)
+POST {{host}}/api/conversations/CONV_ID/reply
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "text": "You can visit any weekday 10AM–4PM." }
+
+### Reply with a template (works even if window closed)
+POST {{host}}/api/conversations/CONV_ID/reply
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "template": "campus_visit_invite" }
+
+### ── Message history ──
+GET {{host}}/api/messages?direction=inbound
+Authorization: Bearer {{token}}
+
+### Convert an inbound message to a lead
+POST {{host}}/api/messages/MESSAGE_ID/convert
+Authorization: Bearer {{token}}
+
+### ── Conversion analytics ──
+GET {{host}}/api/conversion/stats
+Authorization: Bearer {{token}}
+
+### ── WhatsApp vendor accounts (multi-vendor, one active) ──
+GET {{host}}/api/whatsapp-accounts
+Authorization: Bearer {{token}}
+
+### Add a Pinnacle account (fill real values from their doc)
+POST {{host}}/api/whatsapp-accounts
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "label": "Pinnacle – Admissions",
+  "vendor": "pinnacle",
+  "senderNumber": "+91 99999 12345",
+  "apiBaseUrl": "https://api.pinnacle.example",
+  "apiKey": "YOUR_PINNACLE_KEY",
+  "verifyToken": "pinnacle-verify"
+}
+
+### Add a Meta-direct account
+POST {{host}}/api/whatsapp-accounts
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "label": "Meta Direct – Main",
+  "vendor": "meta",
+  "phoneNumberId": "YOUR_PHONE_NUMBER_ID",
+  "accessToken": "YOUR_META_TOKEN",
+  "appSecret": "YOUR_APP_SECRET",
+  "verifyToken": "greenwood-verify"
+}
+
+### Activate one account (deactivates the rest)
+POST {{host}}/api/whatsapp-accounts/ACCOUNT_ID/activate
+Authorization: Bearer {{token}}
+
+### Which vendor is currently active?
+GET {{host}}/api/system/status
+Authorization: Bearer {{token}}
+
+### ── WhatsApp webhook (vendor → us; per-tenant URL) ──
+GET {{host}}/webhooks/whatsapp/TENANT_ID?hub.mode=subscribe&hub.verify_token=greenwood-verify&hub.challenge=12345
+
