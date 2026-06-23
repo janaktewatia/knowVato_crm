@@ -11,6 +11,11 @@ export default function MessagingSlider({ lead, onClose }) {
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [customText, setCustomText] = useState("");
   const [sending, setSending] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleClose = () => {
+    setIsClosing(true);
+  };
 
   const channelTemplates = (templates.data || []).filter((t) => (t.channel || "whatsapp") === channel);
 
@@ -42,11 +47,19 @@ export default function MessagingSlider({ lead, onClose }) {
 
   return (
     <>
-      <div className="offcanvas-backdrop fade show" onClick={onClose}></div>
-      <div className="offcanvas offcanvas-end show" style={{ visibility: "visible", width: 550 }}>
+      <div className="offcanvas-backdrop fade show" onClick={handleClose}></div>
+      <div
+        className="offcanvas offcanvas-end show"
+        style={{
+          visibility: "visible",
+          width: 550,
+          animation: isClosing ? "slideOutRight 0.5s ease-out forwards" : "slideInRight 0.5s ease-out"
+        }}
+        onAnimationEnd={() => isClosing && onClose()}
+      >
         <div className="offcanvas-header border-bottom">
           <h5 className="offcanvas-title">Send Message</h5>
-          <button className="btn-close" onClick={onClose}></button>
+          <button className="btn-close" onClick={handleClose}></button>
         </div>
 
         <div className="offcanvas-body d-flex flex-column" style={{ height: "calc(100vh - 100px)" }}>

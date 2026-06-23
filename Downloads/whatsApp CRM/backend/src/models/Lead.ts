@@ -29,6 +29,9 @@ export interface ILead extends Document {
   source?: Types.ObjectId;
   owner: string;
   course?: string;
+  state?: string;
+  city?: string;
+  grade?: string;
   value: number;
   score: number;
   nextFollowUp?: Date | null;
@@ -73,6 +76,9 @@ const leadSchema = new Schema<ILead>(
     source: { type: Schema.Types.ObjectId, ref: "LeadSource" },
     owner: { type: String, default: "Unassigned" },
     course: String,
+    state: { type: String, default: "" },
+    city: { type: String, default: "" },
+    grade: { type: String, default: "" },
     value: { type: Number, default: 0 },
     score: { type: Number, default: 50 },
     nextFollowUp: { type: Date, default: null },

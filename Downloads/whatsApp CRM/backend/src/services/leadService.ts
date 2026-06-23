@@ -3,6 +3,8 @@ import { FollowUp } from "../models/FollowUp";
 import { LeadStatus, SubStatus, LeadSource } from "../models/Masters";
 import { Conversation } from "../models/Messaging";
 import { audit } from "../utils/http";
+import { applyLeadAssignment } from "./workflowEngine";
+import { fireAlerts } from "./alertsEngine";
 
 function addDays(days: number, hour = 10): Date {
   const d = new Date();
@@ -72,6 +74,12 @@ export async function convertToLead(opts: {
   // link conversation if present
   await Conversation.updateOne({ tenant, phone: opts.phone }, { $set: { lead: lead._id } });
 
+  // apply lead assignment workflow
+  await applyLeadAssignment(lead, tenant);
+
+  // fire alerts
+  await fireAlerts("lead.created", lead, tenant, opts.user);
+
   await audit({ tenant, user: opts.user, action: "CONVERT", module: "Leads", entity: lead.name, next: "New lead" });
   return { lead, created: true };
 }
@@ -117,6 +125,10 @@ export async function changeLeadStatus(opts: {
   }
 
   await lead.save();
+
+  // fire status change alerts
+  await fireAlerts("lead.status_changed", lead, tenant, opts.user);
+
   await audit({
     tenant,
     user: opts.user,

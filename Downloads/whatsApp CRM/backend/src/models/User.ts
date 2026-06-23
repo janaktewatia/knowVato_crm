@@ -11,7 +11,7 @@ export interface IPermission {
 
 export const MODULES = [
   "dashboard", "leads", "followups", "chat", "blast",
-  "contacts", "conversion", "setup", "reports",
+  "contacts", "conversion", "setup", "reports", "workflows",
 ];
 
 /* ---- UserType (a.k.a. role) ---- */
@@ -52,6 +52,7 @@ export interface IUser extends Document {
   email: string;
   passwordHash: string;
   userType: Types.ObjectId;
+  designation?: Types.ObjectId | null;
   status: "Active" | "Inactive" | "Pending";
   lastLogin?: Date;
 }
@@ -63,6 +64,7 @@ const userSchema = new Schema<IUser>(
     email: { type: String, required: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true },
     userType: { type: Schema.Types.ObjectId, ref: "UserType", required: true },
+    designation: { type: Schema.Types.ObjectId, ref: "Designation", default: null },
     status: { type: String, enum: ["Active", "Inactive", "Pending"], default: "Active" },
     lastLogin: Date,
   },

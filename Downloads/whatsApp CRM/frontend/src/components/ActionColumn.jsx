@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
-export default function ActionColumn({ lead, onMessage, onEdit, onService, onFollowUp }) {
+export default function ActionColumn({ lead, onMessage, onEdit, onService, onFollowUp, onJourney }) {
   const { can } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
 
@@ -11,7 +11,7 @@ export default function ActionColumn({ lead, onMessage, onEdit, onService, onFol
   };
 
   const actions = [];
-  
+
   if (can("blast", "create")) {
     actions.push({ icon: "chat-dots", label: "Communication", onClick: onMessage, color: "#0085a8" });
   }
@@ -24,18 +24,20 @@ export default function ActionColumn({ lead, onMessage, onEdit, onService, onFol
   if (can("followups", "create")) {
     actions.push({ icon: "calendar-event", label: "Follow-up", onClick: onFollowUp, color: "#6c757d" });
   }
+  if (can("leads", "view")) {
+    actions.push({ icon: "diagram-3", label: "Journey", onClick: onJourney, color: "#25d366" });
+  }
 
   if (actions.length === 0) return null;
 
   return (
     <div className="dropdown" onClick={(e) => e.stopPropagation()}>
       <button
-        className="btn btn-sm btn-outline-primary"
-        style={{ width: 36, height: 36, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+        style={{ background: "none", border: "none", color: "#6c757d", cursor: "pointer", padding: 0, fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", width: 32, height: 32 }}
         onClick={() => setShowMenu(!showMenu)}
         title="Actions"
       >
-        <i className="bi bi-three-dots-vertical"></i>
+        <i className="bi bi-three-dots"></i>
       </button>
 
       {showMenu && (

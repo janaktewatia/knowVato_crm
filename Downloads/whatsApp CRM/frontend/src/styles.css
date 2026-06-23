@@ -136,10 +136,12 @@ a { color: var(--accent); }
 .card {
   border: 1px solid var(--border); border-radius: var(--radius);
   box-shadow: var(--shadow-sm); background: var(--surface);
+  overflow: hidden;
 }
 .card-header {
   background: var(--surface); border-bottom: 1px solid var(--divider);
   padding: 14px 16px; font-weight: 600; color: var(--text);
+  border-radius: var(--radius) var(--radius) 0 0;
 }
 .card-body { padding: 16px; }
 
@@ -148,7 +150,7 @@ a { color: var(--accent); }
 .page-sub { font-size: 12.5px; color: var(--muted); margin: 2px 0 0; }
 
 /* ---------- filter bar (matches theme) ---------- */
-.filter-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 14px 16px; margin-bottom: 16px; }
+.filter-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 14px 16px; margin-bottom: 4px; }
 .filter-bar .field-label { font-size: 11.5px; font-weight: 500; color: var(--muted); margin-bottom: 5px; display: block; }
 
 /* ---------- tabs (pill track, like the theme) ---------- */
@@ -231,3 +233,26 @@ a { color: var(--accent); }
 .pill { border-radius: var(--radius-xs); }
 /* focus ring = indigo */
 .form-control:focus, .form-select:focus, .btn:focus-visible { box-shadow: 0 0 0 3px rgba(60,104,217,.25); border-color: var(--accent); }
+
+/* ========== smooth panel animations ========== */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}

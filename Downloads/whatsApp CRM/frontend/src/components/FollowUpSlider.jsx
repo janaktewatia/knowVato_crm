@@ -6,6 +6,11 @@ export default function FollowUpSlider({ lead, onClose, statuses = [], services 
   const [current, setCurrent] = useState({ type: "call", date: "", time: "10:00", remark: "" });
   const [next, setNext] = useState({ type: "call", date: "", time: "10:00", remark: "" });
   const [scheduling, setScheduling] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleClose = () => {
+    setIsClosing(true);
+  };
 
   const setCurr = (k, v) => setCurrent(f => ({ ...f, [k]: v }));
   const setNext_ = (k, v) => setNext(f => ({ ...f, [k]: v }));
@@ -50,11 +55,19 @@ export default function FollowUpSlider({ lead, onClose, statuses = [], services 
 
   return (
     <>
-      <div className="offcanvas-backdrop fade show" onClick={onClose}></div>
-      <div className="offcanvas offcanvas-end show" style={{ visibility: "visible", width: 550 }}>
+      <div className="offcanvas-backdrop fade show" onClick={handleClose}></div>
+      <div
+        className="offcanvas offcanvas-end show"
+        style={{
+          visibility: "visible",
+          width: 550,
+          animation: isClosing ? "slideOutRight 0.5s ease-out forwards" : "slideInRight 0.5s ease-out"
+        }}
+        onAnimationEnd={() => isClosing && onClose()}
+      >
         <div className="offcanvas-header border-bottom">
           <h5 className="offcanvas-title">Schedule Follow-up</h5>
-          <button className="btn-close" onClick={onClose}></button>
+          <button className="btn-close" onClick={handleClose}></button>
         </div>
 
         <div className="offcanvas-body" style={{ overflowY: "auto", maxHeight: "calc(100vh - 100px)" }}>

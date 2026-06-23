@@ -126,3 +126,42 @@ export const conversionApi = {
 export const auditApi = {
   list: (params) => http.get("/audit" + qs(params)),
 };
+
+export const sessionsApi = {
+  list: () => http.get("/masters/sessions"),
+  create: (b) => http.post("/masters/sessions", b),
+  update: (id, b) => http.patch(`/masters/sessions/${id}`, b),
+  remove: (id) => http.del(`/masters/sessions/${id}`),
+};
+
+export const gradesApi = {
+  list: () => http.get("/grades"),
+  create: (b) => http.post("/grades", b),
+  update: (id, b) => http.patch(`/grades/${id}`, b),
+  remove: (id) => http.del(`/grades/${id}`),
+};
+
+export const designationsApi = {
+  list: () => http.get("/designations"),
+  create: (b) => http.post("/designations", b),
+  update: (id, b) => http.patch(`/designations/${id}`, b),
+  remove: (id) => http.del(`/designations/${id}`),
+};
+
+export const teamsApi = {
+  list: () => http.get("/teams"),
+  create: (b) => http.post("/teams", b),
+  update: (id, b) => http.patch(`/teams/${id}`, b),
+  remove: (id) => http.del(`/teams/${id}`),
+};
+
+export const workflowsApi = {
+  list: () => http.get("/workflows"),
+  create: (b) => http.post("/workflows", b),
+  update: (id, b) => http.patch(`/workflows/${id}`, b),
+  remove: (id) => http.del(`/workflows/${id}`),
+};
+
+export const workflowConfigApi = {
+  get: () => http.get("/workflow-config"),
+};

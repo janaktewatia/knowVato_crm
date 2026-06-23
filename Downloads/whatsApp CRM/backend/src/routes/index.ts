@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { authenticate, require_ } from "../middleware/auth";
 import { crud } from "../controllers/crudFactory";
+import { ok } from "../utils/http";
+import { WORKFLOW_EVENTS, CONDITION_FIELDS, CONDITION_OPERATORS, ACTION_TYPES, ASSIGNMENT_STRATEGIES } from "../config/workflowConfig";
 
 import * as authC from "../controllers/authController";
 import * as leadC from "../controllers/leadController";
@@ -11,11 +13,13 @@ import * as msgC from "../controllers/messagingController";
 import { Lead } from "../models/Lead";
 import { FollowUp } from "../models/FollowUp";
 import { Contact } from "../models/Contact";
-import { LeadStatus, SubStatus, LeadSource } from "../models/Masters";
+import { LeadStatus, SubStatus, LeadSource, AcademicSession, Grade, Designation } from "../models/Masters";
 import { Service } from "../models/Service";
 import { User, UserType } from "../models/User";
 import { Campaign, Template, Conversation, Message } from "../models/Messaging";
 import { Integration, AuditLog } from "../models/System";
+import { Team } from "../models/Team";
+import { Workflow } from "../models/Workflow";
 
 const r = Router();
 
@@ -81,6 +85,78 @@ r.get("/masters/sources", require_("setup", "view"), srcCrud.list);
 r.post("/masters/sources", require_("setup", "create"), srcCrud.create);
 r.delete("/masters/sources/:id", require_("setup", "del"), srcCrud.remove);
 
+/* ---- Academic Sessions (Setup) ---- */
+const sessionCrud = crud(AcademicSession, { module: "setup", searchFields: ["name"] });
+r.get("/masters/sessions", require_("setup", "view"), sessionCrud.list);
+r.post("/masters/sessions", require_("setup", "create"), sessionCrud.create);
+r.patch("/masters/sessions/:id", require_("setup", "edit"), sessionCrud.update);
+r.delete("/masters/sessions/:id", require_("setup", "del"), sessionCrud.remove);
+
+/* ---- Grades (Setup) ---- */
+const gradeCrud = crud(Grade, { module: "setup", searchFields: ["name"] });
+r.get("/grades", require_("setup", "view"), gradeCrud.list);
+r.post("/grades", require_("setup", "create"), gradeCrud.create);
+r.patch("/grades/:id", require_("setup", "edit"), gradeCrud.update);
+r.delete("/grades/:id", require_("setup", "del"), gradeCrud.remove);
+
+/* ---- Designations (Setup) ---- */
+const desgCrud = crud(Designation, { module: "setup", searchFields: ["name"] });
+r.get("/designations", require_("setup", "view"), desgCrud.list);
+r.post("/designations", require_("setup", "create"), desgCrud.create);
+r.patch("/designations/:id", require_("setup", "edit"), desgCrud.update);
+r.delete("/designations/:id", require_("setup", "del"), desgCrud.remove);
+
+/* ---- Teams (Setup) ---- */
+const teamCrud = crud(Team, { module: "setup", searchFields: ["name"], populate: "manager members.user sources" });
+r.get("/teams", require_("setup", "view"), teamCrud.list);
+r.post("/teams", require_("setup", "create"), async (req, res) => {
+  try {
+    const { name, manager, members, sources } = req.body;
+
+    if (!name || !name.trim()) throw new Error("Team name is required");
+    if (!manager) throw new Error("Manager is required");
+    if (!members || members.length === 0) throw new Error("At least one team member is required");
+
+    const team = new Team({
+      tenant: req.tenantId,
+      name,
+      manager,
+      members: members.map(m => ({ user: m })),
+      sources: sources || [],
+      active: true
+    });
+    const saved = await team.save();
+    const populated = await saved.populate("manager members.user sources");
+    res.json(populated);
+  } catch (e) { res.status(400).json({ error: (e instanceof Error ? e.message : String(e)) }); }
+});
+r.patch("/teams/:id", require_("setup", "edit"), async (req, res) => {
+  try {
+    const { name, manager, members, sources } = req.body;
+
+    if (!name || !name.trim()) throw new Error("Team name is required");
+    if (!manager) throw new Error("Manager is required");
+    if (!members || members.length === 0) throw new Error("At least one team member is required");
+
+    const update = {
+      name,
+      manager,
+      members: members.map(m => ({ user: m })),
+      sources: sources || []
+    };
+    const team = await Team.findByIdAndUpdate(req.params.id, update, { new: true }).populate("manager members.user sources");
+    res.json(team);
+  } catch (e) { res.status(400).json({ error: (e instanceof Error ? e.message : String(e)) }); }
+});
+r.delete("/teams/:id", require_("setup", "del"), teamCrud.remove);
+
+/* ---- Workflows (Setup) ---- */
+const wfCrud = crud(Workflow, { module: "setup", searchFields: ["name"] });
+r.get("/workflows", require_("setup", "view"), wfCrud.list);
+r.post("/workflows", require_("setup", "create"), wfCrud.create);
+r.patch("/workflows/:id", require_("setup", "edit"), wfCrud.update);
+r.delete("/workflows/:id", require_("setup", "del"), wfCrud.remove);
+
 /* ---- Users & roles (Setup) ---- */
 const userTypeCrud = crud(UserType, { module: "setup" });
 r.get("/usertypes", require_("setup", "view"), userTypeCrud.list);
@@ -141,5 +217,10 @@ r.get("/conversion/stats", require_("conversion", "view"), msgC.conversionStats)
 /* ---- Audit log ---- */
 const auditCrud = crud(AuditLog, { module: "reports", searchFields: ["entity", "user", "action"] });
 r.get("/audit", require_("reports", "view"), auditCrud.list);
+
+/* ---- Workflow config (metadata for UI) ---- */
+r.get("/workflow-config", (_req, res) => {
+  ok(res, { WORKFLOW_EVENTS, CONDITION_FIELDS, CONDITION_OPERATORS, ACTION_TYPES, ASSIGNMENT_STRATEGIES });
+});
 
 export default r;

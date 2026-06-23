@@ -9,6 +9,11 @@ export default function EditSlider({ lead, onClose, onSaved }) {
   const leadData = useApi(() => leadsApi.get(lead._id), [lead._id]);
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleClose = () => {
+    setIsClosing(true);
+  };
 
   useEffect(() => {
     if (leadData.data) {
@@ -41,11 +46,19 @@ export default function EditSlider({ lead, onClose, onSaved }) {
 
   return (
     <>
-      <div className="offcanvas-backdrop fade show" onClick={onClose}></div>
-      <div className="offcanvas offcanvas-end show" style={{ visibility: "visible", width: 500 }}>
+      <div className="offcanvas-backdrop fade show" onClick={handleClose}></div>
+      <div
+        className="offcanvas offcanvas-end show"
+        style={{
+          visibility: "visible",
+          width: 500,
+          animation: isClosing ? "slideOutRight 0.5s ease-out forwards" : "slideInRight 0.5s ease-out"
+        }}
+        onAnimationEnd={() => isClosing && onClose()}
+      >
         <div className="offcanvas-header border-bottom">
           <h5 className="offcanvas-title">Edit Lead</h5>
-          <button className="btn-close" onClick={onClose}></button>
+          <button className="btn-close" onClick={handleClose}></button>
         </div>
 
         <div className="offcanvas-body">

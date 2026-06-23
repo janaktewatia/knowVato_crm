@@ -4,6 +4,7 @@ import { useApi } from "../hooks/useApi";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { Spinner, ErrorBox } from "./ui";
+import { formatDate } from "../utils/dateFormat";
 
 export default function LeadDetailsPanel({ id, onClose, onChanged, statuses, services = [] }) {
   const toast = useToast();
@@ -12,8 +13,13 @@ export default function LeadDetailsPanel({ id, onClose, onChanged, statuses, ser
   const [note, setNote] = useState("");
   const [adding, setAdding] = useState(false);
   const [selectedService, setSelectedService] = useState("");
+  const [isClosing, setIsClosing] = useState(false);
   const l = lead.data;
   const serviceMap = Object.fromEntries((services || []).map((s) => [s._id, s]));
+
+  const handleClose = () => {
+    setIsClosing(true);
+  };
 
   async function setTrackStatus(serviceId, statusId) {
     try {
@@ -54,14 +60,22 @@ export default function LeadDetailsPanel({ id, onClose, onChanged, statuses, ser
 
   return (
     <>
-      <div className="offcanvas-backdrop fade show" onClick={onClose}></div>
-      <div className="offcanvas offcanvas-end show" style={{ visibility: "visible", width: 550 }}>
+      <div className="offcanvas-backdrop fade show" onClick={handleClose}></div>
+      <div
+        className="offcanvas offcanvas-end show"
+        style={{
+          visibility: "visible",
+          width: 550,
+          animation: isClosing ? "slideOutRight 0.5s ease-out forwards" : "slideInRight 0.5s ease-out"
+        }}
+        onAnimationEnd={() => isClosing && onClose()}
+      >
         <div className="offcanvas-header border-bottom">
           <div>
             <h5 className="offcanvas-title mb-0" style={{ fontSize: 18, fontWeight: 600 }}>{l?.name || "…"}</h5>
             <div className="text-muted small">{l?.phone}{l?.email ? " · " + l.email : ""}</div>
           </div>
-          <button className="btn-close" onClick={onClose}></button>
+          <button className="btn-close" onClick={handleClose}></button>
         </div>
 
         <div className="offcanvas-body" style={{ maxHeight: "calc(100vh - 100px)", overflowY: "auto" }}>
@@ -71,10 +85,6 @@ export default function LeadDetailsPanel({ id, onClose, onChanged, statuses, ser
             <ErrorBox error={lead.error} />
           ) : (
             <>
-              <div className="d-grid gap-2 mb-3">
-                <button className="btn btn-primary btn-sm"><i className="bi bi-chat-dots me-1"></i>Send Message</button>
-              </div>
-
               <div className="mb-4">
                 <h6 className="mb-3" style={{ fontSize: 13, fontWeight: 600, textTransform: "uppercase", color: "var(--text-2)" }}>
                   Services & Statuses
@@ -100,7 +110,7 @@ export default function LeadDetailsPanel({ id, onClose, onChanged, statuses, ser
                             {t.nextFollowUp && (
                               <div className="text-muted small" style={{ fontSize: 11 }}>
                                 <i className="bi bi-calendar-event me-1"></i>
-                                {new Date(t.nextFollowUp).toLocaleDateString()}
+                                {formatDate(t.nextFollowUp)}
                               </div>
                             )}
                           </div>

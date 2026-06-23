@@ -3,10 +3,11 @@ import { Schema, model, Document, Types } from "mongoose";
 /* ---- Lead status (colour-coded, follow-up rule) ---- */
 export interface ILeadStatus extends Document {
   tenant: Types.ObjectId;
-  service?: Types.ObjectId | null; // null = shared/global default; set = this service's own status
   name: string;
   color: string;
-  followUpRequired: boolean;
+  subStatuses: string[];
+  offerings: Types.ObjectId[];
+  followUpRequired: string; // "Yes" or "No"
   order: number;
   isWon: boolean;
   isLost: boolean;
@@ -15,10 +16,11 @@ export interface ILeadStatus extends Document {
 const leadStatusSchema = new Schema<ILeadStatus>(
   {
     tenant: { type: Schema.Types.ObjectId, ref: "Tenant", required: true, index: true },
-    service: { type: Schema.Types.ObjectId, ref: "Service", default: null, index: true },
     name: { type: String, required: true },
     color: { type: String, default: "#2563eb" },
-    followUpRequired: { type: Boolean, default: true },
+    subStatuses: { type: [String], default: [] },
+    offerings: { type: [Schema.Types.ObjectId], ref: "Service", default: [] },
+    followUpRequired: { type: String, enum: ["Yes", "No"], default: "No" },
     order: { type: Number, default: 0 },
     isWon: { type: Boolean, default: false },
     isLost: { type: Boolean, default: false },
@@ -58,3 +60,58 @@ const leadSourceSchema = new Schema<ILeadSource>(
   { timestamps: true }
 );
 export const LeadSource = model<ILeadSource>("LeadSource", leadSourceSchema);
+
+/* ---- Academic Session ---- */
+export interface IAcademicSession extends Document {
+  tenant: Types.ObjectId;
+  name: string;
+  startYear: number;
+  endYear: number;
+  isActive: boolean;
+}
+const academicSessionSchema = new Schema<IAcademicSession>(
+  {
+    tenant: { type: Schema.Types.ObjectId, ref: "Tenant", required: true, index: true },
+    name: { type: String, required: true },
+    startYear: { type: Number, required: true },
+    endYear: { type: Number, required: true },
+    isActive: { type: Boolean, default: false },
+  },
+  { timestamps: true }
+);
+academicSessionSchema.index({ tenant: 1, name: 1 }, { unique: true });
+export const AcademicSession = model<IAcademicSession>("AcademicSession", academicSessionSchema);
+
+/* ---- Grade ---- */
+export interface IGrade extends Document {
+  tenant: Types.ObjectId;
+  name: string;
+  order: number;
+}
+const gradeSchema = new Schema<IGrade>(
+  {
+    tenant: { type: Schema.Types.ObjectId, ref: "Tenant", required: true, index: true },
+    name: { type: String, required: true },
+    order: { type: Number, default: 0 },
+  },
+  { timestamps: true }
+);
+gradeSchema.index({ tenant: 1, name: 1 }, { unique: true });
+export const Grade = model<IGrade>("Grade", gradeSchema);
+
+/* ---- Designation ---- */
+export interface IDesignation extends Document {
+  tenant: Types.ObjectId;
+  name: string;
+  order: number;
+}
+const designationSchema = new Schema<IDesignation>(
+  {
+    tenant: { type: Schema.Types.ObjectId, ref: "Tenant", required: true, index: true },
+    name: { type: String, required: true },
+    order: { type: Number, default: 0 },
+  },
+  { timestamps: true }
+);
+designationSchema.index({ tenant: 1, name: 1 }, { unique: true });
+export const Designation = model<IDesignation>("Designation", designationSchema);
