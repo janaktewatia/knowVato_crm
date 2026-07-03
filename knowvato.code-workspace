@@ -1,0 +1,17 @@
+{
+  "folders": [
+    { "name": "▶ START HERE (launcher)", "path": "launcher" },
+    { "name": "Communication / CRM API (backend)", "path": "backend" },
+    { "name": "CRM Frontend", "path": "frontend" },
+    { "name": "Platform — Identity", "path": "platform/services/identity" },
+    { "name": "Platform — Gateway", "path": "platform/gateway" },
+    { "name": "Platform — Events (example)", "path": "platform/services/events-example" },
+    { "name": "Platform — Shell", "path": "platform/shell" },
+    { "name": "Platform — SDK", "path": "platform/packages/platform-sdk" },
+    { "name": "Platform — docs", "path": "platform/docs" }
+  ],
+  "settings": {
+    "files.exclude": { "**/node_modules": true, "**/dist": true },
+    "terminal.integrated.scrollback": 5000
+  }
+}

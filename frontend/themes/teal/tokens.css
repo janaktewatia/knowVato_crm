@@ -1,0 +1,58 @@
+/* ============================================================
+   APP THEME — Design Tokens (v1)
+   Single teal accent · neutral surfaces · soft status pills.
+   Framework-agnostic. Drop into any project and use the
+   CSS variables below. No decorative colours.
+   ============================================================ */
+:root {
+  /* ---- Accent (the ONE brand colour) ---- */
+  --accent:        #0085a8;   /* primary buttons, active states, links */
+  --accent-hover:  #006c8a;   /* hover/pressed */
+  --accent-soft:   #e6f3f7;   /* tinted backgrounds, active nav, avatars */
+  --accent-ink:    #00586f;   /* text/icon on soft accent */
+
+  /* ---- Neutrals / surfaces ---- */
+  --page-bg:    #f7fbfe;      /* app background */
+  --surface:    #ffffff;      /* cards, tables, inputs */
+  --surface-2:  #f5f8fb;      /* hover rows, subtle fills */
+  --border:     #e5eaf0;      /* card & control borders */
+  --border-2:   #d8e0e8;      /* stronger border (inputs) */
+  --divider:    #eef2f6;      /* row dividers, hairlines */
+
+  /* ---- Text ---- */
+  --text:       #1f2630;      /* primary text, headings */
+  --text-2:     #40474d;      /* body text */
+  --muted:      #79838f;      /* labels, secondary */
+  --muted-2:    #a1abb6;      /* faint captions */
+
+  /* ---- Status pill (neutral by default) ---- */
+  --pill-bg:    #e8eff5;
+  --pill-ink:   #41505f;
+
+  /* ---- Semantic (muted; use ONLY to convey meaning) ---- */
+  --ok:    #2e7d57;  --ok-bg: #e6f3ec;
+  --warn:  #9a6700;  --warn-bg: #fbf2dd;
+  --err:   #b3261e;  --err-bg: #fbe9e7;
+  --info:  #1f5f8b;  --info-bg: #e7f0f7;
+
+  /* ---- Shape & elevation ---- */
+  --radius:    10px;
+  --radius-sm:  7px;
+  --shadow-sm: 0 1px 2px rgba(16,40,64,.05);
+  --shadow-md: 0 4px 14px rgba(16,40,64,.08);
+
+  /* ---- Type ---- */
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fs-base: 14px;
+  --fs-sm: 12.5px;
+  --fs-xs: 11px;
+}
+
+/* Optional dark mode hook (values are a starting point, tune per project) */
+[data-theme="dark"] {
+  --page-bg: #0e1419; --surface: #161d24; --surface-2: #1c252e;
+  --border: #263038; --border-2: #2f3a44; --divider: #1f272f;
+  --text: #e8edf2; --text-2: #c2cbd4; --muted: #8a96a2; --muted-2: #6b7681;
+  --pill-bg: #243038; --pill-ink: #b9c4cf;
+  --accent-soft: #0d2b34; --accent-ink: #4cc4dd;
+}

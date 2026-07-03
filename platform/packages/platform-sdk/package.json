@@ -1,0 +1,19 @@
+{
+  "name": "@knowvato/platform-sdk",
+  "version": "1.0.0",
+  "description": "Shared contracts for the Knowvato platform — auth middleware, typed clients (Identity, Communication), and event types. Every module imports this so they all integrate the same way.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "jsonwebtoken": "^9.0.2",
+    "jwks-rsa": "^3.1.0"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.4"
+  }
+}

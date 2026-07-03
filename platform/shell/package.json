@@ -1,0 +1,20 @@
+{
+  "name": "@knowvato/shell",
+  "version": "1.0.0",
+  "description": "Platform shell (host) at abc.knowvato.in — SSO login, permission-aware module navigation, and a mount point that loads each module's UI. Demonstrates the Module Federation host pattern.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.0"
+  }
+}

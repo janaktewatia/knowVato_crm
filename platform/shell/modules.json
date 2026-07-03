@@ -1,0 +1,69 @@
+{
+  "$description": "Registry of platform modules. The shell reads this to build the nav and decide what to show per user permissions. Each module is independently deployed on its own subdomain.",
+  "tenant": "knowvato",
+  "gateway": "https://api.knowvato.in",
+  "modules": [
+    {
+      "id": "dashboard",
+      "name": "Home",
+      "icon": "grid",
+      "type": "builtin",
+      "permission": null
+    },
+    {
+      "id": "crm",
+      "name": "WhatsApp CRM",
+      "icon": "whatsapp",
+      "type": "remote",
+      "baseUrl": "https://whatsapp.knowvato.in",
+      "remoteEntry": "https://whatsapp.knowvato.in/assets/remoteEntry.js",
+      "scope": "crm",
+      "module": "./App",
+      "apiPrefix": "/communication",
+      "permission": "crm:view"
+    },
+    {
+      "id": "events",
+      "name": "Event Management",
+      "icon": "calendar-event",
+      "type": "remote",
+      "baseUrl": "https://event.knowvato.in",
+      "remoteEntry": "https://event.knowvato.in/assets/remoteEntry.js",
+      "scope": "events",
+      "module": "./App",
+      "apiPrefix": "/events",
+      "permission": "events:view"
+    },
+    {
+      "id": "websitebuilder",
+      "name": "Website Builder",
+      "icon": "globe",
+      "type": "remote",
+      "baseUrl": "https://websitebuilder.knowvato.in",
+      "remoteEntry": "https://websitebuilder.knowvato.in/assets/remoteEntry.js",
+      "scope": "websitebuilder",
+      "module": "./App",
+      "apiPrefix": "/websitebuilder",
+      "permission": "websitebuilder:view"
+    },
+    {
+      "id": "communication",
+      "name": "Communication",
+      "icon": "chat-dots",
+      "type": "remote",
+      "baseUrl": "https://whatsapp.knowvato.in",
+      "scope": "crm",
+      "module": "./Communication",
+      "apiPrefix": "/communication",
+      "permission": "communication:view"
+    },
+    {
+      "id": "users",
+      "name": "User Management",
+      "icon": "people",
+      "type": "builtin",
+      "apiPrefix": "/identity",
+      "permission": "identity.users:view"
+    }
+  ]
+}

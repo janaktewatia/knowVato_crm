@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: wacrm-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  redis:
+    image: redis:7-alpine
+    container_name: wacrm-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  api:
+    build: .
+    container_name: wacrm-api
+    restart: unless-stopped
+    depends_on:
+      - mongo
+      - redis
+    ports:
+      - "4000:4000"
+    environment:
+      - PORT=4000
+      - MONGO_URI=mongodb://mongo:27017/whatsapp_crm
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=please-change-me
+      - WHATSAPP_MODE=simulation
+    # To run the API outside Docker, just `docker compose up mongo redis`
+    # and run `npm run dev` locally.
+
+volumes:
+  mongo-data:

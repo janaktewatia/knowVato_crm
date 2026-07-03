@@ -1,0 +1,26 @@
+{
+  "name": "knowvato-launcher",
+  "version": "1.0.0",
+  "private": true,
+  "description": "One place to install and run every Knowvato project together. See README.",
+  "scripts": {
+    "_comment": "Run `npm run setup` ONCE, then `npm start` every time. That's it.",
+
+    "setup": "node setup.js",
+    "start": "concurrently -n identity,comm,events,gateway,shell,crm -c blue,green,yellow,magenta,cyan,white \"npm:dev:identity\" \"npm:dev:comm\" \"npm:dev:events\" \"npm:dev:gateway\" \"npm:dev:shell\" \"npm:dev:crm\"",
+
+    "dev:identity": "cd ../platform/services/identity && npm run dev",
+    "dev:comm": "cross-env PORT=4001 npm --prefix ../backend run dev",
+    "dev:events": "cd ../platform/services/events-example && npm run dev",
+    "dev:gateway": "cd ../platform/gateway && npm run dev",
+    "dev:shell": "cd ../platform/shell && npm run dev",
+    "dev:crm": "npm --prefix ../frontend run dev",
+
+    "mongo": "docker compose -f ../platform/docker-compose.yml up -d mongo",
+    "seed": "node seed.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "cross-env": "^7.0.3"
+  }
+}

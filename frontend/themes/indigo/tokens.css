@@ -1,0 +1,49 @@
+/* ============================================================
+   THEME: Indigo (v1)
+   Calm indigo/violet accent · neutral surfaces · soft pills.
+   Same token names as every theme — swap this file to switch.
+   ============================================================ */
+:root {
+  --accent:        #4f46e5;
+  --accent-hover:  #4338ca;
+  --accent-soft:   #eef0fe;
+  --accent-ink:    #312e81;
+
+  --page-bg:    #f8f9fc;
+  --surface:    #ffffff;
+  --surface-2:  #f4f5fa;
+  --border:     #e6e8f0;
+  --border-2:   #d8dbe8;
+  --divider:    #eef0f6;
+
+  --text:       #1e2233;
+  --text-2:     #3f4254;
+  --muted:      #767b90;
+  --muted-2:    #a3a8bd;
+
+  --pill-bg:    #eceef6;
+  --pill-ink:   #474c63;
+
+  --ok:    #2e7d57;  --ok-bg: #e6f3ec;
+  --warn:  #9a6700;  --warn-bg: #fbf2dd;
+  --err:   #b3261e;  --err-bg: #fbe9e7;
+  --info:  #3949ab;  --info-bg: #e8eafb;
+
+  --radius:    10px;
+  --radius-sm:  7px;
+  --shadow-sm: 0 1px 2px rgba(30,34,51,.05);
+  --shadow-md: 0 4px 14px rgba(30,34,51,.08);
+
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fs-base: 14px;
+  --fs-sm: 12.5px;
+  --fs-xs: 11px;
+}
+
+[data-theme="dark"] {
+  --page-bg: #11131c; --surface: #191c28; --surface-2: #1f2330;
+  --border: #2a2f40; --border-2: #343a4d; --divider: #222636;
+  --text: #e9ebf5; --text-2: #c4c8db; --muted: #8b90a8; --muted-2: #6c7188;
+  --pill-bg: #262b3c; --pill-ink: #bcc1d6;
+  --accent-soft: #20204a; --accent-ink: #a5a8f0;
+}

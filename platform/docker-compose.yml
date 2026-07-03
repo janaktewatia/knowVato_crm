@@ -1,0 +1,50 @@
+# Brings up the platform's shared infra + services for local integration.
+# The Communication service is the existing whatsapp-crm-backend (add it next to
+# this folder, or point COMMUNICATION_URL at wherever you run it).
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:7
+    ports: ["27017:27017"]
+    volumes: ["mongo-data:/data/db"]
+
+  identity:
+    build: ./services/identity
+    ports: ["4100:4100"]
+    depends_on: [mongo]
+    environment:
+      - PORT=4100
+      - MONGO_URI=mongodb://mongo:27017/knowvato_identity
+      - JWT_ISSUER=https://api.knowvato.in/identity
+
+  events:
+    build: ./services/events-example
+    ports: ["4002:4002"]
+    environment:
+      - PORT=4002
+      - COMMUNICATION_URL=http://gateway:4000/communication
+
+  gateway:
+    build: ./gateway
+    ports: ["4000:4000"]
+    depends_on: [identity]
+    environment:
+      - PORT=4000
+      - JWKS_URI=http://identity:4100/.well-known/jwks.json
+      - JWT_ISSUER=https://api.knowvato.in/identity
+      - IDENTITY_URL=http://identity:4100
+      - COMMUNICATION_URL=http://communication:4001
+      - EVENTS_URL=http://events:4002
+
+  # Add the WhatsApp CRM backend as the "communication" service:
+  # communication:
+  #   build: ../whatsapp-crm-backend
+  #   ports: ["4001:4001"]
+  #   depends_on: [mongo]
+  #   environment:
+  #     - PORT=4001
+  #     - MONGO_URI=mongodb://mongo:27017/whatsapp_crm
+
+volumes:
+  mongo-data:

@@ -1,0 +1,97 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Theme Library — Gallery</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="_shared.components.css">
+<style>
+  body { margin:0; font-family:"Inter",system-ui,sans-serif; }
+  .switcher { position:sticky; top:0; z-index:20; background:#fff; border-bottom:1px solid #e5eaf0; padding:14px 24px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .switcher b { font-size:15px; margin-right:8px; }
+  .swbtn { border:1px solid #d8e0e8; background:#fff; border-radius:7px; padding:6px 14px; cursor:pointer; font-size:13px; font-weight:500; display:flex; align-items:center; gap:7px; }
+  .swbtn .chip { width:13px; height:13px; border-radius:4px; }
+  .swbtn.active { border-color:#1f2630; }
+  .demo { padding:26px 24px; max-width:1000px; margin:0 auto; }
+  .demo section { margin-bottom:26px; }
+  h2.sec { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:600; margin:0 0 12px; }
+</style></head>
+<body>
+  <div class="switcher">
+    <b>Theme Library</b>
+    <span id="buttons"></span>
+    <span style="margin-left:auto;color:var(--muted);font-size:12.5px" id="summary"></span>
+  </div>
+  <div class="demo">
+    <section>
+      <h2 class="sec">Buttons</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn-accent"><i class="bi bi-search"></i> Search</button>
+        <button class="btn-ghost"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+        <button class="btn-link">Link action</button>
+        <button class="btn-icon"><i class="bi bi-pencil"></i></button>
+        <button class="btn-icon danger"><i class="bi bi-trash"></i></button>
+      </div>
+    </section>
+    <section>
+      <h2 class="sec">Filter bar</h2>
+      <div class="filter-bar">
+        <div style="min-width:190px"><label class="field-label">Session</label><select class="form-select"><option>2025-2026</option></select></div>
+        <div style="min-width:160px"><label class="field-label">Status</label><select class="form-select"><option>All</option></select></div>
+        <button class="btn-accent"><i class="bi bi-search"></i> Search</button>
+        <button class="btn-ghost"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+      </div>
+    </section>
+    <section>
+      <h2 class="sec">Tabs &amp; pills</h2>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center">
+        <div class="tab-track"><button class="tab active">Eligible</button><button class="tab">Balance</button><button class="tab">History</button></div>
+        <div style="display:flex;gap:6px">
+          <span class="pill"><span class="dot"></span>New</span>
+          <span class="pill pill--ok"><span class="dot"></span>Admitted</span>
+          <span class="pill pill--warn"><span class="dot"></span>Pending</span>
+          <span class="pill pill--err"><span class="dot"></span>Lost</span>
+        </div>
+      </div>
+    </section>
+    <section>
+      <h2 class="sec">Table</h2>
+      <div class="card"><table class="table table-hover">
+        <thead><tr><th>Lead</th><th>Status</th><th>Source</th><th style="text-align:right">Score</th></tr></thead>
+        <tbody>
+          <tr><td><div style="display:flex;gap:8px;align-items:center"><span class="avatar" style="width:30px;height:30px;font-size:12px">AS</span><div><div class="row-name">Aarav Sharma</div><div class="row-sub">+91 98200 11111</div></div></div></td><td><span class="pill pill--info"><span class="dot"></span>Qualified</span></td><td class="text-muted">WhatsApp Campaign</td><td style="text-align:right" class="row-name">82</td></tr>
+          <tr><td><div style="display:flex;gap:8px;align-items:center"><span class="avatar" style="width:30px;height:30px;font-size:12px">RI</span><div><div class="row-name">Rahul Iyer</div><div class="row-sub">+91 98300 22222</div></div></div></td><td><span class="pill"><span class="dot"></span>New</span></td><td class="text-muted">Facebook Lead Form</td><td style="text-align:right" class="row-name">65</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+    <section>
+      <h2 class="sec">KPI cards</h2>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+        <div class="card kpi-card"><div class="card-body"><div class="kpi-label">Leads</div><div class="kpi-value">128</div></div></div>
+        <div class="card kpi-card"><div class="card-body"><div class="kpi-label">Admitted</div><div class="kpi-value">31</div></div></div>
+        <div class="card kpi-card"><div class="card-body"><div class="kpi-label">Conversion</div><div class="kpi-value">24%</div></div></div>
+        <div class="card kpi-card"><div class="card-body"><div class="kpi-label">Due today</div><div class="kpi-value">7</div></div></div>
+      </div>
+    </section>
+  </div>
+
+  <link id="themeLink" rel="stylesheet" href="teal/tokens.css">
+  <script>
+    fetch("registry.json").then(r=>r.json()).then(reg=>{
+      const box = document.getElementById("buttons");
+      const link = document.getElementById("themeLink");
+      const summary = document.getElementById("summary");
+      function activate(t){
+        link.href = t.tokens;
+        summary.textContent = t.summary;
+        [...box.children].forEach(b=>b.classList.toggle("active", b.dataset.id===t.id));
+      }
+      reg.themes.forEach((t,i)=>{
+        const b=document.createElement("button");
+        b.className="swbtn"; b.dataset.id=t.id;
+        b.innerHTML=`<span class="chip" style="background:${t.accent}"></span>${t.name}`;
+        b.onclick=()=>activate(t);
+        box.appendChild(b);
+        if(i===0) activate(t);
+      });
+    });
+  </script>
+</body></html>

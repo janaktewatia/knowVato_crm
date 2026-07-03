@@ -1,0 +1,49 @@
+/* ============================================================
+   THEME: Slate (v1)
+   Near-monochrome slate accent · maximum neutrality.
+   For the most understated, "no colour at all" look.
+   ============================================================ */
+:root {
+  --accent:        #334155;
+  --accent-hover:  #1e293b;
+  --accent-soft:   #eef1f5;
+  --accent-ink:    #1e293b;
+
+  --page-bg:    #f8fafc;
+  --surface:    #ffffff;
+  --surface-2:  #f1f5f9;
+  --border:     #e2e8f0;
+  --border-2:   #cbd5e1;
+  --divider:    #eef2f6;
+
+  --text:       #0f172a;
+  --text-2:     #334155;
+  --muted:      #64748b;
+  --muted-2:    #94a3b8;
+
+  --pill-bg:    #eef1f5;
+  --pill-ink:   #475569;
+
+  --ok:    #2e7d57;  --ok-bg: #e6f3ec;
+  --warn:  #9a6700;  --warn-bg: #fbf2dd;
+  --err:   #b3261e;  --err-bg: #fbe9e7;
+  --info:  #475569;  --info-bg: #eef1f5;
+
+  --radius:    10px;
+  --radius-sm:  7px;
+  --shadow-sm: 0 1px 2px rgba(15,23,42,.05);
+  --shadow-md: 0 4px 14px rgba(15,23,42,.08);
+
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fs-base: 14px;
+  --fs-sm: 12.5px;
+  --fs-xs: 11px;
+}
+
+[data-theme="dark"] {
+  --page-bg: #0b0f17; --surface: #131822; --surface-2: #1a2030;
+  --border: #232a3a; --border-2: #2f3749; --divider: #1d2330;
+  --text: #e8edf5; --text-2: #c3ccda; --muted: #8794a8; --muted-2: #687185;
+  --pill-bg: #222a3a; --pill-ink: #b7c1d2;
+  --accent-soft: #1d2738; --accent-ink: #9fb3cc;
+}
