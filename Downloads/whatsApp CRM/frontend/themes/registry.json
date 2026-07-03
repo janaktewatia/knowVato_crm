@@ -1,0 +1,35 @@
+{
+  "$description": "Theme library. Each theme defines the SAME token names with different values; swap one tokens.css to switch. _shared.components.css is common to all.",
+  "version": 1,
+  "shared": "_shared.components.css",
+  "default": "teal",
+  "themes": [
+    {
+      "id": "teal",
+      "name": "Teal",
+      "summary": "Single teal accent on near-white surfaces. The default. Calm, professional, no fancy colours.",
+      "accent": "#0085a8",
+      "tokens": "teal/tokens.css",
+      "spec": "teal/SPEC.md",
+      "tags": ["default", "professional", "cool"]
+    },
+    {
+      "id": "indigo",
+      "name": "Indigo",
+      "summary": "Indigo/violet accent. Slightly more modern/SaaS feel, still neutral surfaces.",
+      "accent": "#4f46e5",
+      "tokens": "indigo/tokens.css",
+      "spec": "indigo/SPEC.md",
+      "tags": ["modern", "saas", "cool"]
+    },
+    {
+      "id": "slate",
+      "name": "Slate",
+      "summary": "Near-monochrome slate. The most understated option — colour only ever signals status.",
+      "accent": "#334155",
+      "tokens": "slate/tokens.css",
+      "spec": "slate/SPEC.md",
+      "tags": ["monochrome", "minimal", "neutral"]
+    }
+  ]
+}

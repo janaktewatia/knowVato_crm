@@ -1,0 +1,132 @@
+/* ============================================================
+   Theme: Simple & Elegant (light gray-blue, soft cards)
+   ============================================================ */
+:root {
+  --app-bg: #f4f6fa;
+  --app-surface: #ffffff;
+  --app-border: #e3e8f0;
+  --app-border-strong: #d4dbe8;
+  --app-text: #1f2937;
+  --app-muted: #6b7280;
+  --app-primary: #1d4ed8;          /* deep elegant blue */
+  --app-primary-hover: #1740b3;
+  --app-table-head: #eef2f8;       /* light blue-gray header */
+  --app-radius: .65rem;
+  --app-shadow: 0 1px 3px rgba(16,24,40,.06), 0 1px 2px rgba(16,24,40,.04);
+}
+
+body {
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-size: 15px;
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar {
+  min-height: 100vh;
+  width: 240px;
+  background: #0f1b34 !important;   /* deep navy, calmer than pure black */
+}
+.sidebar .nav-link {
+  color: #aebbd0;
+  border-radius: .5rem;
+  font-size: .9rem;
+}
+.sidebar .nav-link:hover { background: rgba(255,255,255,.06); color: #fff; }
+.sidebar .nav-link.active { background: var(--app-primary); color: #fff; }
+
+/* ---------- Cards / surfaces ---------- */
+.stat-card,
+.card {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: var(--app-shadow);
+}
+.card-header {
+  background: var(--app-surface);
+  border-bottom: 1px solid var(--app-border);
+  font-weight: 600;
+}
+
+/* ---------- Buttons: outlined default, solid primary ---------- */
+.btn {
+  border-radius: .55rem;
+  font-weight: 500;
+}
+.btn-primary {
+  background: var(--app-primary);
+  border-color: var(--app-primary);
+}
+.btn-primary:hover,
+.btn-primary:focus {
+  background: var(--app-primary-hover);
+  border-color: var(--app-primary-hover);
+}
+/* outlined secondary buttons (the toolbar look) */
+.btn-outline-secondary,
+.btn-light {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-strong);
+  color: var(--app-text);
+}
+.btn-outline-secondary:hover,
+.btn-light:hover {
+  background: #f8fafc;
+  border-color: var(--app-border-strong);
+  color: var(--app-text);
+}
+.btn-group .btn { box-shadow: none; }
+
+/* ---------- Forms / inputs ---------- */
+.form-control,
+.form-select {
+  border-radius: .55rem;
+  border-color: var(--app-border-strong);
+}
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--app-primary);
+  box-shadow: 0 0 0 .2rem rgba(29,78,216,.12);
+}
+.input-group-text {
+  background: var(--app-surface);
+  border-color: var(--app-border-strong);
+}
+.form-label.small { color: var(--app-muted); font-weight: 600; }
+
+/* ---------- Tables ---------- */
+.table thead.table-light th,
+.table > thead th {
+  background: var(--app-table-head);
+  color: #374151;
+  font-weight: 600;
+  border-bottom: 1px solid var(--app-border);
+  font-size: .82rem;
+  text-transform: none;
+}
+.table-hover tbody tr:hover { background: #f6f9fd; }
+
+/* ---------- Badges (softer) ---------- */
+.badge { font-weight: 600; border-radius: .4rem; }
+
+/* ---------- Page builder bits ---------- */
+.canvas-block { border: 1px dashed transparent; padding: .25rem; border-radius: .4rem; }
+.canvas-block:hover { border-color: var(--app-primary); }
+
+/* ---------- Misc ---------- */
+.page-link { color: var(--app-primary); }
+.page-item.active .page-link { background: var(--app-primary); border-color: var(--app-primary); }
+a { color: var(--app-primary); }
+
+/* ---- Polish pass ---- */
+.stat-card, .card { transition: box-shadow .15s ease, transform .15s ease; }
+.row .stat-card:hover { box-shadow: 0 4px 14px rgba(16,24,40,.10); }
+.btn { transition: all .12s ease; }
+.btn-primary:hover { transform: translateY(-1px); }
+.nav-tabs .nav-link { color: var(--app-muted); font-weight: 500; }
+.nav-tabs .nav-link.active { color: var(--app-primary); font-weight: 600; }
+.badge { font-weight: 600; }
+.modal-content { border: none; border-radius: 14px; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
