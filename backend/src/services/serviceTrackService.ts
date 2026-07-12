@@ -94,7 +94,7 @@ export async function setServiceStatus(opts: {
     );
   } else {
     track.isClosed = false;
-    if (nextStatus.followUpRequired) {
+    if (nextStatus.followUpRequired === "Yes") {
       const due = addDays(2, 11);
       track.nextFollowUp = due;
       await FollowUp.create({

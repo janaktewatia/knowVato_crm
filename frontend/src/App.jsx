@@ -15,8 +15,11 @@ import MessageHistory from "./pages/MessageHistory";
 import Templates from "./pages/Templates";
 import Setup from "./pages/Setup";
 import PublicEnquiryForm from "./pages/PublicEnquiryForm";
+import PublicLandingPage from "./pages/PublicLandingPage";
 import EnquiryForms from "./pages/EnquiryForms";
 import Audit from "./pages/Audit";
+import ClarwynEnquiryNow from "./pages/ClarwynEnquiryNow";
+
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -32,6 +35,8 @@ export default function App() {
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
       <Route path="/public/enquiry-form/:formId" element={<PublicEnquiryForm />} />
+      <Route path="/public/landing-page/:pageId" element={<PublicLandingPage />} />
+      <Route path="/clp/enquirenow" element={<ClarwynEnquiryNow />} />
       <Route
         path="/"
         element={

@@ -4,7 +4,7 @@ import { Schema, model, Document, Types } from "mongoose";
 export interface ITemplate extends Document {
   tenant: Types.ObjectId;
   name: string;
-  channel: "whatsapp" | "email";
+  channel: "whatsapp" | "email" | "sms";
   subject?: string;
   language: string;
   category: "Marketing" | "Utility" | "Authentication";
@@ -17,7 +17,7 @@ const templateSchema = new Schema<ITemplate>(
   {
     tenant: { type: Schema.Types.ObjectId, ref: "Tenant", required: true, index: true },
     name: { type: String, required: true },
-    channel: { type: String, enum: ["whatsapp", "email"], default: "whatsapp" },
+    channel: { type: String, enum: ["whatsapp", "email", "sms"], default: "whatsapp" },
     subject: String,
     language: { type: String, default: "en" },
     category: { type: String, enum: ["Marketing", "Utility", "Authentication"], default: "Utility" },

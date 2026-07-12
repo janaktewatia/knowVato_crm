@@ -53,13 +53,13 @@ async function seed() {
 
   /* statuses */
   const statusDefs = [
-    { name: "New", color: "#2563eb", followUpRequired: true, order: 1 },
-    { name: "Contacted", color: "#0891b2", followUpRequired: true, order: 2 },
-    { name: "Qualified", color: "#7c3aed", followUpRequired: true, order: 3 },
-    { name: "Visit Booked", color: "#d97706", followUpRequired: true, order: 4 },
-    { name: "Negotiation", color: "#ca8a04", followUpRequired: true, order: 5 },
-    { name: "Admitted", color: "#00a884", followUpRequired: false, order: 6, isWon: true },
-    { name: "Lost", color: "#dc2626", followUpRequired: false, order: 7, isLost: true },
+    { name: "New", color: "#2563eb", followUpRequired: "Yes", order: 1 },
+    { name: "Contacted", color: "#0891b2", followUpRequired: "Yes", order: 2 },
+    { name: "Qualified", color: "#7c3aed", followUpRequired: "Yes", order: 3 },
+    { name: "Visit Booked", color: "#d97706", followUpRequired: "Yes", order: 4 },
+    { name: "Negotiation", color: "#ca8a04", followUpRequired: "Yes", order: 5 },
+    { name: "Admitted", color: "#00a884", followUpRequired: "No", order: 6, isWon: true },
+    { name: "Lost", color: "#dc2626", followUpRequired: "No", order: 7, isLost: true },
   ];
   const statuses = await LeadStatus.create(statusDefs.map((s) => ({ ...s, tenant: T })));
   const byName: any = Object.fromEntries(statuses.map((s) => [s.name, s]));
@@ -74,17 +74,17 @@ async function seed() {
 
   // WhatsApp-specific statuses (its own pipeline)
   const waStatuses = await LeadStatus.create([
-    { tenant: T, service: svc.whatsapp._id, name: "Enquiry", color: "#25d366", followUpRequired: true, order: 1 },
-    { tenant: T, service: svc.whatsapp._id, name: "In Conversation", color: "#0891b2", followUpRequired: true, order: 2 },
-    { tenant: T, service: svc.whatsapp._id, name: "Deal Won", color: "#16a34a", followUpRequired: false, order: 3, isWon: true },
-    { tenant: T, service: svc.whatsapp._id, name: "Not Interested", color: "#dc2626", followUpRequired: false, order: 4, isLost: true },
+    { tenant: T, service: svc.whatsapp._id, name: "Enquiry", color: "#25d366", followUpRequired: "Yes", order: 1 },
+    { tenant: T, service: svc.whatsapp._id, name: "In Conversation", color: "#0891b2", followUpRequired: "Yes", order: 2 },
+    { tenant: T, service: svc.whatsapp._id, name: "Deal Won", color: "#16a34a", followUpRequired: "No", order: 3, isWon: true },
+    { tenant: T, service: svc.whatsapp._id, name: "Not Interested", color: "#dc2626", followUpRequired: "No", order: 4, isLost: true },
   ]);
   // Event Management-specific statuses
   const evStatuses = await LeadStatus.create([
-    { tenant: T, service: svc.events._id, name: "Invited", color: "#7c3aed", followUpRequired: true, order: 1 },
-    { tenant: T, service: svc.events._id, name: "Registered", color: "#2563eb", followUpRequired: true, order: 2 },
-    { tenant: T, service: svc.events._id, name: "Attended", color: "#16a34a", followUpRequired: false, order: 3, isWon: true },
-    { tenant: T, service: svc.events._id, name: "Next Year", color: "#d97706", followUpRequired: true, order: 4 },
+    { tenant: T, service: svc.events._id, name: "Invited", color: "#7c3aed", followUpRequired: "Yes", order: 1 },
+    { tenant: T, service: svc.events._id, name: "Registered", color: "#2563eb", followUpRequired: "Yes", order: 2 },
+    { tenant: T, service: svc.events._id, name: "Attended", color: "#16a34a", followUpRequired: "No", order: 3, isWon: true },
+    { tenant: T, service: svc.events._id, name: "Next Year", color: "#d97706", followUpRequired: "Yes", order: 4 },
   ]);
   // a couple of service-specific sub-statuses
   await SubStatus.create([

@@ -53,6 +53,15 @@ export default function Layout() {
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
+  const isPreviewOnly = loc.search.includes("startScreen=preview_only");
+  if (isPreviewOnly) {
+    return (
+      <div style={{ height: "100vh", width: "100vw", overflow: "hidden" }}>
+        <Outlet />
+      </div>
+    );
+  }
+
   return (
     <div className={`app-shell ${sidebarOpen ? "" : "sidebar-closed"}`}>
       <aside className="sidebar">

@@ -97,6 +97,7 @@ export const templatesApi = {
   list: (params) => http.get("/templates" + qs(params)),
   create: (b) => http.post("/templates", b),
   update: (id, b) => http.patch(`/templates/${id}`, b),
+  remove: (id) => http.del(`/templates/${id}`),
 };
 
 export const campaignsApi = {
@@ -112,6 +113,7 @@ export const campaignsApi = {
 export const publicApi = {
   getEnquiryForm: (formId) => http.get(`/public/enquiry-form/${formId}`),
   submitEnquiryForm: (formId, payload) => http.post(`/public/enquiry-form/${formId}`, payload),
+  getLandingPage: (pageId) => http.get(`/public/landing-page/${pageId}`),
 };
 
 export const messagesApi = {

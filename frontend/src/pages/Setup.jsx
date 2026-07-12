@@ -1,9 +1,27 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { mastersApi, servicesApi, sessionsApi, gradesApi, teamsApi, workflowsApi, workflowConfigApi, usersApi } from "../api";
+import { mastersApi, servicesApi, sessionsApi, gradesApi, teamsApi, workflowsApi, workflowConfigApi, usersApi, templatesApi } from "../api";
 import { useApi } from "../hooks/useApi";
 import { useToast } from "../context/ToastContext";
 import { PageHeader, Spinner, ErrorBox, EmptyState, Tabs, Modal, IconBtn } from "../components/ui";
+import RegistrationFormBuilder from "../components/RegistrationFormBuilder";
+import LandingPageBuilder from "../components/LandingPageBuilder";
+import LandingPageWizard from "../components/LandingPageWizard";
+
+const DEFAULT_LANDING_PAGE_CONFIG = {
+  brandName: "Your Institution",
+  heroTitle: "Welcome to a better admissions experience",
+  heroSubtitle: "Show your programs, benefits, and next steps in one polished page for families and prospects.",
+  heroCtaLabel: "Book a Visit",
+  heroCtaLink: "#contact",
+  accentColor: "#0085a8",
+  highlightTitle: "Why families choose us",
+  features: [
+    "Instant WhatsApp follow-up",
+    "Simple enquiry capture",
+    "Track every conversation in one place"
+  ]
+};
 
 const CATEGORIES = [
   {
@@ -23,8 +41,8 @@ const CATEGORIES = [
     title: "Forms",
     color: "#2e7d57",
     items: [
-      { id: "registration-form", label: "Registration Form" },
       { id: "enquiry-form", label: "Enquiry Form" },
+      { id: "registration-form", label: "Registration Form" },
       { id: "landing-page", label: "Landing Page" }
     ]
   },
@@ -45,6 +63,7 @@ const CATEGORIES = [
     color: "#5b4b8a",
     items: [
       { id: "workflows", label: "Workflows" },
+      { id: "comm-templates", label: "Communication Templates" },
       { id: "teams", label: "Teams" }
     ]
   },
@@ -65,6 +84,7 @@ const COLORS = ["#0085a8", "#00586f", "#2e7d57", "#9a6700", "#b3261e", "#1f5f8b"
 export default function Setup() {
   const location = useLocation();
   const navigate = useNavigate();
+  const toast = useToast();
   const getActiveSection = () => {
     const params = new URLSearchParams(location.search);
     return params.get("active") || "offerings";
@@ -98,66 +118,70 @@ export default function Setup() {
     navigate(`/setup?active=${item.id}&mode=list`);
   };
 
+  const hideSidebar = (selected === "registration-form" || selected === "landing-page") && mode === "editor";
+
   return (
     <div style={{ padding: "0" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "280px minmax(0, 1fr)", gap: "12px", marginBottom: "8px", padding: "0 2px" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px", position: "sticky", top: 16, alignSelf: "start" }}>
-          {CATEGORIES.map((cat) => (
-            <div key={cat.id} style={{ border: "1px solid var(--border)", borderRadius: "16px", background: "var(--surface)", overflow: "hidden" }}>
-              <button
-                type="button"
-                onClick={() => toggleCategory(cat.id)}
-                style={{
-                  width: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "10px",
-                  padding: "12px 14px",
-                  border: "none",
-                  background: "transparent",
-                  color: "var(--text)",
-                  cursor: "pointer",
-                  textAlign: "left"
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <i className={`bi bi-${cat.icon}`} style={{ color: cat.color, fontSize: 17 }}></i>
-                  <div>
-                    <div style={{ fontSize: "13px", fontWeight: 600 }}>{cat.title}</div>
-                    <div style={{ fontSize: "11px", color: "var(--text-2)" }}>{cat.items.length} options</div>
+      <div style={hideSidebar ? { display: "block", marginBottom: "8px", padding: "0 2px" } : { display: "grid", gridTemplateColumns: "240px minmax(0, 1fr)", gap: "12px", marginBottom: "8px", padding: "0 2px" }}>
+        {!hideSidebar && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px", position: "sticky", top: 16, alignSelf: "start" }}>
+            {CATEGORIES.map((cat) => (
+              <div key={cat.id} style={{ border: "1px solid var(--border)", borderRadius: "16px", background: "var(--surface)", overflow: "hidden" }}>
+                <button
+                  type="button"
+                  onClick={() => toggleCategory(cat.id)}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "10px",
+                    padding: "12px 14px",
+                    border: "none",
+                    background: "transparent",
+                    color: "var(--text)",
+                    cursor: "pointer",
+                    textAlign: "left"
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <i className={`bi bi-${cat.icon}`} style={{ color: cat.color, fontSize: 17 }}></i>
+                    <div>
+                      <div style={{ fontSize: "13px", fontWeight: 600 }}>{cat.title}</div>
+                      <div style={{ fontSize: "11px", color: "var(--text-2)" }}>{cat.items.length} options</div>
+                    </div>
                   </div>
-                </div>
-                <i className={`bi bi-chevron-${openCategories[cat.id] ? "down" : "right"}`} style={{ fontSize: 14, color: "var(--text-2)" }}></i>
-              </button>
+                  <i className={`bi bi-chevron-${openCategories[cat.id] ? "down" : "right"}`} style={{ fontSize: 14, color: "var(--text-2)" }}></i>
+                </button>
 
-              {openCategories[cat.id] && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px", padding: "8px 10px 12px" }}>
-                  {cat.items.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => selectSection(item)}
-                      style={{
-                        width: "100%",
-                        padding: "8px 10px",
-                        border: "none",
-                        background: selected === item.id ? `${cat.color}22` : "transparent",
-                        color: selected === item.id ? cat.color : "var(--text-2)",
-                        fontWeight: selected === item.id ? 600 : 500,
-                        textAlign: "left",
-                        borderRadius: "8px",
-                        cursor: "pointer"
-                      }}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+                {openCategories[cat.id] && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px", padding: "8px 10px 12px" }}>
+                    {cat.items.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => selectSection(item)}
+                        style={{
+                          width: "100%",
+                          padding: "8px 10px",
+                          border: "none",
+                          background: selected === item.id ? `${cat.color}22` : "transparent",
+                          color: selected === item.id ? cat.color : "var(--text-2)",
+                          fontWeight: selected === item.id ? 600 : 500,
+                          textAlign: "left",
+                          borderRadius: "8px",
+                          cursor: "pointer"
+                        }}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         <div style={{ padding: "0 0 0 0" }}>
           {selected === "offerings" && <ServicesMaster />}
@@ -165,17 +189,12 @@ export default function Setup() {
           {selected === "sources" && <SourceMaster />}
           {selected === "registration-form" && <RegistrationFormConfig />}
           {selected === "enquiry-form" && <EnquiryFormConfig />}
-          {selected === "landing-page" && (
-            mode === "editor" ? (
-              <LandingPageConfig onClose={() => navigate("/setup?active=landing-page&mode=list")} />
-            ) : (
-              <LandingPageList onCreate={() => navigate("/setup?active=landing-page&mode=editor")} />
-            )
-          )}
+          {selected === "landing-page" && <LandingPageTab />}
           {selected === "sessions" && <AcademicSessions />}
           {selected === "grades" && <Grades />}
           {selected === "teams" && <Teams />}
           {selected === "workflows" && <WorkflowsTab />}
+          {selected === "comm-templates" && <CommunicationTemplatesConfig />}
           {selected === "facebook" && <IntegrationPlaceholder title="Facebook" />}
           {selected === "google-form" && <IntegrationPlaceholder title="Google Form" />}
           {selected === "api-integration" && <IntegrationPlaceholder title="API Integration" />}
@@ -901,7 +920,6 @@ function LeadAssignment() {
     </div>
   );
 }
-
 function AlertsWorkflow() {
   return (
     <div className="card">
@@ -912,217 +930,188 @@ function AlertsWorkflow() {
 }
 
 function RegistrationFormConfig() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
-  const config = useApi(() => workflowConfigApi.get("registrationForm"), []);
-  const [mode, setMode] = useState("single");
-  const [fields, setFields] = useState([]);
-  const [documentTypes, setDocumentTypes] = useState([]);
-  const [steps, setSteps] = useState([]);
-  const [editField, setEditField] = useState(null);
-  const [editDoc, setEditDoc] = useState(null);
-  const [editStep, setEditStep] = useState(null);
-  const [showFieldForm, setShowFieldForm] = useState(false);
-  const [showDocForm, setShowDocForm] = useState(false);
-  const [showStepForm, setShowStepForm] = useState(false);
+  const config = useApi(() => workflowConfigApi.get("registrationForms"), []);
+  const statuses = useApi(() => mastersApi.statuses(), []);
+  const templates = useApi(() => templatesApi.list({ perPage: 100 }), []);
+  const [forms, setForms] = useState([]);
+  const [filter, setFilter] = useState("");
+  const [activeForm, setActiveForm] = useState(null);
+
+  const getFormsData = (raw) => {
+    const data = raw?.data || raw;
+    return Array.isArray(data) ? data : data?.forms || [];
+  };
 
   useEffect(() => {
-    const loadedFields = config.data?.fields || [];
-    const loadedDocs = (config.data?.documentTypes || []).map((doc, idx) => ({
-      _id: doc._id || doc.id || `${doc.name}-${idx}`,
-      name: doc.name || "",
-      description: doc.description || "",
-      required: doc.required || false
-    }));
-    const loadedSteps = config.data?.steps || [{ title: "Registration", type: "form", fieldNames: loadedFields.map((f) => f.fieldName) }];
-
-    setMode(config.data?.mode || "single");
-    setFields(loadedFields);
-    setDocumentTypes(loadedDocs);
-    setSteps(loadedSteps);
+    setForms(getFormsData(config.data));
   }, [config.data]);
 
-  const FIELD_TYPES = [
-    { value: "text", label: "Text" },
-    { value: "email", label: "Email" },
-    { value: "phone", label: "Phone" },
-    { value: "number", label: "Number" },
-    { value: "textarea", label: "Textarea" },
-    { value: "select", label: "Dropdown" },
-    { value: "date", label: "Date" },
-    { value: "checkbox", label: "Checkbox" }
-  ];
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("mode") !== "editor") {
+      setActiveForm(null);
+    }
+  }, [location.search]);
 
-  const STEP_TYPES = [
-    { value: "form", label: "Form Fields" },
-    { value: "documents", label: "Documents" },
-    { value: "interaction", label: "Interaction" },
-    { value: "payment", label: "Payment" },
-    { value: "status", label: "Status" }
-  ];
-
-  async function saveConfig() {
+  const saveConfig = async (nextForms) => {
     try {
-      await workflowConfigApi.save("registrationForm", {
-        mode,
-        fields,
-        documentTypes,
-        steps
-      });
+      await workflowConfigApi.save("registrationForms", { forms: nextForms });
       toast("Registration form configuration saved");
       config.reload();
+      setForms(nextForms);
     } catch (e) {
       toast(e.message, "error");
     }
+  };
+
+
+
+  const openNewForm = () => {
+    const f = {
+      _id: undefined,
+      formTitle: "",
+      formType: null,
+      formCategory: "registration",
+      formColumns: 2,
+      steps: [],
+      isActive: true
+    };
+    setActiveForm(f);
+    navigate("/setup?active=registration-form&mode=editor", { state: { form: f } });
+  };
+
+  const openEditForm = (form) => {
+    const f = {
+      ...form,
+      formTitle: form.formTitle || form.name || "",
+      formType: form.formType || "single",
+      formCategory: form.formCategory || "registration",
+      formColumns: form.formColumns || 2,
+      steps: form.steps || [],
+      isActive: form.isActive !== false
+    };
+    setActiveForm(f);
+    navigate("/setup?active=registration-form&mode=editor", { state: { form: f } });
+  };
+
+  const openPreviewForm = (form) => {
+    const f = {
+      ...form,
+      formTitle: form.formTitle || form.name || "",
+      formType: form.formType || "single",
+      formCategory: form.formCategory || "registration",
+      formColumns: form.formColumns || 2,
+      steps: form.steps || [],
+      isActive: form.isActive !== false
+    };
+    setActiveForm(f);
+    navigate("/setup?active=registration-form&mode=editor&startScreen=preview_only", { state: { form: f } });
+  };
+
+  const closeEditor = () => {
+    navigate("/setup?active=registration-form&mode=list");
+  };
+
+  const saveForm = async (formData) => {
+    if (!formData.formTitle || !formData.formTitle.trim()) {
+      toast("Form title is required", "error");
+      return;
+    }
+
+    const formToSave = {
+      ...formData,
+      _id: formData._id || `${Date.now()}`,
+      name: formData.formTitle.trim(),
+      createdAt: formData.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isActive: formData.isActive !== false
+    };
+
+    const nextForms = formData._id
+      ? forms.map((f) => (f._id === formData._id ? formToSave : f))
+      : [...forms, formToSave];
+
+    await saveConfig(nextForms);
+    closeEditor();
+  };
+
+  const deleteForm = async (formId) => {
+    if (!confirm("Delete this registration form?")) return;
+    const nextForms = forms.filter((f) => f._id !== formId);
+    await saveConfig(nextForms);
+  };
+
+
+  const formatDateDMY = (value) => {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    const pad = (num) => String(num).padStart(2, "0");
+    return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()}`;
+  };
+
+  const filteredForms = forms.filter((f) =>
+    (f.formTitle || f.name || "").toLowerCase().includes(filter.toLowerCase())
+  );
+
+  const currentForm = activeForm || location.state?.form;
+  const isEditorMode = currentForm && new URLSearchParams(location.search).get("mode") === "editor";
+
+  if (isEditorMode) {
+    const startScreen = new URLSearchParams(location.search).get("startScreen");
+    if (startScreen === "preview_only") {
+      return (
+        <RegistrationFormBuilder
+          key={`${currentForm?._id}_${startScreen}`}
+          initialForm={currentForm}
+          onSave={saveForm}
+          onCancel={closeEditor}
+          statuses={statuses.data || []}
+          templates={templates.data || []}
+          startScreen={startScreen}
+        />
+      );
+    }
+
+    return (
+      <div className="card" style={{ borderRadius: "16px" }}>
+        <div className="card-header d-flex justify-content-between align-items-center">
+          <div>
+            <span className="fw-semibold">{currentForm._id ? "Edit Registration Form" : "Create Registration Form"}</span>
+            <div className="text-muted small">Design your form layout and steps.</div>
+          </div>
+          <button className="btn btn-sm btn-outline-secondary" onClick={closeEditor}>
+            Back to List
+          </button>
+        </div>
+        <div className="card-body p-0">
+          <RegistrationFormBuilder
+            key={`${currentForm?._id}_${startScreen || "setup"}`}
+            initialForm={currentForm}
+            onSave={saveForm}
+            onCancel={closeEditor}
+            statuses={statuses.data || []}
+            templates={templates.data || []}
+            startScreen={startScreen || "setup"}
+          />
+        </div>
+      </div>
+    );
   }
-
-  const addField = () => {
-    setEditField({
-      fieldName: "",
-      label: "",
-      fieldType: "text",
-      isRequired: false,
-      options: [],
-      helpText: ""
-    });
-    setShowFieldForm(true);
-  };
-
-  const saveField = () => {
-    if (!editField.fieldName || !editField.label) {
-      toast("Field name and label are required", "error");
-      return;
-    }
-
-    if (editField.fieldType === "select" && editField.options.length === 0) {
-      toast("Dropdown fields must have at least one option", "error");
-      return;
-    }
-
-    const normalizedField = { ...editField };
-    delete normalizedField._idx;
-
-    if (editField._idx !== undefined) {
-      const updatedFields = [...fields];
-      updatedFields[editField._idx] = normalizedField;
-      setFields(updatedFields);
-      setSteps((prevSteps) => prevSteps.map((step) => {
-        if (step.type !== "form") return step;
-        return { ...step, fieldNames: (step.fieldNames || []).filter((fieldName) => updatedFields.some((f) => f.fieldName === fieldName)) };
-      }));
-    } else {
-      setFields((prev) => [...prev, normalizedField]);
-    }
-
-    setEditField(null);
-    setShowFieldForm(false);
-  };
-
-  const removeField = (idx) => {
-    if (!confirm("Remove this field?")) return;
-    const removed = fields[idx];
-    const updatedFields = fields.filter((_, i) => i !== idx);
-    setFields(updatedFields);
-    setSteps((prevSteps) => prevSteps.map((step) => {
-      if (step.type !== "form") return step;
-      return { ...step, fieldNames: (step.fieldNames || []).filter((fieldName) => fieldName !== removed.fieldName) };
-    }));
-  };
-
-  const addDocumentType = () => {
-    setEditDoc({ _id: String(Date.now()) + Math.random().toString(36).slice(2), name: "", description: "", required: false });
-    setShowDocForm(true);
-  };
-
-  const saveDocumentType = () => {
-    if (!editDoc.name) {
-      toast("Document name is required", "error");
-      return;
-    }
-
-    const normalizedDoc = { ...editDoc };
-    delete normalizedDoc._idx;
-
-    if (editDoc._idx !== undefined) {
-      const updatedDocs = [...documentTypes];
-      updatedDocs[editDoc._idx] = normalizedDoc;
-      setDocumentTypes(updatedDocs);
-    } else {
-      setDocumentTypes((prev) => [...prev, normalizedDoc]);
-    }
-
-    setEditDoc(null);
-    setShowDocForm(false);
-  };
-
-  const removeDocumentType = (idx) => {
-    if (!confirm("Remove this document type?")) return;
-    setDocumentTypes(documentTypes.filter((_, i) => i !== idx));
-  };
-
-  const addStep = () => {
-    setEditStep({
-      title: "New step",
-      type: "form",
-      fieldNames: fields.map((f) => f.fieldName),
-      required: false
-    });
-    setShowStepForm(true);
-  };
-
-  const saveStep = () => {
-    if (!editStep.title) {
-      toast("Step title is required", "error");
-      return;
-    }
-
-    if (editStep.type === "form" && (!editStep.fieldNames || editStep.fieldNames.length === 0)) {
-      toast("Form steps must include at least one field", "error");
-      return;
-    }
-
-    const normalizedStep = { ...editStep };
-    delete normalizedStep._idx;
-
-    if (editStep._idx !== undefined) {
-      const updatedSteps = [...steps];
-      updatedSteps[editStep._idx] = normalizedStep;
-      setSteps(updatedSteps);
-    } else {
-      setSteps((prev) => [...prev, normalizedStep]);
-    }
-
-    setEditStep(null);
-    setShowStepForm(false);
-  };
-
-  const removeStep = (idx) => {
-    if (!confirm("Remove this step?")) return;
-    setSteps(steps.filter((_, i) => i !== idx));
-  };
-
-  const fieldOptions = fields.map((f) => ({ value: f.fieldName, label: f.label || f.fieldName }));
 
   return (
     <div className="card" style={{ borderRadius: "16px" }}>
       <div className="card-header d-flex justify-content-between align-items-center">
         <div>
-          <span className="fw-semibold">Registration Form</span>
-          <div className="text-muted small">Customize registration flow, fields, documents, and step sequence.</div>
+          <span className="fw-semibold">Registration Forms</span>
+          <div className="text-muted small">Manage enrollment registration workflows, stepper steps and fields.</div>
         </div>
-        <div style={{ display: "flex", gap: "8px" }}>
-          <button className="btn btn-sm btn-outline-secondary" onClick={addStep}>
-            <i className="bi bi-list-check me-1"></i>Add Step
-          </button>
-          <button className="btn btn-sm btn-outline-secondary" onClick={addDocumentType}>
-            <i className="bi bi-file-earmark-text me-1"></i>Add Document Type
-          </button>
-          <button className="btn btn-sm btn-wa" onClick={addField}>
-            <i className="bi bi-plus-lg me-1"></i>Add Field
-          </button>
-          <button className="btn btn-sm btn-primary" onClick={saveConfig}>
-            <i className="bi bi-check-lg me-1"></i>Save Configuration
-          </button>
-        </div>
+        <button className="btn btn-sm btn-wa" onClick={openNewForm}>
+          <i className="bi bi-plus-lg me-1"></i>Create Registration Form
+        </button>
       </div>
 
       <ErrorBox error={config.error} />
@@ -1131,339 +1120,76 @@ function RegistrationFormConfig() {
         <div className="card-body"><Spinner /></div>
       ) : (
         <div className="card-body">
-          <div className="mb-4">
-            <label className="form-label fw-semibold">Registration Mode</label>
-            <div className="d-flex gap-3">
-              <div className="form-check">
-                <input className="form-check-input" type="radio" id="modeSingle" name="registrationMode" checked={mode === "single"} onChange={() => setMode("single")} />
-                <label className="form-check-label" htmlFor="modeSingle">Single form</label>
-              </div>
-              <div className="form-check">
-                <input className="form-check-input" type="radio" id="modeMulti" name="registrationMode" checked={mode === "multistep"} onChange={() => setMode("multistep")} />
-                <label className="form-check-label" htmlFor="modeMulti">Multi-step</label>
-              </div>
-            </div>
-            <div className="text-muted small mt-2">Choose whether registration happens in a single page or as a step-by-step process.</div>
-          </div>
-
-          <div className="mb-5">
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <div><span className="fw-semibold">Fields</span><div className="text-muted small">Define the fields to display in the registration form.</div></div>
-            </div>
-            {fields.length === 0 ? (
-              <div className="text-muted small">No fields configured yet. Add a field to begin.</div>
-            ) : (
-              <div className="table-responsive mb-3">
-                <table className="table mb-0 align-middle" style={{ fontSize: "13px" }}>
-                  <thead>
-                    <tr>
-                      <th>Field Name</th>
-                      <th>Label</th>
-                      <th>Type</th>
-                      <th>Required</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {fields.map((field, idx) => {
-                      const fieldTypeLabel = FIELD_TYPES.find((t) => t.value === field.fieldType)?.label || field.fieldType;
-                      return (
-                        <tr key={idx}>
-                          <td><code style={{ fontSize: "11px", background: "var(--surface-light)", padding: "2px 4px", borderRadius: "2px" }}>{field.fieldName}</code></td>
-                          <td>{field.label}</td>
-                          <td><span className="badge" style={{ background: "#e3f2fd", color: "#1976d2" }}>{fieldTypeLabel}</span></td>
-                          <td>{field.isRequired ? <span className="badge" style={{ background: "#ffebee", color: "#d32f2f" }}>Required</span> : <span className="text-muted small">Optional</span>}</td>
-                          <td className="text-end">
-                            <button className="btn btn-sm btn-link-secondary" onClick={() => { setEditField({ ...field, _idx: idx }); setShowFieldForm(true); }} title="Edit">
-                              <i className="bi bi-pencil"></i>
-                            </button>
-                            <button className="btn btn-sm btn-link-danger" onClick={() => removeField(idx)} title="Delete">
-                              <i className="bi bi-trash"></i>
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          <div className="mb-5">
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <div><span className="fw-semibold">Document Types</span><div className="text-muted small">Add documents that should be captured or selected during registration.</div></div>
-            </div>
-            {documentTypes.length === 0 ? (
-              <div className="text-muted small">No document types configured yet.</div>
-            ) : (
-              <div className="table-responsive mb-3">
-                <table className="table mb-0 align-middle" style={{ fontSize: "13px" }}>
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Description</th>
-                      <th>Required</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {documentTypes.map((doc, idx) => (
-                      <tr key={doc._id || idx}>
-                        <td>{doc.name}</td>
-                        <td><span className="text-muted small">{doc.description || "—"}</span></td>
-                        <td>{doc.required ? <span className="badge" style={{ background: "#ffebee", color: "#d32f2f" }}>Yes</span> : <span className="text-muted small">No</span>}</td>
-                        <td className="text-end">
-                          <button className="btn btn-sm btn-link-secondary" onClick={() => { setEditDoc({ ...doc, _idx: idx }); setShowDocForm(true); }} title="Edit">
-                            <i className="bi bi-pencil"></i>
-                          </button>
-                          <button className="btn btn-sm btn-link-danger" onClick={() => removeDocumentType(idx)} title="Delete">
-                            <i className="bi bi-trash"></i>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          <div>
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <div><span className="fw-semibold">Registration Steps</span><div className="text-muted small">Build a step sequence for multi-step registration.</div></div>
-            </div>
-            {steps.length === 0 ? (
-              <div className="text-muted small">No steps configured. Add a step to define the registration flow.</div>
-            ) : (
-              <div className="table-responsive mb-3">
-                <table className="table mb-0 align-middle" style={{ fontSize: "13px" }}>
-                  <thead>
-                    <tr>
-                      <th>Order</th>
-                      <th>Title</th>
-                      <th>Type</th>
-                      <th>Details</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {steps.map((step, idx) => (
-                      <tr key={idx}>
-                        <td>{idx + 1}</td>
-                        <td>{step.title}</td>
-                        <td>{STEP_TYPES.find((t) => t.value === step.type)?.label || step.type}</td>
-                        <td>
-                          {step.type === "form" ? `${(step.fieldNames || []).length} field(s)` : step.type === "documents" ? `${documentTypes.filter((doc) => doc.required).length ? "Require selected documents" : "Select documents"}` : ""}
-                        </td>
-                        <td className="text-end">
-                          <button className="btn btn-sm btn-link-secondary" onClick={() => { setEditStep({ ...step, _idx: idx }); setShowStepForm(true); }} title="Edit">
-                            <i className="bi bi-pencil"></i>
-                          </button>
-                          <button className="btn btn-sm btn-link-danger" onClick={() => removeStep(idx)} title="Delete">
-                            <i className="bi bi-trash"></i>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {showFieldForm && editField && (
-        <Modal
-          title={editField._idx !== undefined ? "Edit Field" : "Add Field"}
-          onClose={() => { setShowFieldForm(false); setEditField(null); }}
-          footer={
-            <>
-              <button className="btn btn-outline-secondary" onClick={() => { setShowFieldForm(false); setEditField(null); }}>Cancel</button>
-              <button className="btn btn-wa" onClick={saveField}>Save Field</button>
-            </>
-          }
-        >
-          <div className="mb-3">
-            <label className="form-label">Field Name (internal identifier)</label>
-            <input
-              className="form-control"
-              value={editField.fieldName}
-              onChange={(e) => setEditField({ ...editField, fieldName: e.target.value })}
-              placeholder="e.g., guardianName"
-            />
-            <small className="text-muted">Use camelCase, no spaces</small>
-          </div>
-
-          <div className="mb-3">
-            <label className="form-label">Label (shown in form)</label>
-            <input
-              className="form-control"
-              value={editField.label}
-              onChange={(e) => setEditField({ ...editField, label: e.target.value })}
-              placeholder="e.g., Guardian Name"
-            />
-          </div>
-
-          <div className="mb-3">
-            <label className="form-label">Field Type</label>
-            <select
-              className="form-select"
-              value={editField.fieldType}
-              onChange={(e) => setEditField({ ...editField, fieldType: e.target.value })}
-            >
-              {FIELD_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-          </div>
-
-          {editField.fieldType === "select" && (
-            <div className="mb-3">
-              <label className="form-label">Options (one per line)</label>
-              <textarea
-                className="form-control"
-                rows="4"
-                value={(editField.options || []).join("\n")}
-                onChange={(e) => setEditField({ ...editField, options: e.target.value.split("\n").filter((o) => o.trim()) })}
-                placeholder="Option 1&#10;Option 2&#10;Option 3"
-              />
-            </div>
-          )}
-
-          <div className="mb-3">
-            <label className="form-label">Help Text (optional)</label>
-            <input
-              className="form-control"
-              value={editField.helpText}
-              onChange={(e) => setEditField({ ...editField, helpText: e.target.value })}
-              placeholder="Additional guidance for the user"
-            />
-          </div>
-
-          <div className="form-check">
-            <input
-              type="checkbox"
-              className="form-check-input"
-              id="requiredCheck"
-              checked={editField.isRequired}
-              onChange={(e) => setEditField({ ...editField, isRequired: e.target.checked })}
-            />
-            <label className="form-check-label" htmlFor="requiredCheck">
-              This field is required
-            </label>
-          </div>
-        </Modal>
-      )}
-
-      {showDocForm && editDoc && (
-        <Modal
-          title={editDoc._idx !== undefined ? "Edit Document Type" : "Add Document Type"}
-          onClose={() => { setShowDocForm(false); setEditDoc(null); }}
-          footer={
-            <>
-              <button className="btn btn-outline-secondary" onClick={() => { setShowDocForm(false); setEditDoc(null); }}>Cancel</button>
-              <button className="btn btn-wa" onClick={saveDocumentType}>Save Document</button>
-            </>
-          }
-        >
-          <div className="mb-3">
-            <label className="form-label">Document Name</label>
-            <input
-              className="form-control"
-              value={editDoc.name}
-              onChange={(e) => setEditDoc({ ...editDoc, name: e.target.value })}
-              placeholder="e.g., ID Proof"
-            />
-          </div>
-          <div className="mb-3">
-            <label className="form-label">Description</label>
-            <input
-              className="form-control"
-              value={editDoc.description}
-              onChange={(e) => setEditDoc({ ...editDoc, description: e.target.value })}
-              placeholder="Optional notes for users"
-            />
-          </div>
-          <div className="form-check">
-            <input
-              type="checkbox"
-              className="form-check-input"
-              id="docRequired"
-              checked={editDoc.required}
-              onChange={(e) => setEditDoc({ ...editDoc, required: e.target.checked })}
-            />
-            <label className="form-check-label" htmlFor="docRequired">
-              This document is required
-            </label>
-          </div>
-        </Modal>
-      )}
-
-      {showStepForm && editStep && (
-        <Modal
-          title={editStep._idx !== undefined ? "Edit Step" : "Add Step"}
-          onClose={() => { setShowStepForm(false); setEditStep(null); }}
-          footer={
-            <>
-              <button className="btn btn-outline-secondary" onClick={() => { setShowStepForm(false); setEditStep(null); }}>Cancel</button>
-              <button className="btn btn-wa" onClick={saveStep}>Save Step</button>
-            </>
-          }
-        >
-          <div className="mb-3">
-            <label className="form-label">Step Title</label>
-            <input
-              className="form-control"
-              value={editStep.title}
-              onChange={(e) => setEditStep({ ...editStep, title: e.target.value })}
-              placeholder="e.g., Contact Info"
-            />
-          </div>
-          <div className="mb-3">
-            <label className="form-label">Step Type</label>
-            <select
-              className="form-select"
-              value={editStep.type}
-              onChange={(e) => setEditStep({ ...editStep, type: e.target.value })}
-            >
-              {STEP_TYPES.map((type) => (
-                <option key={type.value} value={type.value}>{type.label}</option>
-              ))}
-            </select>
-          </div>
-          {editStep.type === "form" && (
-            <div className="mb-3">
-              <label className="form-label">Fields in this step</label>
-              <select
-                className="form-select"
-                multiple
-                value={editStep.fieldNames || []}
-                onChange={(e) => setEditStep({ ...editStep, fieldNames: Array.from(e.target.selectedOptions).map((opt) => opt.value) })}
-                style={{ minHeight: 140 }}
-              >
-                {fieldOptions.map((field) => (
-                  <option key={field.value} value={field.value}>{field.label}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          {editStep.type === "documents" && (
-            <div className="form-check mb-3">
+          <div className="row gy-3 mb-4">
+            <div className="col-sm-6">
               <input
-                type="checkbox"
-                className="form-check-input"
-                id="stepDocsRequired"
-                checked={editStep.required}
-                onChange={(e) => setEditStep({ ...editStep, required: e.target.checked })}
+                className="form-control"
+                placeholder="Filter by form name"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
               />
-              <label className="form-check-label" htmlFor="stepDocsRequired">
-                Require at least one document selection
-              </label>
+            </div>
+            <div className="col-sm-6 text-sm-end text-muted align-self-center">
+              {filteredForms.length} form{filteredForms.length === 1 ? "" : "s"} found
+            </div>
+          </div>
+
+          {filteredForms.length === 0 ? (
+            <div className="text-center text-muted py-5">
+              <div className="mb-3"><i className="bi bi-folder2-open" style={{ fontSize: "32px", opacity: 0.5 }}></i></div>
+              <div>No registration forms yet.</div>
+              <button className="btn btn-sm btn-outline-wa mt-2" onClick={openNewForm}>Create your first registration form</button>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table mb-0 align-middle">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Columns</th>
+                    <th>Steps</th>
+                    <th>Status</th>
+                    <th>Updated</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredForms.map((form) => (
+                    <tr key={form._id}>
+                      <td>
+                        <span className="fw-semibold text-dark d-block">{form.formTitle || form.name}</span>
+                        <span className="text-muted text-capitalize" style={{ fontSize: "11px" }}>
+                          Category: {form.formCategory || "registration"}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="badge bg-light text-secondary border">
+                          {form.formType === "stepper" ? "Multi-Step" : "Single Page"}
+                        </span>
+                      </td>
+                      <td>{form.formColumns || 2} Cols</td>
+                      <td>{(form.steps || []).length} Step{(form.steps || []).length === 1 ? "" : "s"}</td>
+                      <td>
+                        <span className="badge" style={{ background: form.isActive ? "#e6f4ea" : "#f3f2f1", color: form.isActive ? "#10714a" : "#6b6b6b" }}>
+                          {form.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td>{form.updatedAt ? formatDateDMY(form.updatedAt) : "—"}</td>
+                      <td className="text-end">
+                        <div className="d-flex justify-content-end" style={{ gap: "4px" }}>
+                          <IconBtn icon="eye" title="Preview form" onClick={() => openPreviewForm(form)} />
+                          <IconBtn icon="pencil" title="Edit form" onClick={() => openEditForm(form)} />
+                          <IconBtn icon="trash" title="Delete form" danger onClick={() => deleteForm(form._id)} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
-        </Modal>
+        </div>
       )}
     </div>
   );
@@ -1488,213 +1214,403 @@ const ENQUIRY_FIELD_TYPES = [
   { value: "checkbox", label: "Checkbox" }
 ];
 
-const DEFAULT_LANDING_PAGE_CONFIG = {
-  brandName: "Your Institution",
-  heroTitle: "Welcome to a better admissions experience",
-  heroSubtitle: "Show your programs, benefits, and next steps in one polished page for families and prospects.",
-  heroCtaLabel: "Book a Visit",
-  heroCtaLink: "#contact",
-  accentColor: "#0085a8",
-  highlightTitle: "Why families choose us",
-  features: [
-    "Instant WhatsApp follow-up",
-    "Simple enquiry capture",
-    "Track every conversation in one place"
-  ]
-};
 
-function LandingPageConfig() {
+
+const LANDING_PAGE_TEMPLATES = [
+  {
+    id: "blank",
+    name: "Blank Screen (Start from Scratch)",
+    description: "Start with an empty page canvas and drag/add elements to design your own page.",
+    accentColor: "#64748b",
+    config: {
+      brandName: "My Brand",
+      heroTitle: "Build Something Beautiful",
+      heroSubtitle: "Design your custom layout by dragging and editing blocks.",
+      heroCtaLabel: "Learn More",
+      heroCtaLink: "#contact",
+      accentColor: "#64748b",
+      highlightTitle: "Key Highlights",
+      features: [],
+      components: []
+    }
+  },
+  {
+    id: "clarwyn",
+    name: "Clarwyn Academy (Modern & Elegant)",
+    description: "Sleek blue theme suited for K-12 private academies and international schools.",
+    accentColor: "#0085a8",
+    config: {
+      brandName: "Clarwyn Academy",
+      heroTitle: "Empowering Future Leaders",
+      heroSubtitle: "Experience a values-driven, future-ready curriculum designed for academic excellence and holistic development.",
+      heroCtaLabel: "Schedule a Tour",
+      heroCtaLink: "#contact",
+      accentColor: "#0085a8",
+      highlightTitle: "Why Clarwyn Stands Out",
+      features: [
+        "Innovative STEM & Robotics labs",
+        "State-of-the-art sports complex",
+        "Personalized mentorship and university counseling"
+      ]
+    }
+  },
+  {
+    id: "bright-horizon",
+    name: "Bright Horizon Preschool (Warm & Playful)",
+    description: "Bright orange theme designed for early-years, preschools, and kindergartens.",
+    accentColor: "#e65c00",
+    config: {
+      brandName: "Bright Horizon Kindergarten",
+      heroTitle: "Where Joyful Learning Begins",
+      heroSubtitle: "A nurturing space for little minds to explore, play, and grow with creative child-centric learning methods.",
+      heroCtaLabel: "Book a Free Trial Class",
+      heroCtaLink: "#contact",
+      accentColor: "#e65c00",
+      highlightTitle: "A Safe & Caring Space",
+      features: [
+        "Play-based international curriculum",
+        "Eco-friendly sensory classrooms",
+        "Healthy, nutritious child-friendly meals"
+      ]
+    }
+  },
+  {
+    id: "apex-tech",
+    name: "Apex Tech Institute (Professional & Tech)",
+    description: "Indigo theme tailored for universities, professional courses, and technical bootcamps.",
+    accentColor: "#3f51b5",
+    config: {
+      brandName: "Apex Tech Institute",
+      heroTitle: "Accelerate Your Tech Career",
+      heroSubtitle: "Industry-aligned bootcamps, hands-on coding labs, and dedicated placement support to get you hired.",
+      heroCtaLabel: "Apply for Scholarship",
+      heroCtaLink: "#contact",
+      accentColor: "#3f51b5",
+      highlightTitle: "Apex Academy Advantages",
+      features: [
+        "1-on-1 industry engineering mentors",
+        "Guaranteed interview opportunities",
+        "24/7 access to high-performance labs"
+      ]
+    }
+  }
+];
+
+function LandingPageTab() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
-  const config = useApi(() => workflowConfigApi.get("landingPage"), []);
-  const [pageConfig, setPageConfig] = useState(DEFAULT_LANDING_PAGE_CONFIG);
+  const [activePage, setActivePage] = useState(null);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [previewPage, setPreviewPage] = useState(null);
+
+  const enquiryFormsConfig = useApi(() => workflowConfigApi.get("enquiryForms"), []);
+  const formsList = enquiryFormsConfig?.data?.data?.forms || enquiryFormsConfig?.data?.forms || [];
 
   useEffect(() => {
-    const raw = config.data?.data || config.data;
-    if (!raw || Array.isArray(raw)) return;
-    setPageConfig({
+    const params = new URLSearchParams(location.search);
+    if (params.get("mode") !== "editor") {
+      setActivePage(null);
+    }
+  }, [location.search]);
+
+  const openNewLandingPage = () => {
+    navigate("/setup?active=landing-page&mode=wizard");
+  };
+
+  const handleSelectTemplate = (template) => {
+    setShowTemplateModal(false);
+    const newPage = {
+      _id: undefined,
+      name: `New ${template.name}`,
+      ...template.config,
+      isActive: true
+    };
+    setActivePage(newPage);
+    navigate("/setup?active=landing-page&mode=editor", { state: { page: newPage } });
+  };
+
+  const openEditLandingPage = (page) => {
+    const p = {
       ...DEFAULT_LANDING_PAGE_CONFIG,
-      ...raw,
-      features: Array.isArray(raw.features) && raw.features.length ? raw.features : DEFAULT_LANDING_PAGE_CONFIG.features
-    });
-  }, [config.data]);
-
-  const updateField = (field, value) => {
-    setPageConfig((current) => ({ ...current, [field]: value }));
+      ...page,
+      features: page.features || [...DEFAULT_LANDING_PAGE_CONFIG.features]
+    };
+    setActivePage(p);
+    navigate("/setup?active=landing-page&mode=editor", { state: { page: p } });
   };
 
-  const updateFeature = (index, value) => {
-    const nextFeatures = [...pageConfig.features];
-    nextFeatures[index] = value;
-    setPageConfig((current) => ({ ...current, features: nextFeatures }));
+  const openPreviewLandingPage = (page) => {
+    setPreviewPage(page);
   };
 
-  const addFeature = () => {
-    setPageConfig((current) => ({ ...current, features: [...current.features, "New highlight"] }));
+  const closeLandingPageEditor = () => {
+    navigate("/setup?active=landing-page&mode=list");
   };
 
-  const removeFeature = (index) => {
-    if (pageConfig.features.length <= 1) return;
-    const nextFeatures = pageConfig.features.filter((_, i) => i !== index);
-    setPageConfig((current) => ({ ...current, features: nextFeatures }));
-  };
-
-  const saveConfig = async () => {
+  const saveLandingPage = async (pageData) => {
     try {
-      const payload = {
-        ...pageConfig,
-        features: (pageConfig.features || []).filter(Boolean)
+      const configRes = await workflowConfigApi.get("landingPages");
+      const doc = configRes?.data || configRes;
+      const dataPayload = doc?.data || doc;
+      const currentPages = Array.isArray(dataPayload) ? dataPayload : dataPayload?.pages || [];
+
+      const pageToSave = {
+        ...pageData,
+        _id: pageData._id || `lp-${Date.now()}`,
+        createdAt: pageData.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
-      await workflowConfigApi.save("landingPage", payload);
-      toast("Landing page saved");
-      config.reload();
+
+      const isExisting = pageData._id && currentPages.some((p) => p._id === pageData._id);
+      const nextPages = isExisting
+        ? currentPages.map((p) => (p._id === pageData._id ? pageToSave : p))
+        : [...currentPages, pageToSave];
+
+      await workflowConfigApi.save("landingPages", { pages: nextPages });
+      toast("Landing page saved successfully");
+      closeLandingPageEditor();
     } catch (e) {
       toast(e.message, "error");
     }
   };
 
+  const currentPage = activePage || location.state?.page;
+  const currentMode = new URLSearchParams(location.search).get("mode") || "list";
+  const isLandingPageEditor = currentPage && currentMode === "editor";
+  const isLandingPageWizard = currentMode === "wizard";
+
+  return (
+    <>
+      {isLandingPageEditor ? (
+        <LandingPageBuilder
+          key={`${currentPage?._id || "new"}`}
+          initialPage={currentPage}
+          formsList={formsList}
+          onSave={saveLandingPage}
+          onCancel={closeLandingPageEditor}
+        />
+      ) : isLandingPageWizard ? (
+        <LandingPageWizard
+          onSelect={(selectedConfig) => {
+            const newPage = {
+              _id: undefined,
+              name: selectedConfig.name,
+              pageType: selectedConfig.pageType,
+              ...selectedConfig.config,
+              isActive: true
+            };
+            setActivePage(newPage);
+            navigate("/setup?active=landing-page&mode=editor", { state: { page: newPage } });
+          }}
+          onCancel={closeLandingPageEditor}
+        />
+      ) : (
+        <LandingPageList
+          onCreate={openNewLandingPage}
+          onEdit={openEditLandingPage}
+          onPreview={openPreviewLandingPage}
+        />
+      )}
+
+      {previewPage && (
+        <Modal
+          size="xl"
+          title={previewPage.name || "Landing Page Preview"}
+          onClose={() => setPreviewPage(null)}
+          bodyStyle={{ padding: 0, background: "transparent" }}
+          footer={<button className="btn btn-outline-secondary" type="button" onClick={() => setPreviewPage(null)}>Close</button>}
+        >
+          <iframe
+            src={`${window.location.origin}/public/landing-page/${previewPage._id}`}
+            title={`Preview ${previewPage.name}`}
+            style={{ width: "100%", minHeight: "680px", border: "none", borderRadius: 0 }}
+          />
+        </Modal>
+      )}
+
+      {showTemplateModal && (
+        <Modal
+          title="Select a Landing Page Template"
+          onClose={() => setShowTemplateModal(false)}
+        >
+          <div className="d-flex flex-column gap-3">
+            {LANDING_PAGE_TEMPLATES.map((template) => (
+              <div
+                key={template.id}
+                className="card p-3 border-2 hover-shadow"
+                style={{
+                  cursor: "pointer",
+                  borderRadius: "12px",
+                  transition: "all 0.2s ease-in-out",
+                  borderLeft: `5px solid ${template.accentColor}`,
+                  border: "1px solid #e2e8f0"
+                }}
+                onClick={() => handleSelectTemplate(template)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = template.accentColor;
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.06)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "#e2e8f0";
+                  e.currentTarget.style.transform = "none";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
+              >
+                <div className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 className="fw-bold mb-1" style={{ color: "var(--dark)" }}>{template.name}</h6>
+                    <p className="text-muted small mb-0">{template.description}</p>
+                  </div>
+                  <span
+                    className="badge px-3 py-2 text-white"
+                    style={{ background: template.accentColor, borderRadius: "6px" }}
+                  >
+                    Select
+                  </span>
+                </div>
+                <div className="mt-3 p-2 bg-light rounded" style={{ borderLeft: `3px solid ${template.accentColor}` }}>
+                  <div className="small fw-semibold text-secondary">Hero Title Preview:</div>
+                  <div className="text-dark fw-bold">"{template.config.heroTitle}"</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+}
+
+function LandingPageList({ onCreate, onEdit, onPreview }) {
+  const toast = useToast();
+  const config = useApi(() => workflowConfigApi.get("landingPages"), []);
+  const [pages, setPages] = useState([]);
+  const [filter, setFilter] = useState("");
+
+  const getPagesData = (raw) => {
+    const data = raw?.data || raw;
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.pages)) return data.pages;
+    return [];
+  };
+
+  useEffect(() => {
+    setPages(getPagesData(config.data));
+  }, [config.data]);
+
+  const deletePage = async (pageId) => {
+    if (!window.confirm("Are you sure you want to delete this landing page?")) return;
+    const nextPages = pages.filter((p) => p._id !== pageId);
+    try {
+      await workflowConfigApi.save("landingPages", { pages: nextPages });
+      toast("Landing page deleted");
+      config.reload();
+      setPages(nextPages);
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  };
+
+  const filteredPages = pages.filter((p) =>
+    p && (p.name || p.brandName || "").toLowerCase().includes(filter.toLowerCase())
+  );
+
+  const formatDateDMY = (value) => {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    const pad = (num) => String(num).padStart(2, "0");
+    return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()}`;
+  };
+
   return (
     <div className="card" style={{ borderRadius: "16px" }}>
-      <div className="card-header d-flex justify-content-between align-items-start gap-3">
+      <div className="card-header d-flex justify-content-between align-items-center">
         <div>
-          <span className="fw-semibold">Landing Page</span>
-          <div className="text-muted small">Design a simple landing page for admissions, campaigns, or public enquiries.</div>
+          <span className="fw-semibold">Landing Pages</span>
+          <div className="text-muted small">Manage marketing campaign landing pages, headers, highlights, and enquiry triggers.</div>
         </div>
-        <div className="d-flex gap-2">
-          {typeof onClose === "function" && (
-            <button className="btn btn-sm btn-outline-secondary" onClick={onClose}>Back to list</button>
-          )}
-          <button className="btn btn-sm btn-outline-secondary" onClick={() => setPageConfig(DEFAULT_LANDING_PAGE_CONFIG)}>Reset</button>
-          <button className="btn btn-sm btn-wa" onClick={saveConfig}>Save</button>
-        </div>
+        <button className="btn btn-sm btn-wa" onClick={onCreate}>
+          <i className="bi bi-plus-lg me-1"></i>Create Landing Page
+        </button>
       </div>
 
       <ErrorBox error={config.error} />
 
-      <div className="card-body">
-        <div className="row g-4">
-          <div className="col-lg-7">
-            <div className="mb-3">
-              <label className="form-label">Institution / Brand Name</label>
+      {config.loading ? (
+        <div className="card-body"><Spinner /></div>
+      ) : (
+        <div className="card-body">
+          <div className="row gy-3 mb-4">
+            <div className="col-sm-6">
               <input
                 className="form-control"
-                value={pageConfig.brandName || ""}
-                onChange={(e) => updateField("brandName", e.target.value)}
-                placeholder="Your Institution"
+                placeholder="Filter by landing page name..."
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
               />
             </div>
-
-            <div className="mb-3">
-              <label className="form-label">Hero Title</label>
-              <input
-                className="form-control"
-                value={pageConfig.heroTitle || ""}
-                onChange={(e) => updateField("heroTitle", e.target.value)}
-                placeholder="Welcome to a better admissions experience"
-              />
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label">Hero Subtitle</label>
-              <textarea
-                className="form-control"
-                rows={3}
-                value={pageConfig.heroSubtitle || ""}
-                onChange={(e) => updateField("heroSubtitle", e.target.value)}
-                placeholder="Describe the value of your institution or campaign"
-              />
-            </div>
-
-            <div className="row g-3 mb-3">
-              <div className="col-md-6">
-                <label className="form-label">CTA Label</label>
-                <input
-                  className="form-control"
-                  value={pageConfig.heroCtaLabel || ""}
-                  onChange={(e) => updateField("heroCtaLabel", e.target.value)}
-                  placeholder="Book a Visit"
-                />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label">CTA Link</label>
-                <input
-                  className="form-control"
-                  value={pageConfig.heroCtaLink || ""}
-                  onChange={(e) => updateField("heroCtaLink", e.target.value)}
-                  placeholder="#contact"
-                />
-              </div>
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label">Accent Colour</label>
-              <input
-                type="color"
-                className="form-control form-control-color"
-                value={pageConfig.accentColor || "#0085a8"}
-                onChange={(e) => updateField("accentColor", e.target.value)}
-              />
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label">Section Heading</label>
-              <input
-                className="form-control"
-                value={pageConfig.highlightTitle || ""}
-                onChange={(e) => updateField("highlightTitle", e.target.value)}
-                placeholder="Why families choose us"
-              />
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label">Highlights</label>
-              {(pageConfig.features || []).map((feature, index) => (
-                <div className="d-flex gap-2 mb-2" key={`${feature}-${index}`}>
-                  <input
-                    className="form-control"
-                    value={feature}
-                    onChange={(e) => updateFeature(index, e.target.value)}
-                    placeholder={`Highlight ${index + 1}`}
-                  />
-                  <button className="btn btn-outline-secondary" type="button" onClick={() => removeFeature(index)}>
-                    <i className="bi bi-trash"></i>
-                  </button>
-                </div>
-              ))}
-              <button className="btn btn-sm btn-outline-wa" type="button" onClick={addFeature}>
-                <i className="bi bi-plus-lg me-1"></i>Add highlight
-              </button>
+            <div className="col-sm-6 text-sm-end text-muted align-self-center">
+              {filteredPages.length} landing page{filteredPages.length === 1 ? "" : "s"} found
             </div>
           </div>
 
-          <div className="col-lg-5">
-            <div className="border rounded-4 p-3 shadow-sm" style={{ background: "linear-gradient(135deg, #f8fbff 0%, #eef6ff 100%)" }}>
-              <div className="fw-semibold text-uppercase small" style={{ color: pageConfig.accentColor }}>
-                {pageConfig.brandName || "Your Institution"}
-              </div>
-              <h3 className="mt-2 mb-2" style={{ color: "#14213d" }}>{pageConfig.heroTitle || "Your hero title"}</h3>
-              <p className="text-muted mb-3">{pageConfig.heroSubtitle || "Add a short message for your audience here."}</p>
-              <button
-                className="btn btn-sm"
-                style={{ background: pageConfig.accentColor, borderColor: pageConfig.accentColor, color: "#fff" }}
-              >
-                {pageConfig.heroCtaLabel || "Call to action"}
-              </button>
-              <div className="mt-4">
-                <h6 className="fw-semibold">{pageConfig.highlightTitle || "Highlights"}</h6>
-                <ul className="ps-3 mb-0 text-muted">
-                  {(pageConfig.features || []).map((feature, index) => (
-                    <li key={`${feature}-${index}`}>{feature}</li>
+          {filteredPages.length === 0 ? (
+            <div className="text-center text-muted py-5">
+              <div className="mb-3"><i className="bi bi-browser-chrome" style={{ fontSize: "32px", opacity: 0.5 }}></i></div>
+              <div>No landing pages yet.</div>
+              <button className="btn btn-sm btn-outline-wa mt-2" onClick={onCreate}>Create your first landing page</button>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table mb-0 align-middle">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Brand Name</th>
+                    <th>Hero CTA</th>
+                    <th>Highlights</th>
+                    <th>Status</th>
+                    <th>Updated</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredPages.map((page) => (
+                    <tr key={page._id}>
+                      <td><span className="fw-semibold text-dark">{page.name || "Untitled Landing Page"}</span></td>
+                      <td>{page.brandName || "—"}</td>
+                      <td>
+                        <span className="badge bg-light text-secondary border">
+                          {page.heroCtaLabel || "Book a Visit"}
+                        </span>
+                      </td>
+                      <td>{(page.features || []).length} items</td>
+                      <td>
+                        <span className="badge" style={{ background: page.isActive !== false ? "#e6f4ea" : "#f3f2f1", color: page.isActive !== false ? "#10714a" : "#6b6b6b" }}>
+                          {page.isActive !== false ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td>{page.updatedAt ? formatDateDMY(page.updatedAt) : "—"}</td>
+                      <td className="text-end">
+                        <div className="d-flex justify-content-end" style={{ gap: "4px" }}>
+                          <IconBtn icon="eye" title="Preview page" onClick={() => onPreview(page)} />
+                          <IconBtn icon="pencil" title="Edit page" onClick={() => onEdit(page)} />
+                          <IconBtn icon="trash" title="Delete page" danger onClick={() => deletePage(page._id)} />
+                        </div>
+                      </td>
+                    </tr>
                   ))}
-                </ul>
-              </div>
+                </tbody>
+              </table>
             </div>
-            <div className="small text-muted mt-2">This preview updates as you type and saves to the setup configuration.</div>
-          </div>
+          )}
         </div>
-      </div>
+      )}
     </div>
-  );
-}
+  );}
 
 function EnquiryFormConfig() {
   const navigate = useNavigate();
@@ -2095,6 +2011,333 @@ function IntegrationPlaceholder({ title }) {
     <div className="card">
       <div className="card-header bg-white fw-semibold">{title}</div>
       <div className="card-body text-center text-muted py-5">{title} configuration coming soon...</div>
+    </div>
+  );
+}
+
+function CommunicationTemplatesConfig() {
+  const toast = useToast();
+  const list = useApi(() => templatesApi.list({ perPage: 100 }), []);
+  const [activeTab, setActiveTab] = useState("email");
+  const [filter, setFilter] = useState("");
+  const [editTemplate, setEditTemplate] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+
+  const rows = (list.data || []).filter(
+    (t) => (t.channel || "whatsapp") === activeTab
+  );
+
+  const filteredRows = rows.filter(
+    (t) =>
+      (t.name || "").toLowerCase().includes(filter.toLowerCase()) ||
+      (t.body || "").toLowerCase().includes(filter.toLowerCase())
+  );
+
+  const handleDelete = async (id) => {
+    if (!confirm("Are you sure you want to delete this template?")) return;
+    try {
+      await templatesApi.remove(id);
+      toast("Template deleted successfully");
+      list.reload();
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  };
+
+  const handleEdit = (template) => {
+    setEditTemplate({
+      ...template,
+      subject: template.subject || "",
+      language: template.language || "en",
+      category: template.category || "Utility",
+      body: template.body || "",
+      status: template.status || "Draft"
+    });
+    setShowForm(true);
+  };
+
+  const handleCreate = () => {
+    setEditTemplate({
+      _id: undefined,
+      name: "",
+      channel: activeTab,
+      subject: "",
+      language: "en",
+      category: "Utility",
+      body: "",
+      status: "Draft"
+    });
+    setShowForm(true);
+  };
+
+  const handleSave = async () => {
+    if (!editTemplate.name || !editTemplate.name.trim()) {
+      toast("Template name is required", "error");
+      return;
+    }
+    if (!editTemplate.body || !editTemplate.body.trim()) {
+      toast("Template body is required", "error");
+      return;
+    }
+
+    try {
+      if (editTemplate._id) {
+        await templatesApi.update(editTemplate._id, editTemplate);
+        toast("Template updated successfully");
+      } else {
+        await templatesApi.create(editTemplate);
+        toast("Template created successfully");
+      }
+      setShowForm(false);
+      setEditTemplate(null);
+      list.reload();
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  };
+
+  const formatDateDMY = (value) => {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    const pad = (num) => String(num).padStart(2, "0");
+    return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()}`;
+  };
+
+  const tTabLabel = activeTab === "email" ? "Email" : activeTab === "whatsapp" ? "WhatsApp" : "SMS";
+
+  return (
+    <div className="card" style={{ borderRadius: "16px" }}>
+      <div className="card-header d-flex justify-content-between align-items-center">
+        <div>
+          <span className="fw-semibold">Communication Templates</span>
+          <div className="text-muted small">Manage templates for automated Email, WhatsApp, and SMS messages.</div>
+        </div>
+        <button className="btn btn-sm btn-wa" onClick={handleCreate}>
+          <i className="bi bi-plus-lg me-1"></i>Create {tTabLabel} Template
+        </button>
+      </div>
+
+      <div className="card-body">
+        <div className="mb-4">
+          <Tabs
+            tabs={[
+              { value: "email", label: "Email Templates" },
+              { value: "whatsapp", label: "WhatsApp Templates" },
+              { value: "sms", label: "SMS Templates" }
+            ]}
+            value={activeTab}
+            onChange={(val) => {
+              setActiveTab(val);
+              setFilter("");
+            }}
+          />
+        </div>
+
+        <div className="row gy-3 mb-4">
+          <div className="col-sm-6">
+            <input
+              className="form-control"
+              placeholder={`Search ${tTabLabel} templates...`}
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+            />
+          </div>
+          <div className="col-sm-6 text-sm-end text-muted align-self-center">
+            {filteredRows.length} template{filteredRows.length === 1 ? "" : "s"} found
+          </div>
+        </div>
+
+        <ErrorBox error={list.error} />
+
+        {list.loading ? (
+          <Spinner />
+        ) : filteredRows.length === 0 ? (
+          <div className="text-center text-muted py-5">
+            <div className="mb-3"><i className="bi bi-chat-text" style={{ fontSize: "32px", opacity: 0.5 }}></i></div>
+            <div>No templates configured.</div>
+            <button className="btn btn-sm btn-outline-wa mt-2" onClick={handleCreate}>Create your first template</button>
+          </div>
+        ) : (
+          <div className="table-responsive">
+            <table className="table mb-0 align-middle">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Category</th>
+                  {activeTab === "email" && <th>Subject</th>}
+                  <th>Content</th>
+                  <th>Status</th>
+                  <th>Updated</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.map((t) => (
+                  <tr key={t._id}>
+                    <td>
+                      <code style={{ fontSize: "11px", background: "var(--surface-light)", padding: "2px 4px", borderRadius: "4px" }}>
+                        {t.name}
+                      </code>
+                    </td>
+                    <td>
+                      <span className="badge bg-light text-secondary border">{t.category || "Utility"}</span>
+                    </td>
+                    {activeTab === "email" && <td><span className="fw-medium text-dark">{t.subject || "—"}</span></td>}
+                    <td>
+                      <span
+                        className="small text-muted text-truncate d-inline-block"
+                        style={{ maxWidth: 280 }}
+                        title={t.body}
+                      >
+                        {(t.body || "").replace(/<[^>]+>/g, " ")}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className="badge"
+                        style={{
+                          background:
+                            t.status === "Approved"
+                              ? "#e6f4ea"
+                              : t.status === "Pending"
+                              ? "#fef7e0"
+                              : t.status === "Rejected"
+                              ? "#fce8e6"
+                              : "#f3f2f1",
+                          color:
+                            t.status === "Approved"
+                              ? "#10714a"
+                              : t.status === "Pending"
+                              ? "#b06000"
+                              : t.status === "Rejected"
+                              ? "#c5221f"
+                              : "#6b6b6b"
+                        }}
+                      >
+                        {t.status || "Draft"}
+                      </span>
+                    </td>
+                    <td>{t.updatedAt ? formatDateDMY(t.updatedAt) : "—"}</td>
+                    <td className="text-end">
+                      <div className="d-flex justify-content-end" style={{ gap: "4px" }}>
+                        <IconBtn icon="pencil" title="Edit" onClick={() => handleEdit(t)} />
+                        <IconBtn icon="trash" title="Delete" danger onClick={() => handleDelete(t._id)} />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {showForm && editTemplate && (
+        <Modal
+          title={editTemplate._id ? `Edit ${tTabLabel} Template` : `Create ${tTabLabel} Template`}
+          onClose={() => {
+            setShowForm(false);
+            setEditTemplate(null);
+          }}
+          footer={
+            <>
+              <button
+                className="btn btn-outline-secondary me-2"
+                onClick={() => {
+                  setShowForm(false);
+                  setEditTemplate(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button className="btn btn-wa" onClick={handleSave}>
+                Save
+              </button>
+            </>
+          }
+        >
+          <div className="row g-3">
+            <div className="col-12">
+              <label className="form-label fw-semibold">Template Name</label>
+              <input
+                className="form-control"
+                value={editTemplate.name}
+                onChange={(e) => setEditTemplate({ ...editTemplate, name: e.target.value.replace(/\s+/g, "_") })}
+                placeholder="e.g. registration_ack_v1"
+                disabled={Boolean(editTemplate._id)}
+              />
+              <small className="text-muted">Use snake_case, e.g. payment_reminder</small>
+            </div>
+            {activeTab === "email" && (
+              <div className="col-12">
+                <label className="form-label fw-semibold">Email Subject</label>
+                <input
+                  className="form-control"
+                  value={editTemplate.subject}
+                  onChange={(e) => setEditTemplate({ ...editTemplate, subject: e.target.value })}
+                  placeholder="e.g. Welcome to EduNext Admission Portal"
+                />
+              </div>
+            )}
+            <div className="col-md-6">
+              <label className="form-label fw-semibold">Language</label>
+              <input
+                className="form-control"
+                value={editTemplate.language}
+                onChange={(e) => setEditTemplate({ ...editTemplate, language: e.target.value })}
+                placeholder="en"
+              />
+            </div>
+            <div className="col-md-6">
+              <label className="form-label fw-semibold">Category</label>
+              <select
+                className="form-select"
+                value={editTemplate.category}
+                onChange={(e) => setEditTemplate({ ...editTemplate, category: e.target.value })}
+              >
+                <option value="Utility">Utility</option>
+                <option value="Marketing">Marketing</option>
+                <option value="Authentication">Authentication</option>
+              </select>
+            </div>
+            {activeTab === "whatsapp" && (
+              <div className="col-12">
+                <label className="form-label fw-semibold">Meta Status</label>
+                <select
+                  className="form-select"
+                  value={editTemplate.status}
+                  onChange={(e) => setEditTemplate({ ...editTemplate, status: e.target.value })}
+                >
+                  <option value="Approved">Approved</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Rejected">Rejected</option>
+                  <option value="Draft">Draft</option>
+                </select>
+              </div>
+            )}
+            <div className="col-12">
+              <label className="form-label fw-semibold">
+                {activeTab === "email" ? "Body (HTML allowed)" : "Body Content"}
+              </label>
+              <textarea
+                className="form-control"
+                rows={6}
+                value={editTemplate.body}
+                onChange={(e) => setEditTemplate({ ...editTemplate, body: e.target.value })}
+                placeholder={
+                  activeTab === "email"
+                    ? "<h1>Dear {{1}},</h1><p>We received your application...</p>"
+                    : "Hi {{1}}, we have received your application for grade {{2}}."
+                }
+              />
+              <small className="text-muted">
+                Use {"{{1}}"}, {"{{2}}"} as placeholder variables.
+              </small>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

@@ -37,7 +37,7 @@ export default function Conversations() {
   if (!list.length) return <EmptyState icon="chat-dots" text="No conversations yet. In the WhatsApp Business model, customers message you first." />;
 
   return (
-    <div className="chat-grid" style={{ margin: -20 }}>
+    <div className="chat-grid">
       {/* list */}
       <div className="chat-list">
         <div className="p-2 border-bottom small text-secondary d-flex justify-content-between align-items-center">

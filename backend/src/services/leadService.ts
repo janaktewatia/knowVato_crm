@@ -108,7 +108,7 @@ export async function changeLeadStatus(opts: {
     // close out: clear follow-ups
     lead.nextFollowUp = null;
     await FollowUp.updateMany({ tenant, lead: lead._id, done: false }, { $set: { done: true, outcome: nextStatus.isWon ? "Won" : "Closed" } });
-  } else if (nextStatus.followUpRequired && !lead.nextFollowUp) {
+  } else if (nextStatus.followUpRequired === "Yes" && !lead.nextFollowUp) {
     const due = addDays(2, 11);
     lead.nextFollowUp = due;
     await FollowUp.create({

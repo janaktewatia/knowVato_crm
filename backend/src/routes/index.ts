@@ -87,6 +87,24 @@ r.post(
   })
 );
 
+const getLandingPageById = async (pageId: string) => {
+  const config = await WorkflowConfig.findOne({ key: "landingPages" }).lean();
+  const pages = Array.isArray((config as any)?.data?.pages) ? (config as any).data.pages : [];
+  const page = pages.find((item: any) => String(item._id) === String(pageId));
+  const tenant = (config as any)?.tenant || (await Tenant.findOne({}).lean())?._id;
+  return { config, page, tenant };
+};
+
+r.get(
+  "/public/landing-page/:pageId",
+  asyncHandler(async (req, res) => {
+    const { page } = await getLandingPageById(req.params.pageId);
+    if (!page) throw new ApiError(404, "Landing page not found");
+    if (page.isActive === false) throw new ApiError(403, "This landing page is not live");
+    ok(res, { page });
+  })
+);
+
 /* ---- everything below requires auth ---- */
 r.use(authenticate);
 r.get("/auth/me", authC.me);
@@ -259,6 +277,7 @@ const tplCrud = crud(Template, { module: "blast", searchFields: ["name"] });
 r.get("/templates", require_("blast", "view"), tplCrud.list);
 r.post("/templates", require_("blast", "create"), tplCrud.create);
 r.patch("/templates/:id", require_("blast", "edit"), tplCrud.update);
+r.delete("/templates/:id", require_("blast", "del"), tplCrud.remove);
 
 /* ---- Campaigns ---- */
 const campCrud = crud(Campaign, { module: "blast", searchFields: ["name", "template"] });
