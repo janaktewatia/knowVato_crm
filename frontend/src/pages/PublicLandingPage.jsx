@@ -8,6 +8,38 @@ export default function PublicLandingPage() {
   const [page, setPage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [formValues, setFormValues] = useState({});
+  const [submittingCustomForm, setSubmittingCustomForm] = useState(false);
+
+  const handleCustomFormSubmit = async (e) => {
+    if (e) e.preventDefault();
+    try {
+      setSubmittingCustomForm(true);
+      // Validate required fields
+      const requiredFields = (page?.components || []).filter(comp => {
+        const c = comp.content || {};
+        return comp.type.endsWith("-input") && c.required;
+      });
+
+      for (const field of requiredFields) {
+        const fieldKey = field.content?.fieldName || field.id;
+        if (!formValues[fieldKey]) {
+          alert(`Please fill in the required field: ${field.content?.label || 'Form Field'}`);
+          setSubmittingCustomForm(false);
+          return;
+        }
+      }
+
+      // Submit lead to CRM!
+      await publicApi.submitEnquiryForm("landingpage", formValues);
+      alert("Your enquiry has been submitted successfully!");
+      setFormValues({});
+    } catch (err) {
+      alert(err.message || "Failed to submit enquiry.");
+    } finally {
+      setSubmittingCustomForm(false);
+    }
+  };
 
   useEffect(() => {
     async function loadPage() {
@@ -68,11 +100,13 @@ export default function PublicLandingPage() {
   // Determine width style based on canvas settings
   const canvasStyle = {
     maxWidth: page.canvasWidth && page.canvasWidth !== "100%" ? page.canvasWidth : "100%",
+    minHeight: page.canvasHeight || "auto",
     margin: "0 auto",
     boxShadow: page.canvasWidth && page.canvasWidth !== "100%" ? "0 10px 30px rgba(0,0,0,0.05)" : "none",
     borderLeft: page.canvasWidth && page.canvasWidth !== "100%" ? "1px solid #e2e8f0" : "none",
     borderRight: page.canvasWidth && page.canvasWidth !== "100%" ? "1px solid #e2e8f0" : "none",
-    backgroundColor: "#ffffff"
+    backgroundColor: "#ffffff",
+    position: "relative"
   };
 
   return (
@@ -89,10 +123,12 @@ export default function PublicLandingPage() {
         {page.rawHtml ? (
           <CustomHtmlBlock html={page.rawHtml} />
         ) : (
-          (page.components || []).map((comp) => {
+          (page.components || []).map((comp, idx) => {
             // Animation inline style
             const anim = comp.animation || { type: "none", duration: "0.5s", delay: "0s" };
             const hasAnim = anim.type && anim.type !== "none";
+            const posX = comp.styles?.left ? comp.styles.left : "24px";
+            const posY = comp.styles?.top ? comp.styles.top : `${idx * 200 + 24}px`;
             
             return (
               <div
@@ -119,10 +155,14 @@ export default function PublicLandingPage() {
                   boxShadow: comp.styles?.boxShadow || "none",
                   animationDuration: hasAnim ? anim.duration || "0.5s" : "0s",
                   animationDelay: hasAnim ? anim.delay || "0s" : "0s",
-                  animationFillMode: hasAnim ? "both" : "none"
+                  animationFillMode: hasAnim ? "both" : "none",
+                  position: "absolute",
+                  left: posX,
+                  top: posY,
+                  zIndex: comp.styles?.zIndex || 10
                 }}
               >
-                {renderPublicComponent(comp, page.theme)}
+                {renderPublicComponent(comp, page.theme, formValues, setFormValues, handleCustomFormSubmit)}
               </div>
             );
           })
@@ -204,7 +244,7 @@ function CustomHtmlBlock({ html }) {
   return <div ref={containerRef} className="w-100" style={{ height: "auto" }} />;
 }
 
-function renderPublicComponent(comp, theme) {
+function renderPublicComponent(comp, theme, formValues = {}, setFormValues = () => {}, handleCustomFormSubmit = () => {}) {
   const c = comp.content || {};
   const pType = c.presetType || "type1";
 
@@ -702,27 +742,276 @@ function renderPublicComponent(comp, theme) {
     }
 
     case "button": {
+      const isSubmit = c.linkUrl === "submit";
+      const btnStyle = {
+        background: c.btnColor || theme.primaryColor,
+        color: c.textColor || "#fff",
+        borderRadius: comp.styles?.borderRadius || theme.borderRadius,
+        fontSize: comp.styles?.fontSize || "16px",
+        fontWeight: comp.styles?.fontWeight || "600",
+        width: c.width === "100%" ? "100%" : "auto",
+        textDecoration: "none",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        border: "none"
+      };
       return (
         <div className="container py-3" style={{ textAlign: c.align || "left" }}>
-          <a
-            href={c.linkUrl || "#"}
-            className="btn text-white px-4 py-2.5 fw-bold"
-            style={{
-              background: c.btnColor || theme.primaryColor,
-              color: c.textColor || "#fff",
-              borderRadius: comp.styles?.borderRadius || theme.borderRadius,
-              fontSize: comp.styles?.fontSize || "16px",
-              fontWeight: comp.styles?.fontWeight || "600",
-              width: c.width === "100%" ? "100%" : "auto",
-              textDecoration: "none",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center"
-            }}
+          {isSubmit ? (
+            <button
+              type="button"
+              className="btn text-white px-4 py-2.5 fw-bold"
+              style={btnStyle}
+              onClick={handleCustomFormSubmit}
+            >
+              {c.iconClass && <i className={`bi ${c.iconClass} me-2`}></i>}
+              {c.text}
+            </button>
+          ) : (
+            <a
+              href={c.linkUrl || "#"}
+              className="btn text-white px-4 py-2.5 fw-bold"
+              style={btnStyle}
+            >
+              {c.iconClass && <i className={`bi ${c.iconClass} me-2`}></i>}
+              {c.text}
+            </a>
+          )}
+        </div>
+      );
+    }
+
+    // FORM FIELDS PREVIEW RENDERING
+    case "text-input":
+    case "number-input":
+    case "email-input":
+    case "phone-input":
+    case "password-input": {
+      const typeMap = { "number-input": "number", "email-input": "email", "phone-input": "tel", "password-input": "password" };
+      const t = typeMap[comp.type] || "text";
+      const fieldKey = c.fieldName || comp.id;
+      return (
+        <div className="w-100 text-start px-2 py-1">
+          <label className="form-label small fw-bold text-dark mb-1">{c.label} {c.required && <span className="text-danger">*</span>}</label>
+          <input
+            type={t}
+            className="form-control form-control-sm"
+            placeholder={c.placeholder}
+            required={c.required}
+            value={formValues[fieldKey] || ""}
+            onChange={(e) => setFormValues({ ...formValues, [fieldKey]: e.target.value })}
+          />
+        </div>
+      );
+    }
+    case "textarea-input": {
+      const fieldKey = c.fieldName || comp.id;
+      return (
+        <div className="w-100 text-start px-2 py-1">
+          <label className="form-label small fw-bold text-dark mb-1">{c.label} {c.required && <span className="text-danger">*</span>}</label>
+          <textarea
+            className="form-control form-control-sm"
+            rows={2}
+            placeholder={c.placeholder}
+            required={c.required}
+            value={formValues[fieldKey] || ""}
+            onChange={(e) => setFormValues({ ...formValues, [fieldKey]: e.target.value })}
+          />
+        </div>
+      );
+    }
+    case "otp-input": {
+      const fieldKey = c.fieldName || comp.id;
+      return (
+        <div className="w-100 text-start px-2 py-1">
+          <label className="form-label small fw-bold text-dark mb-2">{c.label}</label>
+          <div className="d-flex gap-2">
+            {Array.from({ length: c.digits || 6 }).map((_, idx) => (
+              <input
+                key={idx}
+                type="text"
+                maxLength={1}
+                className="form-control form-control-sm text-center fw-bold"
+                style={{ width: "35px" }}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const currentOtp = (formValues[fieldKey] || "").split("");
+                  currentOtp[idx] = val;
+                  setFormValues({ ...formValues, [fieldKey]: currentOtp.join("") });
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      );
+    }
+    case "date-input":
+    case "time-input":
+    case "datetime-input": {
+      const t = comp.type === "date-input" ? "date" : comp.type === "time-input" ? "time" : "datetime-local";
+      const fieldKey = c.fieldName || comp.id;
+      return (
+        <div className="w-100 text-start px-2 py-1">
+          <label className="form-label small fw-bold text-dark mb-1">{c.label} {c.required && <span className="text-danger">*</span>}</label>
+          <input
+            type={t}
+            className="form-control form-control-sm"
+            required={c.required}
+            value={formValues[fieldKey] || ""}
+            onChange={(e) => setFormValues({ ...formValues, [fieldKey]: e.target.value })}
+          />
+        </div>
+      );
+    }
+    case "dropdown-input": {
+      const fieldKey = c.fieldName || comp.id;
+      const opts = typeof c.options === "string"
+        ? c.options.split(",").map(o => o.trim()).filter(Boolean)
+        : (Array.isArray(c.options) ? c.options : []);
+      return (
+        <div className="w-100 text-start px-2 py-1">
+          <label className="form-label small fw-bold text-dark mb-1">{c.label} {c.required && <span className="text-danger">*</span>}</label>
+          <select
+            className="form-select form-select-sm"
+            required={c.required}
+            value={formValues[fieldKey] || ""}
+            onChange={(e) => setFormValues({ ...formValues, [fieldKey]: e.target.value })}
           >
-            {c.iconClass && <i className={`bi ${c.iconClass} me-2`}></i>}
-            {c.text}
-          </a>
+            <option value="">-- Select --</option>
+            {opts.map((o, idx) => (
+              <option key={idx} value={o}>{o}</option>
+            ))}
+          </select>
+        </div>
+      );
+    }
+    case "multiselect-input": {
+      const fieldKey = c.fieldName || comp.id;
+      const opts = typeof c.options === "string"
+        ? c.options.split(",").map(o => o.trim()).filter(Boolean)
+        : (Array.isArray(c.options) ? c.options : []);
+      const currentSelected = Array.isArray(formValues[fieldKey]) ? formValues[fieldKey] : [];
+      return (
+        <div className="w-100 text-start px-2 py-1">
+          <label className="form-label small fw-bold text-dark mb-1">{c.label} {c.required && <span className="text-danger">*</span>}</label>
+          <div className="border p-2 rounded bg-light d-flex gap-2 flex-wrap" style={{ minHeight: "38px" }}>
+            {opts.map((o, idx) => {
+              const isChecked = currentSelected.includes(o);
+              return (
+                <label key={idx} className="badge bg-secondary d-flex align-items-center gap-1 cursor-pointer mb-0">
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    className="form-check-input mt-0"
+                    style={{ width: "12px", height: "12px" }}
+                    onChange={() => {
+                      const next = isChecked
+                        ? currentSelected.filter(v => v !== o)
+                        : [...currentSelected, o];
+                      setFormValues({ ...formValues, [fieldKey]: next });
+                    }}
+                  />
+                  {o}
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+    case "radio-group-input": {
+      const fieldKey = c.fieldName || comp.id;
+      const opts = typeof c.options === "string"
+        ? c.options.split(",").map(o => o.trim()).filter(Boolean)
+        : (Array.isArray(c.options) ? c.options : []);
+      return (
+        <div className="w-100 text-start px-2 py-1">
+          <label className="form-label small fw-bold text-dark d-block mb-1">{c.label}</label>
+          <div className="d-flex gap-3 flex-wrap">
+            {opts.map((o, idx) => (
+              <div key={idx} className="form-check">
+                <input
+                  className="form-check-input"
+                  type="radio"
+                  name={fieldKey}
+                  checked={formValues[fieldKey] === o}
+                  onChange={() => setFormValues({ ...formValues, [fieldKey]: o })}
+                />
+                <label className="form-check-label small">{o}</label>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    case "checkbox-input": {
+      const fieldKey = c.fieldName || comp.id;
+      return (
+        <div className="w-100 text-start form-check px-2 py-1 ms-3">
+          <input
+            className="form-check-input"
+            type="checkbox"
+            required={c.required}
+            checked={!!formValues[fieldKey]}
+            onChange={(e) => setFormValues({ ...formValues, [fieldKey]: e.target.checked })}
+          />
+          <label className="form-check-label small fw-semibold text-dark">{c.label} {c.required && <span className="text-danger">*</span>}</label>
+        </div>
+      );
+    }
+    case "switch-input": {
+      const fieldKey = c.fieldName || comp.id;
+      return (
+        <div className="w-100 text-start form-check form-switch px-2 py-1 ms-3">
+          <input
+            className="form-check-input"
+            type="checkbox"
+            checked={!!formValues[fieldKey]}
+            onChange={(e) => setFormValues({ ...formValues, [fieldKey]: e.target.checked })}
+          />
+          <label className="form-check-label small fw-semibold text-dark">{c.label}</label>
+        </div>
+      );
+    }
+    case "slider-input": {
+      const fieldKey = c.fieldName || comp.id;
+      return (
+        <div className="w-100 text-start px-2 py-1">
+          <div className="d-flex justify-content-between align-items-center mb-1">
+            <label className="form-label small fw-bold text-dark mb-0">{c.label}</label>
+            <span className="small text-muted">{formValues[fieldKey] || c.min || 0} (Range: {c.min || 0} - {c.max || 100})</span>
+          </div>
+          <input
+            type="range"
+            className="form-range"
+            min={c.min}
+            max={c.max}
+            value={formValues[fieldKey] || c.min || 0}
+            onChange={(e) => setFormValues({ ...formValues, [fieldKey]: e.target.value })}
+          />
+        </div>
+      );
+    }
+    case "rating-input": {
+      const fieldKey = c.fieldName || comp.id;
+      const maxStars = c.maxStars || 5;
+      const rating = formValues[fieldKey] || 0;
+      return (
+        <div className="w-100 text-start px-2 py-1">
+          <label className="form-label small fw-bold text-dark d-block mb-1">{c.label}</label>
+          <div className="d-flex gap-1 text-warning fs-5">
+            {Array.from({ length: maxStars }).map((_, idx) => {
+              const starVal = idx + 1;
+              return (
+                <i
+                  key={idx}
+                  className={`bi cursor-pointer ${starVal <= rating ? "bi-star-fill" : "bi-star"}`}
+                  onClick={() => setFormValues({ ...formValues, [fieldKey]: starVal })}
+                ></i>
+              );
+            })}
+          </div>
         </div>
       );
     }
@@ -1263,7 +1552,10 @@ function PublicEnquiryFormEmbed({ formId, theme }) {
                   onChange={(e) => handleChange(field.fieldName, e.target.value)}
                 >
                   <option value="">-- Select --</option>
-                  {(field.options || []).map((opt) => (
+                  {(typeof field.options === "string"
+                    ? field.options.split(",").map(o => o.trim()).filter(Boolean)
+                    : (Array.isArray(field.options) ? field.options : [])
+                  ).map((opt) => (
                     <option key={opt} value={opt}>{opt}</option>
                   ))}
                 </select>

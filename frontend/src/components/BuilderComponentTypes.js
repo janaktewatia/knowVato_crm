@@ -526,7 +526,7 @@ export const COMPONENT_TYPES = [
     name: "Text Input Field",
     icon: "bi-input-cursor-text",
     category: "form",
-    defaultContent: { label: "Student First Name", placeholder: "e.g. Priyansh", required: true },
+    defaultContent: { label: "Student First Name", placeholder: "e.g. Priyansh", required: true, fieldName: "name" },
     defaultStyles: { width: "100%", paddingTop: "5px", paddingBottom: "5px" }
   },
   {
@@ -534,7 +534,7 @@ export const COMPONENT_TYPES = [
     name: "Textarea Field",
     icon: "bi-textarea-t",
     category: "form",
-    defaultContent: { label: "Reason for Admission", placeholder: "Tell us about student background...", required: false },
+    defaultContent: { label: "Reason for Admission", placeholder: "Tell us about student background...", required: false, fieldName: "remarks" },
     defaultStyles: { width: "100%", paddingTop: "5px", paddingBottom: "5px" }
   },
   {
@@ -542,7 +542,7 @@ export const COMPONENT_TYPES = [
     name: "Number Input Field",
     icon: "bi-hash",
     category: "form",
-    defaultContent: { label: "Age of Student", placeholder: "e.g. 5", required: true },
+    defaultContent: { label: "Age of Student", placeholder: "e.g. 5", required: true, fieldName: "age" },
     defaultStyles: { width: "100%", paddingTop: "5px", paddingBottom: "5px" }
   },
   {
@@ -550,7 +550,7 @@ export const COMPONENT_TYPES = [
     name: "Email Input Field",
     icon: "bi-envelope",
     category: "form",
-    defaultContent: { label: "Parent Email Address", placeholder: "name@example.com", required: true },
+    defaultContent: { label: "Parent Email Address", placeholder: "name@example.com", required: true, fieldName: "email" },
     defaultStyles: { width: "100%", paddingTop: "5px", paddingBottom: "5px" }
   },
   {
@@ -558,7 +558,7 @@ export const COMPONENT_TYPES = [
     name: "Phone Input Field",
     icon: "bi-phone",
     category: "form",
-    defaultContent: { label: "Parent WhatsApp Number", placeholder: "+91 XXXXX XXXXX", required: true },
+    defaultContent: { label: "Parent WhatsApp Number", placeholder: "+91 XXXXX XXXXX", required: true, fieldName: "mobile" },
     defaultStyles: { width: "100%", paddingTop: "5px", paddingBottom: "5px" }
   },
   {
@@ -566,7 +566,7 @@ export const COMPONENT_TYPES = [
     name: "Password Field",
     icon: "bi-key",
     category: "form",
-    defaultContent: { label: "Create Account Password", placeholder: "Secret key", required: true },
+    defaultContent: { label: "Create Account Password", placeholder: "Secret key", required: true, fieldName: "password" },
     defaultStyles: { width: "100%", paddingTop: "5px", paddingBottom: "5px" }
   },
   {
@@ -574,7 +574,7 @@ export const COMPONENT_TYPES = [
     name: "OTP Verification",
     icon: "bi-shield-lock",
     category: "form",
-    defaultContent: { label: "Enter OTP Sent via SMS", digits: 6 },
+    defaultContent: { label: "Enter OTP Sent via SMS", digits: 6, fieldName: "otp" },
     defaultStyles: { width: "100%", paddingTop: "5px", paddingBottom: "5px" }
   },
   {
@@ -582,7 +582,7 @@ export const COMPONENT_TYPES = [
     name: "Date Field",
     icon: "bi-calendar-date",
     category: "form",
-    defaultContent: { label: "Date of Birth", required: true },
+    defaultContent: { label: "Date of Birth", required: true, fieldName: "dob" },
     defaultStyles: { width: "100%", paddingTop: "5px", paddingBottom: "5px" }
   },
   {
@@ -590,7 +590,7 @@ export const COMPONENT_TYPES = [
     name: "Time Field",
     icon: "bi-clock",
     category: "form",
-    defaultContent: { label: "Preferred Interview Time", required: false },
+    defaultContent: { label: "Preferred Interview Time", required: false, fieldName: "time" },
     defaultStyles: { width: "100%", paddingTop: "5px", paddingBottom: "5px" }
   },
   {
@@ -598,7 +598,7 @@ export const COMPONENT_TYPES = [
     name: "Date & Time Field",
     icon: "bi-calendar2-range",
     category: "form",
-    defaultContent: { label: "Appointment Slot Selection", required: false },
+    defaultContent: { label: "Appointment Slot Selection", required: false, fieldName: "appointment" },
     defaultStyles: { width: "100%", paddingTop: "5px", paddingBottom: "5px" }
   },
   {
@@ -606,7 +606,7 @@ export const COMPONENT_TYPES = [
     name: "Dropdown List",
     icon: "bi-chevron-expand",
     category: "form",
-    defaultContent: { label: "Select Applying Class", options: "Nursery, Pre-KG, LKG, UKG, Class I", required: true },
+    defaultContent: { label: "Select Applying Class", options: "Nursery, Pre-KG, LKG, UKG, Class I", required: true, fieldName: "class" },
     defaultStyles: { width: "100%", paddingTop: "5px", paddingBottom: "5px" }
   },
   {
@@ -1087,7 +1087,7 @@ export const COMPONENT_TYPES = [
     type: "form-container",
     name: "Enquiry Form Block",
     icon: "bi-file-earmark-spreadsheet",
-    category: "advanced",
+    category: "form",
     defaultContent: { title: "Get In Touch", subtitle: "Select one of your pre-built Enquiry Forms below", formType: "enquiry_form", enquiryFormId: "", submitButtonText: "Submit", submitButtonColor: "#2249b7" },
     defaultStyles: { width: "100%", height: "auto", paddingTop: "40px", paddingBottom: "40px", paddingLeft: "30px", paddingRight: "30px", marginTop: "10px", marginBottom: "10px", backgroundColor: "#ffffff", textColor: "#0f172a", borderRadius: "16px", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.08)" }
   },

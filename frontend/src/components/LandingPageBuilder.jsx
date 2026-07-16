@@ -102,6 +102,7 @@ export default function LandingPageBuilder({ initialPage, formsList, onSave, onC
   // States & Refs for canvas resizing by picking corners/edges
   const [resizing, setResizing] = useState(null); // { compId, direction, startX, startY, startWidth, startHeight, startPaddingTop, startPaddingBottom }
   const latestPageRef = useRef(page);
+  const canvasRef = useRef(null);
   useEffect(() => {
     latestPageRef.current = page;
   }, [page]);
@@ -479,12 +480,22 @@ export default function LandingPageBuilder({ initialPage, formsList, onSave, onC
     pushState({ ...page, canvasWidth: val });
   };
 
+  const updateCanvasHeight = (val) => {
+    pushState({ ...page, canvasHeight: val });
+  };
+
   const addComponent = (typeObj, customContent = null) => {
     const newComp = {
       id: `comp-${typeObj.type}-${Date.now()}`,
       type: typeObj.type,
       content: customContent ? JSON.parse(JSON.stringify(customContent)) : JSON.parse(JSON.stringify(typeObj.defaultContent)),
-      styles: JSON.parse(JSON.stringify(typeObj.defaultStyles || {})),
+      styles: {
+        ...JSON.parse(JSON.stringify(typeObj.defaultStyles || {})),
+        position: "absolute",
+        left: "50px",
+        top: `${page.components.length * 180 + 50}px`,
+        zIndex: 10
+      },
       animation: {
         type: "none",
         duration: "0.5s",
@@ -504,7 +515,13 @@ export default function LandingPageBuilder({ initialPage, formsList, onSave, onC
       id: `comp-${typeObj.type}-${Date.now()}`,
       type: typeObj.type,
       content: JSON.parse(JSON.stringify(typeObj.defaultContent)),
-      styles: JSON.parse(JSON.stringify(typeObj.defaultStyles || {})),
+      styles: {
+        ...JSON.parse(JSON.stringify(typeObj.defaultStyles || {})),
+        position: "absolute",
+        left: "50px",
+        top: `${index * 180 + 50}px`,
+        zIndex: 10
+      },
       animation: {
         type: "none",
         duration: "0.5s",
@@ -522,7 +539,81 @@ export default function LandingPageBuilder({ initialPage, formsList, onSave, onC
     toast(`Inserted ${typeObj.name}`);
   };
 
-  const handleDropItem = (targetIndex, droppedType, droppedDragIdxStr) => {
+  const alignElement = (alignmentType) => {
+    if (!selectedCompId) return;
+    const comp = page.components.find((c) => c.id === selectedCompId);
+    if (!comp) return;
+
+    const element = document.getElementById(selectedCompId);
+    let wVal = 300;
+    let hVal = 150;
+    if (element) {
+      const rect = element.getBoundingClientRect();
+      wVal = Math.round(rect.width);
+      hVal = Math.round(rect.height);
+    } else {
+      // Fallback
+      const widthStr = comp.styles?.width || "100%";
+      const heightStr = comp.styles?.height || "auto";
+      wVal = widthStr.includes("%") ? 400 : (parseInt(widthStr) || 300);
+      hVal = heightStr === "auto" ? 150 : (parseInt(heightStr) || 150);
+    }
+
+    const updatedStyles = { ...comp.styles };
+    const halfW = Math.round(wVal / 2);
+    const halfH = Math.round(hVal / 2);
+
+    if (alignmentType === "left") {
+      updatedStyles.left = "10px";
+    } else if (alignmentType === "center-x") {
+      updatedStyles.left = `calc(50% - ${halfW}px)`;
+    } else if (alignmentType === "right") {
+      updatedStyles.left = `calc(100% - ${wVal + 10}px)`;
+    } else if (alignmentType === "top") {
+      updatedStyles.top = "10px";
+    } else if (alignmentType === "center-y") {
+      updatedStyles.top = `calc(50% - ${halfH}px)`;
+    } else if (alignmentType === "bottom") {
+      updatedStyles.top = `calc(100% - ${hVal + 10}px)`;
+    } else if (alignmentType === "center-page") {
+      updatedStyles.left = `calc(50% - ${halfW}px)`;
+      updatedStyles.top = `calc(50% - ${halfH}px)`;
+    } else if (alignmentType === "top-center") {
+      updatedStyles.left = `calc(50% - ${halfW}px)`;
+      updatedStyles.top = "10px";
+    } else if (alignmentType === "left-center") {
+      updatedStyles.left = "10px";
+      updatedStyles.top = `calc(50% - ${halfH}px)`;
+    } else if (alignmentType === "right-center") {
+      updatedStyles.left = `calc(100% - ${wVal + 10}px)`;
+      updatedStyles.top = `calc(50% - ${halfH}px)`;
+    } else if (alignmentType === "left-top") {
+      updatedStyles.left = "10px";
+      updatedStyles.top = "10px";
+    } else if (alignmentType === "right-top") {
+      updatedStyles.left = `calc(100% - ${wVal + 10}px)`;
+      updatedStyles.top = "10px";
+    } else if (alignmentType === "left-bottom") {
+      updatedStyles.left = "10px";
+      updatedStyles.top = `calc(100% - ${hVal + 10}px)`;
+    } else if (alignmentType === "right-bottom") {
+      updatedStyles.left = `calc(100% - ${wVal + 10}px)`;
+      updatedStyles.top = `calc(100% - ${hVal + 10}px)`;
+    } else if (alignmentType === "bottom-center") {
+      updatedStyles.left = `calc(50% - ${halfW}px)`;
+      updatedStyles.top = `calc(100% - ${hVal + 10}px)`;
+    }
+
+    const nextComps = page.components.map((c) => {
+      if (c.id === selectedCompId) {
+        return { ...c, styles: updatedStyles };
+      }
+      return c;
+    });
+    pushState({ ...page, components: nextComps });
+  };
+
+  const handleDropItem = (targetIndex, droppedType, droppedDragIdxStr, x = null, y = null) => {
     const nextComps = [...page.components];
 
     if (droppedDragIdxStr) {
@@ -540,7 +631,13 @@ export default function LandingPageBuilder({ initialPage, formsList, onSave, onC
         id: `comp-${template.type}-${Date.now()}`,
         type: template.type,
         content: JSON.parse(JSON.stringify(template.defaultContent)),
-        styles: JSON.parse(JSON.stringify(template.defaultStyles || {})),
+        styles: {
+          ...JSON.parse(JSON.stringify(template.defaultStyles || {})),
+          position: "absolute",
+          left: x !== null ? `${x}px` : "50px",
+          top: y !== null ? `${y}px` : `${targetIndex * 180 + 50}px`,
+          zIndex: 10
+        },
         animation: {
           type: "none",
           duration: "0.5s",
@@ -610,6 +707,56 @@ export default function LandingPageBuilder({ initialPage, formsList, onSave, onC
       return c;
     });
     pushState({ ...page, components: nextComps });
+  };
+
+  const handleAbsoluteDragStart = (e, compId) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const blockEl = e.currentTarget.closest(".hover-builder-block");
+    if (!blockEl) return;
+    
+    const parentEl = blockEl.offsetParent || blockEl.parentNode;
+    if (!parentEl) return;
+
+    const rect = blockEl.getBoundingClientRect();
+    const parentRect = parentEl.getBoundingClientRect();
+
+    const startLeft = rect.left - parentRect.left;
+    const startTop = rect.top - parentRect.top;
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+
+    const handleMouseMove = (moveEvent) => {
+      const dx = moveEvent.clientX - startX;
+      const dy = moveEvent.clientY - startY;
+      const newLeft = startLeft + dx;
+      const newTop = startTop + dy;
+
+      const nextComps = page.components.map((c) => {
+        if (c.id === compId) {
+          return {
+            ...c,
+            styles: {
+              ...c.styles,
+              left: `${newLeft}px`,
+              top: `${newTop}px`
+            }
+          };
+        }
+        return c;
+      });
+      pushState({ ...page, components: nextComps });
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
   };
 
   const updateSelectedAnimation = (field, val) => {
@@ -849,32 +996,65 @@ export default function LandingPageBuilder({ initialPage, formsList, onSave, onC
           </div>
         </div>
 
-        {/* Viewport frames toggle */}
-        <div className="d-flex align-items-center gap-1 bg-white p-1 rounded-3 border">
-          <button
-            className={`btn btn-sm px-3 py-1 ${viewportMode === "desktop" ? "bg-accent-soft text-wa font-semibold" : "text-muted"}`}
-            onClick={() => setViewportMode("desktop")}
-            title="Desktop view"
-            style={{ borderRadius: "6px", border: "none" }}
-          >
-            <i className="bi bi-display"></i>
-          </button>
-          <button
-            className={`btn btn-sm px-3 py-1 ${viewportMode === "tablet" ? "bg-accent-soft text-wa font-semibold" : "text-muted"}`}
-            onClick={() => setViewportMode("tablet")}
-            title="Tablet view"
-            style={{ borderRadius: "6px", border: "none" }}
-          >
-            <i className="bi bi-tablet-landscape"></i>
-          </button>
-          <button
-            className={`btn btn-sm px-3 py-1 ${viewportMode === "mobile" ? "bg-accent-soft text-wa font-semibold" : "text-muted"}`}
-            onClick={() => setViewportMode("mobile")}
-            title="Mobile view"
-            style={{ borderRadius: "6px", border: "none" }}
-          >
-            <i className="bi bi-phone"></i>
-          </button>
+        {/* Viewport frames & Canvas Size toolbar */}
+        <div className="d-flex align-items-center gap-3">
+          {/* Viewport toggle */}
+          <div className="d-flex align-items-center gap-1 bg-white p-1 rounded-3 border">
+            <button
+              type="button"
+              className={`btn btn-sm px-3 py-1 ${viewportMode === "desktop" ? "bg-accent-soft text-wa font-semibold" : "text-muted"}`}
+              onClick={() => setViewportMode("desktop")}
+              title="Desktop view"
+              style={{ borderRadius: "6px", border: "none" }}
+            >
+              <i className="bi bi-display"></i>
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm px-3 py-1 ${viewportMode === "tablet" ? "bg-accent-soft text-wa font-semibold" : "text-muted"}`}
+              onClick={() => setViewportMode("tablet")}
+              title="Tablet view"
+              style={{ borderRadius: "6px", border: "none" }}
+            >
+              <i className="bi bi-tablet-landscape"></i>
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm px-3 py-1 ${viewportMode === "mobile" ? "bg-accent-soft text-wa font-semibold" : "text-muted"}`}
+              onClick={() => setViewportMode("mobile")}
+              title="Mobile view"
+              style={{ borderRadius: "6px", border: "none" }}
+            >
+              <i className="bi bi-phone"></i>
+            </button>
+          </div>
+
+          {/* Quick Canvas Size Controls */}
+          <div className="d-flex align-items-center gap-2 bg-white px-2 py-1 rounded-3 border small">
+            <span className="text-muted fw-bold" style={{ fontSize: "9px", letterSpacing: "0.3px" }}>CANVAS SIZE</span>
+            <div className="d-flex align-items-center gap-1">
+              <span className="text-muted" style={{ fontSize: "10px" }}>W:</span>
+              <input
+                type="text"
+                className="form-control form-control-xs text-center py-0"
+                style={{ width: "55px", height: "20px", fontSize: "10px", padding: "1px", border: "1px solid #cbd5e1", borderRadius: "4px" }}
+                value={page.canvasWidth || "100%"}
+                onChange={(e) => updateCanvasWidth(e.target.value)}
+                placeholder="100%"
+              />
+            </div>
+            <div className="d-flex align-items-center gap-1">
+              <span className="text-muted" style={{ fontSize: "10px" }}>H:</span>
+              <input
+                type="text"
+                className="form-control form-control-xs text-center py-0"
+                style={{ width: "55px", height: "20px", fontSize: "10px", padding: "1px", border: "1px solid #cbd5e1", borderRadius: "4px" }}
+                value={page.canvasHeight || "750px"}
+                onChange={(e) => updateCanvasHeight(e.target.value)}
+                placeholder="750px"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Action Controls */}
@@ -1079,16 +1259,30 @@ export default function LandingPageBuilder({ initialPage, formsList, onSave, onC
         <div style={{ width: "66%", maxHeight: "calc(100vh - 130px)", overflowY: "auto", background: "#f1f5f9" }} className="bg-slate-light p-4 d-flex justify-content-center align-items-start hide-scrollbar">
           {/* Canvas frame container */}
           <div
+            ref={canvasRef}
             className="shadow-lg border bg-white"
             onDragLeave={handleDragLeaveCanvas}
+            onDragOver={(e) => {
+              e.preventDefault();
+            }}
+            onDrop={(e) => {
+              const type = e.dataTransfer.getData("element-type");
+              if (!type) return;
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = Math.round(e.clientX - rect.left);
+              const y = Math.round(e.clientY - rect.top);
+              handleDropItem(page.components.length, type, null, x, y);
+            }}
             style={{
                width: viewportMode === "mobile" ? "420px" : viewportMode === "tablet" ? "768px" : page.canvasWidth || "100%",
-               minHeight: page.components.length === 0 ? "750px" : "auto",
+               minHeight: page.canvasHeight || "750px",
                borderRadius: viewportMode === "mobile" ? "36px" : viewportMode === "tablet" ? "16px" : "0px",
                borderWidth: viewportMode === "mobile" ? "12px" : "1px",
                borderColor: viewportMode === "mobile" ? "#1e293b" : "#cbd5e1",
                transition: "all 0.3s ease-in-out",
-               position: "relative"
+               position: "relative",
+               backgroundImage: "radial-gradient(#e2e8f0 1.5px, transparent 1.5px)",
+               backgroundSize: "20px 20px"
             }}
           >
             {/* Top Drop Zone Line */}
@@ -1111,178 +1305,55 @@ export default function LandingPageBuilder({ initialPage, formsList, onSave, onC
               </div>
             ) : (
               <div className="d-flex flex-column text-start" style={{ fontFamily: page.theme.fontFamily || "system-ui" }}>
-                {page.components.map((comp, idx) => {
-                  const isSelected = selectedCompId === comp.id;
-                  
-                  // Construct component container layout styles dynamically
-                  const wrapperStyle = {
-                    paddingTop: comp.styles?.paddingTop || "0px",
-                    paddingBottom: comp.styles?.paddingBottom || "0px",
-                    paddingLeft: comp.styles?.paddingLeft || "0px",
-                    paddingRight: comp.styles?.paddingRight || "0px",
-                    marginTop: comp.styles?.marginTop || "0px",
-                    marginBottom: comp.styles?.marginBottom || "0px",
-                    marginLeft: comp.styles?.marginLeft || "auto",
-                    marginRight: comp.styles?.marginRight || "auto",
-                    width: comp.styles?.width || "100%",
-                    height: comp.styles?.height || "auto",
-                    backgroundColor: comp.styles?.backgroundColor || "transparent",
-                    color: comp.styles?.textColor || "inherit",
-                    borderRadius: comp.styles?.borderRadius || page.theme.borderRadius || "0px",
-                    borderWidth: comp.styles?.borderWidth || "0px",
-                    borderStyle: comp.styles?.borderWidth ? "solid" : "none",
-                    borderColor: comp.styles?.borderColor || "transparent",
-                    boxShadow: comp.styles?.boxShadow || "none"
-                  };
-
-                  return (
-                    <div key={comp.id}>
-                      {/* Draggable Component Block */}
-                      <div
-                        onDragOver={(e) => handleDragOverComponent(e, idx)}
-                        onDrop={handleDropOnComponent}
-                        onClick={() => setSelectedCompId(comp.id)}
-                        draggable={true}
-                        onDragStart={(e) => {
-                          const target = e.target;
-                          if (
-                            target.tagName === "INPUT" ||
-                            target.tagName === "TEXTAREA" ||
-                            target.tagName === "SELECT" ||
-                            target.isContentEditable ||
-                            target.closest("a") ||
-                            target.closest("button") ||
-                            target.closest(".image-editable-wrapper")
-                          ) {
-                            e.preventDefault();
-                            return;
+                {page.components.map((comp, idx) => (
+                  <div key={comp.id}>
+                    <VisualBlock
+                      comp={comp}
+                      idx={idx}
+                      isSelected={selectedCompId === comp.id}
+                      canvasRef={canvasRef}
+                      onSelect={() => {
+                        setSelectedCompId(comp.id);
+                        setRightTab("Content");
+                      }}
+                      onMoveCommit={(pos) => {
+                        const nextComps = page.components.map((c) => {
+                          if (c.id === comp.id) {
+                            return { ...c, styles: { ...c.styles, left: `${pos.x}px`, top: `${pos.y}px` } };
                           }
-                          e.stopPropagation();
-                          e.dataTransfer.setData("drag-index", idx.toString());
-                          e.dataTransfer.effectAllowed = "move";
-                          setIsDraggingActive(true);
-                        }}
-                        onDragEnd={() => {
-                          setIsDraggingActive(false);
-                          setActiveDragOverIndex(null);
-                        }}
-                        className={`position-relative hover-builder-block ${isSelected ? "border-builder-selected" : ""}`}
-                        style={wrapperStyle}
-                      >
-                        {/* Hover Overlay controls - Draggable bar */}
-                        <div 
-                          className="builder-component-actions bg-wa text-white px-2 py-1 gap-1 shadow-sm"
-                          style={{ cursor: "grab", borderRadius: "6px 6px 0 0" }}
-                          draggable={true}
-                          onDragStart={(e) => {
-                            e.stopPropagation();
-                            e.dataTransfer.setData("drag-index", idx.toString());
-                            e.dataTransfer.effectAllowed = "move";
-                            setIsDraggingActive(true);
-                          }}
-                          onDragEnd={() => {
-                            setIsDraggingActive(false);
-                            setActiveDragOverIndex(null);
-                          }}
-                          title="Drag this tab to reorder this element"
-                        >
-                          <span className="me-2 d-flex align-items-center">
-                            <i className="bi bi-grip-vertical me-1 fs-6"></i>
-                            <span className="small fw-bold text-uppercase" style={{ fontSize: "9px" }}>
-                              {COMPONENT_TYPES.find((ct) => ct.type === comp.type)?.name || comp.type}
-                            </span>
-                          </span>
-                          <button className="btn btn-xs p-0 text-white" disabled={idx === 0} onClick={(e) => { e.stopPropagation(); moveComponent(idx, -1, e); }} title="Move Up">
-                            <i className="bi bi-chevron-up"></i>
-                          </button>
-                          <button className="btn btn-xs p-0 text-white" disabled={idx === page.components.length - 1} onClick={(e) => { e.stopPropagation(); moveComponent(idx, 1, e); }} title="Move Down">
-                            <i className="bi bi-chevron-down"></i>
-                          </button>
-                          <button className="btn btn-xs p-0 text-white" onClick={(e) => cloneComponent(comp.id, e)} title="Duplicate">
-                            <i className="bi bi-copy"></i>
-                          </button>
-                          <button className="btn btn-xs p-0 text-white" onClick={(e) => removeComponent(comp.id, e)} title="Delete">
-                            <i className="bi bi-trash"></i>
-                          </button>
-                        </div>
-
-                        {/* Rendering element layout styles */}
-                        <div className="w-100 h-100">
-                          {renderComponentLive(
-                            comp,
-                            page.theme,
-                            formsList,
-                            previewFormValues,
-                            setPreviewFormValues,
-                            renderEditableText,
-                            renderEditableImage,
-                            renderEditableLink
-                          )}
-                        </div>
-
-                        {/* Visual Resize Handles when Selected */}
-                        {isSelected && (
-                          <>
-                            {/* Right edge resize handle */}
-                            <div
-                              onMouseDown={(e) => handleResizeMouseDown(e, comp.id, "e")}
-                              style={{
-                                position: "absolute",
-                                top: 0,
-                                right: "-3px",
-                                bottom: 0,
-                                width: "6px",
-                                cursor: "ew-resize",
-                                background: "transparent",
-                                zIndex: 10
-                              }}
-                              className="resize-handle-ew"
-                              title="Drag to resize width"
-                            />
-                            {/* Bottom edge resize handle */}
-                            <div
-                              onMouseDown={(e) => handleResizeMouseDown(e, comp.id, "s")}
-                              style={{
-                                position: "absolute",
-                                left: 0,
-                                right: 0,
-                                bottom: "-3px",
-                                height: "6px",
-                                cursor: "ns-resize",
-                                background: "transparent",
-                                zIndex: 10
-                              }}
-                              className="resize-handle-ns"
-                              title="Drag to resize height/padding"
-                            />
-                            {/* Bottom-right corner handle */}
-                            <div
-                              onMouseDown={(e) => handleResizeMouseDown(e, comp.id, "se")}
-                              style={{
-                                position: "absolute",
-                                right: "-5px",
-                                bottom: "-5px",
-                                width: "10px",
-                                height: "10px",
-                                borderRadius: "50%",
-                                background: "#2249b7",
-                                border: "2px solid #ffffff",
-                                cursor: "nwse-resize",
-                                zIndex: 11,
-                                boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
-                              }}
-                              className="resize-handle-se"
-                              title="Drag corner to resize width and height"
-                            />
-                          </>
-                        )}
-                      </div>
-
-                      {/* Drop Zone Line */}
-                      <DropZoneLine index={idx + 1} />
-                    </div>
-                  );
-                })}
+                          return c;
+                        });
+                        pushState({ ...page, components: nextComps });
+                      }}
+                      onResizeCommit={(size) => {
+                        const nextComps = page.components.map((c) => {
+                          if (c.id === comp.id) {
+                            return { ...c, styles: { ...c.styles, width: size.width, height: size.height } };
+                          }
+                          return c;
+                        });
+                        pushState({ ...page, components: nextComps });
+                      }}
+                      cloneComponent={cloneComponent}
+                      removeComponent={removeComponent}
+                      moveComponent={moveComponent}
+                      page={page}
+                      formsList={formsList}
+                      previewFormValues={previewFormValues}
+                      setPreviewFormValues={setPreviewFormValues}
+                      renderEditableText={renderEditableText}
+                      renderEditableImage={renderEditableImage}
+                      renderEditableLink={renderEditableLink}
+                      COMPONENT_TYPES={COMPONENT_TYPES}
+                      pushState={pushState}
+                      setIsDraggingActive={setIsDraggingActive}
+                      setActiveDragOverIndex={setActiveDragOverIndex}
+                      handleDragOverComponent={handleDragOverComponent}
+                      handleDropOnComponent={handleDropOnComponent}
+                    />
+                    <DropZoneLine index={idx + 1} />
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -1543,6 +1614,103 @@ export default function LandingPageBuilder({ initialPage, formsList, onSave, onC
                       />
                     </div>
                   </div>
+                  
+                  <hr className="my-2" />
+                  <h6 className="fw-bold text-secondary small mb-2">Free Positioning Coordinates</h6>
+                  <div className="row g-2">
+                    <div className="col-4">
+                      <label className="form-label small text-muted mb-0" style={{ fontSize: "10px" }}>Left (X)</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm font-monospace"
+                        placeholder="e.g. 50px"
+                        value={selectedComp.styles?.left || "0px"}
+                        onChange={(e) => updateSelectedStyle("left", e.target.value)}
+                      />
+                    </div>
+                    <div className="col-4">
+                      <label className="form-label small text-muted mb-0" style={{ fontSize: "10px" }}>Top (Y)</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm font-monospace"
+                        placeholder="e.g. 50px"
+                        value={selectedComp.styles?.top || "0px"}
+                        onChange={(e) => updateSelectedStyle("top", e.target.value)}
+                      />
+                    </div>
+                    <div className="col-4">
+                      <label className="form-label small text-muted mb-0" style={{ fontSize: "10px" }}>Layer (Z)</label>
+                      <input
+                        type="number"
+                        className="form-control form-control-sm font-monospace"
+                        value={selectedComp.styles?.zIndex || 10}
+                        onChange={(e) => updateSelectedStyle("zIndex", e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <hr className="my-2" />
+                  <h6 className="fw-bold text-secondary small mb-2">Align Element</h6>
+                  <div className="d-flex flex-column gap-2">
+                    {/* Horizontal Alignment */}
+                    <div className="d-flex align-items-center justify-content-between">
+                      <span className="small text-muted" style={{ fontSize: "10px" }}>Horizontal:</span>
+                      <div className="btn-group btn-group-sm">
+                        <button type="button" className="btn btn-xs btn-outline-secondary" onClick={() => alignElement("left")} title="Align Left">
+                          <i className="bi bi-align-start"></i>
+                        </button>
+                        <button type="button" className="btn btn-xs btn-outline-secondary" onClick={() => alignElement("center-x")} title="Align Center">
+                          <i className="bi bi-align-center"></i>
+                        </button>
+                        <button type="button" className="btn btn-xs btn-outline-secondary" onClick={() => alignElement("right")} title="Align Right">
+                          <i className="bi bi-align-end"></i>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Vertical Alignment */}
+                    <div className="d-flex align-items-center justify-content-between">
+                      <span className="small text-muted" style={{ fontSize: "10px" }}>Vertical:</span>
+                      <div className="btn-group btn-group-sm">
+                        <button type="button" className="btn btn-xs btn-outline-secondary" onClick={() => alignElement("top")} title="Align Top">
+                          <i className="bi bi-align-top"></i>
+                        </button>
+                        <button type="button" className="btn btn-xs btn-outline-secondary" onClick={() => alignElement("center-y")} title="Align Middle">
+                          <i className="bi bi-align-middle"></i>
+                        </button>
+                        <button type="button" className="btn btn-xs btn-outline-secondary" onClick={() => alignElement("bottom")} title="Align Bottom">
+                          <i className="bi bi-align-bottom"></i>
+                        </button>
+                      </div>
+                    </div>
+
+                    <hr className="my-1.5" />
+                    <h6 className="fw-bold text-secondary small mb-2">Anchor Presets (Page Docking)</h6>
+                    
+                    {/* Anchor 3x3 visual grid */}
+                    <div className="d-flex justify-content-center my-1">
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "5px", width: "135px" }}>
+                        {/* Row 1 */}
+                        <button type="button" className="btn btn-xs btn-outline-secondary p-1 fw-bold fs-6 d-flex align-items-center justify-content-center" style={{ height: "30px", width: "40px" }} onClick={() => alignElement("left-top")} title="Top Left">↖</button>
+                        <button type="button" className="btn btn-xs btn-outline-secondary p-1 fw-bold fs-6 d-flex align-items-center justify-content-center" style={{ height: "30px", width: "40px" }} onClick={() => alignElement("top-center")} title="Top Center">↑</button>
+                        <button type="button" className="btn btn-xs btn-outline-secondary p-1 fw-bold fs-6 d-flex align-items-center justify-content-center" style={{ height: "30px", width: "40px" }} onClick={() => alignElement("right-top")} title="Top Right">↗</button>
+                        
+                        {/* Row 2 */}
+                        <button type="button" className="btn btn-xs btn-outline-secondary p-1 fw-bold fs-6 d-flex align-items-center justify-content-center" style={{ height: "30px", width: "40px" }} onClick={() => alignElement("left-center")} title="Left Center">←</button>
+                        <button type="button" className="btn btn-xs btn-outline-secondary p-1 fw-bold fs-6 d-flex align-items-center justify-content-center" style={{ height: "30px", width: "40px" }} onClick={() => alignElement("center-page")} title="Center Page">✛</button>
+                        <button type="button" className="btn btn-xs btn-outline-secondary p-1 fw-bold fs-6 d-flex align-items-center justify-content-center" style={{ height: "30px", width: "40px" }} onClick={() => alignElement("right-center")} title="Right Center">→</button>
+                        
+                        {/* Row 3 */}
+                        <button type="button" className="btn btn-xs btn-outline-secondary p-1 fw-bold fs-6 d-flex align-items-center justify-content-center" style={{ height: "30px", width: "40px" }} onClick={() => alignElement("left-bottom")} title="Bottom Left">↙</button>
+                        <button type="button" className="btn btn-xs btn-outline-secondary p-1 fw-bold fs-6 d-flex align-items-center justify-content-center" style={{ height: "30px", width: "40px" }} onClick={() => alignElement("bottom-center")} title="Bottom Center">↓</button>
+                        <button type="button" className="btn btn-xs btn-outline-secondary p-1 fw-bold fs-6 d-flex align-items-center justify-content-center" style={{ height: "30px", width: "40px" }} onClick={() => alignElement("right-bottom")} title="Bottom Right">↘</button>
+                      </div>
+                    </div>
+                    
+                    <span className="text-secondary mt-1.5" style={{ fontSize: "10px", lineHeight: "1.2", display: "block" }}>
+                      💡 <strong>Tip:</strong> Click an anchor above to snap the element or drag it freely by its body.
+                    </span>
+                  </div>
                 </div>
               )}
 
@@ -1595,17 +1763,68 @@ export default function LandingPageBuilder({ initialPage, formsList, onSave, onC
               <h5 className="fw-bold text-dark mb-1 pb-2 border-bottom small text-uppercase" style={{ fontSize: "11px" }}>Global Settings</h5>
 
               <div>
-                <label className="form-label">Canvas Width Limit</label>
-                <select
-                  className="form-select"
-                  value={page.canvasWidth || "100%"}
-                  onChange={(e) => updateCanvasWidth(e.target.value)}
-                >
-                  <option value="100%">Full Width (100%)</option>
-                  <option value="1200px">Wide Desktop (1200px)</option>
-                  <option value="960px">Boxed Layout (960px)</option>
-                  <option value="768px">Centered Tablet (768px)</option>
-                </select>
+                <label className="form-label mb-1">Canvas Width</label>
+                <div className="d-flex gap-1 mb-2">
+                  <select
+                    className="form-select form-select-sm"
+                    value={["100%", "1200px", "960px", "768px"].includes(page.canvasWidth) ? page.canvasWidth : "custom"}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val !== "custom") {
+                        updateCanvasWidth(val);
+                      }
+                    }}
+                  >
+                    <option value="100%">Full Width (100%)</option>
+                    <option value="1200px">Wide Desktop (1200px)</option>
+                    <option value="960px">Boxed Layout (960px)</option>
+                    <option value="768px">Centered Tablet (768px)</option>
+                    <option value="custom">Custom Width...</option>
+                  </select>
+                  {(!["100%", "1200px", "960px", "768px"].includes(page.canvasWidth) || page.canvasWidth === "custom") && (
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      style={{ width: "80px" }}
+                      placeholder="e.g. 850px"
+                      value={page.canvasWidth || "100%"}
+                      onChange={(e) => updateCanvasWidth(e.target.value)}
+                    />
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="form-label mb-1">Canvas Height</label>
+                <div className="d-flex gap-1">
+                  <select
+                    className="form-select form-select-sm"
+                    value={["750px", "1000px", "1200px", "1500px", "2000px"].includes(page.canvasHeight) ? page.canvasHeight : "custom"}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val !== "custom") {
+                        updateCanvasHeight(val);
+                      }
+                    }}
+                  >
+                    <option value="750px">Standard (750px)</option>
+                    <option value="1000px">Medium (1000px)</option>
+                    <option value="1200px">Tall (1200px)</option>
+                    <option value="1500px">Extra Tall (1500px)</option>
+                    <option value="2000px">Double Height (2000px)</option>
+                    <option value="custom">Custom Height...</option>
+                  </select>
+                  {(!["750px", "1000px", "1200px", "1500px", "2000px"].includes(page.canvasHeight) || page.canvasHeight === "custom") && (
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      style={{ width: "80px" }}
+                      placeholder="e.g. 750px"
+                      value={page.canvasHeight || "750px"}
+                      onChange={(e) => updateCanvasHeight(e.target.value)}
+                    />
+                  )}
+                </div>
               </div>
 
               <div className="alert bg-accent-soft text-wa px-3 py-2 small border-0 mt-3" style={{ borderRadius: "8px" }}>
@@ -4048,9 +4267,49 @@ function renderPropertyFields(comp, updateContent, updateStyle, formsList) {
       if (keys.length === 0) return <span className="small text-muted">This component has no content properties. Use style or layout tabs to customize.</span>;
       return (
         <>
-          {keys.map((key) => {
+           {keys.map((key) => {
             if (key === "presetType") return null;
             const val = c[key];
+            if (key === "fieldName") {
+              const standardFields = [
+                { val: "name", label: "Student/Parent Name (name)" },
+                { val: "email", label: "Email Address (email)" },
+                { val: "mobile", label: "Mobile Number (mobile)" },
+                { val: "class", label: "Applying Class (class)" },
+                { val: "remarks", label: "Enquiry Remarks (remarks)" },
+                { val: "source", label: "Enquiry Source (source)" },
+              ];
+              const isStandard = standardFields.some(f => f.val === val);
+              return (
+                <div key={key} className="mb-2">
+                  <label className="form-label mb-1 fw-bold text-secondary" style={{ fontSize: "10.5px" }}>CRM Field Mapping</label>
+                  <select
+                    className="form-select form-select-sm mb-1"
+                    value={isStandard ? val : "custom"}
+                    onChange={(e) => {
+                      const nextVal = e.target.value;
+                      if (nextVal !== "custom") {
+                        updateContent("fieldName", nextVal);
+                      }
+                    }}
+                  >
+                    {standardFields.map((f) => (
+                      <option key={f.val} value={f.val}>{f.label}</option>
+                    ))}
+                    <option value="custom">Custom Field Name...</option>
+                  </select>
+                  {!isStandard && (
+                    <input
+                      type="text"
+                      className="form-control form-control-sm mt-1"
+                      placeholder="Enter custom CRM database field key..."
+                      value={val || ""}
+                      onChange={(e) => updateContent("fieldName", e.target.value)}
+                    />
+                  )}
+                </div>
+              );
+            }
             const label = key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1");
             if (Array.isArray(val)) {
               return (
@@ -4864,7 +5123,7 @@ function EditableImageWrapper({ comp, field, imgUrl, className, style, pushState
 
 function renderEnquiryFormFieldsMockup(targetForm, theme, textClass = "", inputClass = "") {
   const fields = targetForm?.fields || [];
-  const selectedFields = fields.filter((f) => f.selected);
+  const selectedFields = fields.filter((f) => f.selected && !f.hidden);
   if (selectedFields.length === 0) {
     return <div className="small text-muted py-2 text-center">No fields configured on this form.</div>;
   }
@@ -4875,20 +5134,34 @@ function renderEnquiryFormFieldsMockup(targetForm, theme, textClass = "", inputC
         const label = f.label || f.fieldName;
         return (
           <div key={i} className="text-start">
-            <label className={`form-label fw-bold mb-1 ${textClass}`} style={{ fontSize: "11px" }}>
-              {label} {f.isRequired && <span className="text-danger">*</span>}
-            </label>
-            {f.fieldType === "select" ? (
-              <select className={`form-select form-select-sm ${inputClass}`} disabled>
-                <option value="">-- Choose option --</option>
-                {(f.options || []).map((opt, oi) => (
-                  <option key={oi} value={opt}>{opt}</option>
-                ))}
-              </select>
-            ) : f.fieldType === "textarea" ? (
-              <textarea className={`form-control form-control-sm ${inputClass}`} placeholder={`Enter ${label.toLowerCase()}`} rows={2} disabled />
+            {f.fieldType === "checkbox" ? (
+              <div className="form-check">
+                <input className="form-check-input" type="checkbox" checked={Boolean(f.defaultValue)} disabled />
+                <label className={`form-check-label small fw-semibold ${textClass}`} style={{ fontSize: "11px" }}>
+                  {label} {f.isRequired && <span className="text-danger">*</span>}
+                </label>
+              </div>
             ) : (
-              <input type={f.fieldType || "text"} className={`form-control form-control-sm ${inputClass}`} placeholder={`Enter ${label.toLowerCase()}`} disabled />
+              <>
+                <label className={`form-label fw-bold mb-1 ${textClass}`} style={{ fontSize: "11px" }}>
+                  {label} {f.isRequired && <span className="text-danger">*</span>}
+                </label>
+                {f.fieldType === "select" ? (
+                  <select className={`form-select form-select-sm ${inputClass}`} disabled>
+                    <option value="">-- Choose option --</option>
+                    {(typeof f.options === "string"
+                      ? f.options.split(",").map(o => o.trim()).filter(Boolean)
+                      : (Array.isArray(f.options) ? f.options : [])
+                    ).map((opt, oi) => (
+                      <option key={oi} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                ) : f.fieldType === "textarea" ? (
+                  <textarea className={`form-control form-control-sm ${inputClass}`} placeholder={`Enter ${label.toLowerCase()}`} rows={2} disabled />
+                ) : (
+                  <input type={f.fieldType || "text"} className={`form-control form-control-sm ${inputClass}`} placeholder={`Enter ${label.toLowerCase()}`} disabled />
+                )}
+              </>
             )}
           </div>
         );
@@ -5050,6 +5323,331 @@ function renderDynamicWizardForm(c, theme, textClass = "", inputClass = "") {
         </div>
       );
   }
+}
+
+const RESIZE_HANDLES = [
+  { key: "nw", style: { top: -5, left: -5, cursor: "nwse-resize" } },
+  { key: "n", style: { top: -5, left: "50%", marginLeft: -5, cursor: "ns-resize" } },
+  { key: "ne", style: { top: -5, right: -5, cursor: "nesw-resize" } },
+  { key: "e", style: { top: "50%", right: -5, marginTop: -5, cursor: "ew-resize" } },
+  { key: "se", style: { bottom: -5, right: -5, cursor: "nwse-resize" } },
+  { key: "s", style: { bottom: -5, left: "50%", marginLeft: -5, cursor: "ns-resize" } },
+  { key: "sw", style: { bottom: -5, left: -5, cursor: "nesw-resize" } },
+  { key: "w", style: { top: "50%", left: -5, marginTop: -5, cursor: "ew-resize" } },
+];
+
+const DRAG_THRESHOLD = 4;
+
+function VisualBlock({
+  comp,
+  idx,
+  isSelected,
+  canvasRef,
+  onSelect,
+  onMoveCommit,
+  onResizeCommit,
+  cloneComponent,
+  removeComponent,
+  moveComponent,
+  page,
+  formsList,
+  previewFormValues,
+  setPreviewFormValues,
+  renderEditableText,
+  renderEditableImage,
+  renderEditableLink,
+  COMPONENT_TYPES,
+  pushState,
+  setIsDraggingActive,
+  setActiveDragOverIndex,
+  handleDragOverComponent,
+  handleDropOnComponent
+}) {
+  const nodeRef = React.useRef(null);
+
+  // Retrieve X/Y position from styles, default to a vertical stack if not set
+  const posX = (comp.styles?.left && !isNaN(parseInt(comp.styles.left))) ? parseInt(comp.styles.left) : 24;
+  const posY = (comp.styles?.top && !isNaN(parseInt(comp.styles.top))) ? parseInt(comp.styles.top) : (idx * 200 + 24);
+
+  const [localPos, setLocalPos] = React.useState(null); // { x, y } while moving
+  const [localSize, setLocalSize] = React.useState(null); // { width, height } while resizing
+  const [isDragging, setIsDragging] = React.useState(false);
+
+  const startMove = (e) => {
+    // only react on left click on the component container or action bar
+    if (e.button !== 0) return;
+
+    const target = e.target;
+    // Don't drag if clicking editable content, inputs, buttons, links or resize handles
+    if (
+      target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.tagName === "SELECT" ||
+      target.isContentEditable ||
+      target.closest("a") ||
+      target.closest("button") ||
+      target.closest(".image-editable-wrapper") ||
+      target.closest(".resize-handle")
+    ) {
+      return;
+    }
+
+    onSelect();
+    e.preventDefault();
+    e.stopPropagation();
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+
+    const blockEl = nodeRef.current;
+    if (!blockEl) return;
+    const parentEl = canvasRef.current;
+    if (!parentEl) return;
+
+    const nodeRect = blockEl.getBoundingClientRect();
+    const canvasRect = parentEl.getBoundingClientRect();
+
+    const originX = Math.round(nodeRect.left - canvasRect.left);
+    const originY = Math.round(nodeRect.top - canvasRect.top);
+    
+    let currentX = originX;
+    let currentY = originY;
+    let moved = false;
+
+    const maxX = Math.max(0, canvasRect.width - nodeRect.width);
+
+    const onMove = (ev) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+
+      if (!moved && (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD)) {
+        moved = true;
+        setIsDragging(true);
+      }
+
+      if (!moved) return;
+
+      const newX = Math.min(Math.max(0, originX + dx), maxX);
+      const newY = Math.max(0, originY + dy);
+      
+      currentX = newX;
+      currentY = newY;
+      setLocalPos({ x: newX, y: newY });
+    };
+
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      
+      setLocalPos(null);
+      setIsDragging(false);
+
+      if (moved) {
+        onMoveCommit({ x: currentX, y: currentY });
+      }
+    };
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
+
+  const startResize = (handleKey, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const blockEl = nodeRef.current;
+    if (!blockEl) return;
+    const parentEl = canvasRef.current;
+    if (!parentEl) return;
+
+    const blockRect = blockEl.getBoundingClientRect();
+    const parentRect = parentEl.getBoundingClientRect();
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startW = blockRect.width;
+    const startH = blockRect.height;
+    const startLeft = blockRect.left - parentRect.left;
+    const startTop = blockRect.top - parentRect.top;
+
+    let currentW = startW;
+    let currentH = startH;
+    let currentLeft = startLeft;
+    let currentTop = startTop;
+    let hasMoved = false;
+
+    const onMove = (ev) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      hasMoved = true;
+
+      let newW = startW;
+      let newH = startH;
+      let newLeft = startLeft;
+      let newTop = startTop;
+
+      if (handleKey.includes("e")) {
+        newW = startW + dx;
+      }
+      if (handleKey.includes("w")) {
+        newW = startW - dx;
+        newLeft = startLeft + dx;
+      }
+      if (handleKey.includes("s")) {
+        newH = startH + dy;
+      }
+      if (handleKey.includes("n")) {
+        newH = startH - dy;
+        newTop = startTop + dy;
+      }
+
+      newW = Math.max(60, Math.round(newW));
+      newH = Math.max(28, Math.round(newH));
+
+      currentW = newW;
+      currentH = newH;
+      currentLeft = Math.max(0, Math.round(newLeft));
+      currentTop = Math.max(0, Math.round(newTop));
+
+      setLocalSize({ width: newW, height: newH });
+
+      if (handleKey.includes("w") || handleKey.includes("n")) {
+        setLocalPos({ x: currentLeft, y: currentTop });
+      }
+    };
+
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+
+      setLocalSize(null);
+      setLocalPos(null);
+
+      if (hasMoved) {
+        // Commit styling changes back to components styles list
+        const nextComps = page.components.map((c) => {
+          if (c.id === comp.id) {
+            const updatedStyles = { ...c.styles };
+            updatedStyles.width = `${currentW}px`;
+            updatedStyles.height = `${currentH}px`;
+            if (handleKey.includes("w") || handleKey.includes("n")) {
+              updatedStyles.left = `${currentLeft}px`;
+              updatedStyles.top = `${currentTop}px`;
+            }
+            return { ...c, styles: updatedStyles };
+          }
+          return c;
+        });
+        pushState({ ...page, components: nextComps });
+      }
+    };
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
+
+  const wrapperStyle = {
+    paddingTop: comp.styles?.paddingTop || "0px",
+    paddingBottom: comp.styles?.paddingBottom || "0px",
+    paddingLeft: comp.styles?.paddingLeft || "0px",
+    paddingRight: comp.styles?.paddingRight || "0px",
+    marginTop: comp.styles?.marginTop || "0px",
+    marginBottom: comp.styles?.marginBottom || "0px",
+    marginLeft: comp.styles?.marginLeft || "auto",
+    marginRight: comp.styles?.marginRight || "auto",
+    width: localSize ? `${localSize.width}px` : (comp.styles?.width || "100%"),
+    height: localSize ? `${localSize.height}px` : (comp.styles?.height || "auto"),
+    backgroundColor: comp.styles?.backgroundColor || "transparent",
+    color: comp.styles?.textColor || "inherit",
+    borderRadius: comp.styles?.borderRadius || page.theme.borderRadius || "0px",
+    borderWidth: comp.styles?.borderWidth || "0px",
+    borderStyle: comp.styles?.borderWidth ? "solid" : "none",
+    borderColor: comp.styles?.borderColor || "transparent",
+    boxShadow: comp.styles?.boxShadow || "none",
+    position: "absolute",
+    left: localPos ? `${localPos.x}px` : (comp.styles?.left || `${posX}px`),
+    top: localPos ? `${localPos.y}px` : (comp.styles?.top || `${posY}px`),
+    zIndex: isSelected || isDragging ? 50 : parseInt(comp.styles?.zIndex) || 10,
+    opacity: isDragging ? 0.6 : 1,
+    overflow: isSelected ? "visible" : (localSize || comp.styles?.height !== "auto" ? "hidden" : "visible"),
+    transition: isDragging ? "none" : "transform 150ms ease, box-shadow 150ms ease",
+    cursor: isDragging ? "grabbing" : "grab"
+  };
+
+  return (
+    <div
+      ref={nodeRef}
+      id={comp.id}
+      onMouseDown={startMove}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect();
+      }}
+      className={`hover-builder-block ${isSelected ? "border-builder-selected" : ""}`}
+      style={wrapperStyle}
+    >
+      {/* Hover Overlay controls - Draggable bar */}
+      <div 
+        className="builder-component-actions bg-wa text-white px-2 py-1 gap-1 shadow-sm animate-fade-in"
+        style={{ cursor: "move", borderRadius: "6px 6px 0 0", display: "flex", alignItems: "center", zIndex: 100 }}
+      >
+        <span className="me-2 d-flex align-items-center">
+          <i className="bi bi-arrows-move me-1 fs-6"></i>
+          <span className="small fw-bold text-uppercase" style={{ fontSize: "9px" }}>
+            {COMPONENT_TYPES.find((ct) => ct.type === comp.type)?.name || comp.type}
+          </span>
+          <span className="badge bg-dark text-warning ms-2 font-monospace" style={{ fontSize: "8px", padding: "2px 4px" }}>
+            X: {localPos ? localPos.x : posX}px Y: {localPos ? localPos.y : posY}px
+          </span>
+        </span>
+        
+        <button className="btn btn-xs p-0 text-white" onClick={(e) => { e.stopPropagation(); cloneComponent(comp.id, e); }} title="Duplicate">
+          <i className="bi bi-copy"></i>
+        </button>
+        <button className="btn btn-xs p-0 text-white" onClick={(e) => { e.stopPropagation(); removeComponent(comp.id, e); }} title="Delete">
+          <i className="bi bi-trash"></i>
+        </button>
+      </div>
+
+      {/* Rendering element layout styles */}
+      <div className="w-100 h-100">
+        {renderComponentLive(
+          comp,
+          page.theme,
+          formsList,
+          previewFormValues,
+          setPreviewFormValues,
+          renderEditableText,
+          renderEditableImage,
+          renderEditableLink
+        )}
+      </div>
+
+      {/* Visual Resize Handles when Selected */}
+      {isSelected && (
+        <>
+          {RESIZE_HANDLES.map((h) => (
+            <span
+              key={h.key}
+              onMouseDown={(e) => startResize(h.key, e)}
+              className="resize-handle"
+              style={{
+                position: "absolute",
+                width: 10,
+                height: 10,
+                background: "#fff",
+                border: "2px solid #2249b7",
+                borderRadius: 2,
+                zIndex: 110,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                ...h.style
+              }}
+            />
+          ))}
+        </>
+      )}
+    </div>
+  );
 }
 
 // Helper to compile component schema into static HTML source code
