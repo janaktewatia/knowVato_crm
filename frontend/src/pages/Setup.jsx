@@ -115,7 +115,7 @@ export default function Setup() {
   const selectSection = (item) => {
     setSelected(item.id);
     setMode("list");
-    navigate(`/setup?active=${item.id}&mode=list`);
+    navigate(`/crm/setup?active=${item.id}&mode=list`);
   };
 
   const hideSidebar = (selected === "registration-form" || selected === "landing-page") && mode === "editor";
@@ -980,7 +980,7 @@ function RegistrationFormConfig() {
       isActive: true
     };
     setActiveForm(f);
-    navigate("/setup?active=registration-form&mode=editor", { state: { form: f } });
+    navigate("/crm/setup?active=registration-form&mode=editor", { state: { form: f } });
   };
 
   const openEditForm = (form) => {
@@ -994,7 +994,7 @@ function RegistrationFormConfig() {
       isActive: form.isActive !== false
     };
     setActiveForm(f);
-    navigate("/setup?active=registration-form&mode=editor", { state: { form: f } });
+    navigate("/crm/setup?active=registration-form&mode=editor", { state: { form: f } });
   };
 
   const openPreviewForm = (form) => {
@@ -1008,11 +1008,11 @@ function RegistrationFormConfig() {
       isActive: form.isActive !== false
     };
     setActiveForm(f);
-    navigate("/setup?active=registration-form&mode=editor&startScreen=preview_only", { state: { form: f } });
+    navigate("/crm/setup?active=registration-form&mode=editor&startScreen=preview_only", { state: { form: f } });
   };
 
   const closeEditor = () => {
-    navigate("/setup?active=registration-form&mode=list");
+    navigate("/crm/setup?active=registration-form&mode=list");
   };
 
   const saveForm = async (formData) => {
@@ -1315,7 +1315,7 @@ function LandingPageTab() {
   }, [location.search]);
 
   const openNewLandingPage = () => {
-    navigate("/setup?active=landing-page&mode=wizard");
+    navigate("/crm/setup?active=landing-page&mode=wizard");
   };
 
   const handleSelectTemplate = (template) => {
@@ -1327,7 +1327,7 @@ function LandingPageTab() {
       isActive: true
     };
     setActivePage(newPage);
-    navigate("/setup?active=landing-page&mode=editor", { state: { page: newPage } });
+    navigate("/crm/setup?active=landing-page&mode=editor", { state: { page: newPage } });
   };
 
   const openEditLandingPage = (page) => {
@@ -1337,7 +1337,7 @@ function LandingPageTab() {
       features: page.features || [...DEFAULT_LANDING_PAGE_CONFIG.features]
     };
     setActivePage(p);
-    navigate("/setup?active=landing-page&mode=editor", { state: { page: p } });
+    navigate("/crm/setup?active=landing-page&mode=editor", { state: { page: p } });
   };
 
   const openPreviewLandingPage = (page) => {
@@ -1345,7 +1345,7 @@ function LandingPageTab() {
   };
 
   const closeLandingPageEditor = () => {
-    navigate("/setup?active=landing-page&mode=list");
+    navigate("/crm/setup?active=landing-page&mode=list");
   };
 
   const saveLandingPage = async (pageData) => {
@@ -1401,7 +1401,7 @@ function LandingPageTab() {
               isActive: true
             };
             setActivePage(newPage);
-            navigate("/setup?active=landing-page&mode=editor", { state: { page: newPage } });
+            navigate("/crm/setup?active=landing-page&mode=editor", { state: { page: newPage } });
           }}
           onCancel={closeLandingPageEditor}
         />
@@ -1647,11 +1647,11 @@ function EnquiryFormConfig() {
   };
 
   const openNewForm = () => {
-    navigate("/setup/enquiry-forms/new");
+    navigate("/crm/setup/enquiry-forms/new");
   };
 
   const openEditForm = (form) => {
-    navigate(`/setup/enquiry-forms/${form._id}`);
+    navigate(`/crm/setup/enquiry-forms/${form._id}`);
   };
 
   const openPreview = (form) => setPreviewForm(form);

@@ -5,44 +5,44 @@
    project's OKLCH design system (converted to sRGB hex).
    Single source of truth for the whole application.
    ============================================================ */
-:root {
-  /* brand / accent = rich indigo */
-  --accent:        #2249b7;  /* primary: oklch(0.45 0.18 265) */
-  --accent-hover:  #1d3f9e;
-  --accent-soft:   #e2ebff;  /* accent wash: oklch(0.94 0.04 265) */
-  --accent-ink:    #14295f;  /* accent-foreground */
+.crm-theme {
+  /* brand / accent = rich indigo/slate from Knowvato Main */
+  --accent:        #0f172a;  
+  --accent-hover:  #1e293b;
+  --accent-soft:   #f1f5f9;  
+  --accent-ink:    #0f172a;  
 
   /* neutrals / surfaces */
-  --page-bg:    #f8fafd;     /* background: oklch(0.985 0.005 250) */
-  --surface:    #ffffff;     /* card: pure white */
-  --surface-2:  #eff2f7;     /* muted wash */
-  --border:     #e1e5eb;     /* border: oklch(0.92 0.01 260) */
-  --border-2:   #d4dae3;
-  --divider:    #eef2f9;
+  --page-bg:    #f8fafc;     
+  --surface:    #ffffff;     
+  --surface-2:  #f1f5f9;     
+  --border:     #e2e8f0;     
+  --border-2:   #cbd5e1;
+  --divider:    #f1f5f9;
 
   /* text */
-  --text:       #0e1a30;     /* foreground: deep slate-indigo */
-  --text-2:     #2f3a4d;
-  --muted:      #596475;     /* muted-foreground */
-  --muted-2:    #8a93a3;
+  --text:       #0f172a;     
+  --text-2:     #334155;
+  --muted:      #64748b;     
+  --muted-2:    #94a3b8;
 
   /* status pill (soft, neutral default) */
-  --pill-bg:    #eef2f9;
-  --pill-ink:   #16213a;
+  --pill-bg:    #f1f5f9;
+  --pill-ink:   #0f172a;
 
   /* semantic status (success / warning / info / destructive) */
-  --ok:    #139948;  --ok-bg: #e3f6ea;          /* success oklch(0.6 0.16 150) */
-  --warn:  #b07400;  --warn-bg:#fdf1d8;          /* warning oklch(0.78 0.16 75) */
-  --err:   #e62b34;  --err-bg:#fde7e8;           /* destructive oklch(0.6 0.22 25) */
-  --info:  #009cce;  --info-bg:#e0f4fb;          /* info oklch(0.65 0.15 230) */
+  --ok:    #10b981;  --ok-bg: #ecfdf5;          
+  --warn:  #f59e0b;  --warn-bg:#fef3c7;          
+  --err:   #ef4444;  --err-bg:#fef2f2;           
+  --info:  #06b6d4;  --info-bg:#ecfeff;          
 
-  /* sidebar — always dark (deep navy-indigo) */
-  --sidebar:          #0f1932;  /* oklch(0.22 0.05 265) */
-  --sidebar-fg:       #e1e5eb;
-  --sidebar-muted:    #8893ad;
-  --sidebar-primary:  #5888fc;  /* active item bg */
-  --sidebar-accent:   #1f2d4c;  /* hover bg */
-  --sidebar-border:   #212d47;
+  /* sidebar — light themed like Knowvato Main */
+  --sidebar:          #ffffff;  
+  --sidebar-fg:       #0f172a;
+  --sidebar-muted:    #64748b;
+  --sidebar-primary:  #0f172a;  /* active item bg */
+  --sidebar-accent:   #f1f5f9;  /* hover bg */
+  --sidebar-border:   #e2e8f0;
 
   /* charts */
   --chart-1: #3c68d9;
@@ -107,7 +107,7 @@ a { color: var(--accent); }
 }
 .sidebar-toggle:hover { background: var(--sidebar-accent); color: #fff; }
 .sidebar .brand {
-  display: flex; align-items: center; gap: 10px; color: #fff; font-weight: 600;
+  display: flex; align-items: center; gap: 10px; color: var(--sidebar-fg); font-weight: 600;
 }
 .sidebar .brand .mark {
   width: 34px; height: 34px; border-radius: 10px; background: var(--sidebar-primary);
@@ -122,15 +122,17 @@ a { color: var(--accent); }
   color: var(--sidebar-muted); font-weight: 500; padding: 12px 10px 6px;
 }
 .sidebar .nav-link {
-  display: flex; align-items: center; gap: 12px; color: rgba(225,229,235,.8);
+  display: flex; align-items: center; gap: 12px; color: var(--sidebar-fg);
   padding: 8px 12px; border-radius: var(--radius-sm); font-size: 14px;
   cursor: pointer; font-weight: 400; margin-bottom: 2px;
+  text-decoration: none;
 }
-.sidebar .nav-link:hover { background: var(--sidebar-accent); color: #fff; }
+.sidebar .nav-link:hover { background: var(--sidebar-accent); color: var(--sidebar-fg); }
 .sidebar .nav-link.active { background: var(--sidebar-primary); color: #fff; font-weight: 500; box-shadow: var(--shadow-sm); }
 .sidebar .nav-link.active i { color: #fff; }
 .sidebar .nav-link i { color: var(--sidebar-muted); font-size: 16px; }
-.sidebar .nav-link.active i, .sidebar .nav-link:hover i { color: #fff; }
+.sidebar .nav-link.active i { color: #fff; }
+.sidebar .nav-link:hover i { color: var(--sidebar-fg); }
 .sidebar .side-footer {
   margin-top: auto; padding: 14px; border-top: 1px solid var(--sidebar-border);
   display: flex; align-items: center; gap: 8px; color: var(--sidebar-muted); font-size: 12px;

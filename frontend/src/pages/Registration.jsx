@@ -656,7 +656,7 @@ export default function Registration() {
       };
       await registrationsApi.create(payload);
       toast("Registration submitted successfully");
-      navigate("/leads");
+      navigate("/crm/leads");
     } catch (e) {
       toast(e.message, "error");
     } finally {

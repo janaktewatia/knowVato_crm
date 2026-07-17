@@ -5,37 +5,52 @@ import { Avatar } from "./ui";
 
 const NAV = [
   {
+    label: "Workspace",
+    items: [
+      { to: "/", end: true, icon: "house", label: "Knowvato Home", module: "dashboard" },
+    ],
+  },
+  {
     label: "CRM",
     items: [
-      { to: "/", end: true, icon: "speedometer2", label: "Dashboard", module: "dashboard" },
-      { to: "/leads", icon: "flag", label: "Leads", module: "leads" },
-      { to: "/followups", icon: "bell", label: "Follow-ups", module: "followups" },
-      { to: "/conversion", icon: "graph-up", label: "Conversion", module: "conversion" },
-      { to: "/contacts", icon: "people", label: "Contacts", module: "contacts" },
+      { to: "/crm", end: true, icon: "speedometer2", label: "Dashboard", module: "dashboard" },
+      { to: "/crm/leads", icon: "flag", label: "Leads", module: "leads" },
+      { to: "/crm/followups", icon: "bell", label: "Follow-ups", module: "followups" },
+      { to: "/crm/conversion", icon: "graph-up", label: "Conversion", module: "conversion" },
+      { to: "/crm/contacts", icon: "people", label: "Contacts", module: "contacts" },
     ],
   },
   {
     label: "Engage",
     items: [
-      { to: "/chat", icon: "chat-dots", label: "Conversations", module: "chat" },
-      { to: "/campaigns", icon: "send", label: "Bulk Campaigns", module: "blast" },
-      { to: "/history", icon: "clock-history", label: "Message History", module: "reports" },
-      { to: "/templates", icon: "file-text", label: "Templates", module: "blast" },
+      { to: "/crm/chat", icon: "chat-dots", label: "Conversations", module: "chat" },
+      { to: "/crm/campaigns", icon: "send", label: "Bulk Campaigns", module: "blast" },
+      { to: "/crm/history", icon: "clock-history", label: "Message History", module: "reports" },
+      { to: "/crm/templates", icon: "file-text", label: "Templates", module: "blast" },
     ],
   },
   {
     label: "Administration",
     items: [
-      { to: "/setup", icon: "gear", label: "Setup", module: "setup" },
-      { to: "/audit", icon: "shield-check", label: "Audit Logs", module: "reports" },
+      { to: "/crm/setup", icon: "gear", label: "Setup", module: "setup" },
+      { to: "/crm/audit", icon: "shield-check", label: "Audit Logs", module: "reports" },
     ],
   },
 ];
 
 const TITLES = {
-  "/": "Dashboard", "/leads": "Leads", "/followups": "Follow-ups", "/conversion": "Conversion Dashboard",
-  "/contacts": "Contacts", "/chat": "Conversations", "/campaigns": "Bulk Campaigns",
-  "/history": "Message History", "/templates": "Templates", "/setup": "Setup", "/audit": "Audit Logs",
+  "/": "Knowvato Home",
+  "/crm": "Dashboard",
+  "/crm/leads": "Leads",
+  "/crm/followups": "Follow-ups",
+  "/crm/conversion": "Conversion Dashboard",
+  "/crm/contacts": "Contacts",
+  "/crm/chat": "Conversations",
+  "/crm/campaigns": "Bulk Campaigns",
+  "/crm/history": "Message History",
+  "/crm/templates": "Templates",
+  "/crm/setup": "Setup",
+  "/crm/audit": "Audit Logs",
 };
 
 export default function Layout() {
@@ -63,7 +78,7 @@ export default function Layout() {
   }
 
   return (
-    <div className={`app-shell ${sidebarOpen ? "" : "sidebar-closed"}`}>
+    <div className={`crm-theme app-shell ${sidebarOpen ? "" : "sidebar-closed"}`}>
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className="brand">
@@ -74,7 +89,7 @@ export default function Layout() {
             </div>
           </div>
           <button
-            className="sidebar-toggle btn btn-sm btn-outline-light border-0"
+            className="sidebar-toggle btn btn-sm btn-outline-dark border-0"
             title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
             onClick={toggleSidebar}
           >
@@ -96,7 +111,7 @@ export default function Layout() {
                     end={it.end}
                     className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}
                     onClick={() => {
-                      if (it.to === "/setup") {
+                      if (it.to === "/crm/setup") {
                         setSidebarOpen(false);
                       }
                     }}
@@ -113,10 +128,10 @@ export default function Layout() {
         <div className="side-footer">
           <Avatar name={user?.name || "?"} size={30} />
           <div className="flex-grow-1 min-w-0">
-            <div className="text-white text-truncate" style={{ fontSize: 12.5 }}>{user?.name}</div>
+            <div className="text-dark text-truncate" style={{ fontSize: 12.5, fontWeight: 500 }}>{user?.name}</div>
             <div className="text-truncate" style={{ fontSize: 10.5, color: "#6b7480" }}>{user?.userType?.name}</div>
           </div>
-          <button className="btn btn-sm btn-outline-light border-0" title="Log out" onClick={logout}>
+          <button className="btn btn-sm btn-outline-dark border-0" title="Log out" onClick={logout}>
             <i className="bi bi-box-arrow-right"></i>
           </button>
         </div>

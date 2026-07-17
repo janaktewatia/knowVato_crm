@@ -20,6 +20,21 @@ import EnquiryForms from "./pages/EnquiryForms";
 import Audit from "./pages/Audit";
 import ClarwynEnquiryNow from "./pages/ClarwynEnquiryNow";
 
+// Knowvato Main Components
+import MainLayout from "./knowvato-main/routes/__root";
+import KnowvatoDashboard from "./knowvato-main/routes/index";
+import EventManagerLayout from "./knowvato-main/routes/modules.events";
+import EventsIndex from "./knowvato-main/routes/modules.events.index";
+import EventsCreate from "./knowvato-main/routes/modules.events.create";
+import EventsRegistrants from "./knowvato-main/routes/modules.events.registrants";
+import EventsScan from "./knowvato-main/routes/modules.events.scan";
+import EventsQr from "./knowvato-main/routes/modules.events.qr";
+import EventsBulkQr from "./knowvato-main/routes/modules.events.bulk-qr";
+import TemplatesWhatsapp from "./knowvato-main/routes/modules.templates-whatsapp";
+import TemplatesEmail from "./knowvato-main/routes/modules.templates-email";
+import TemplatesSms from "./knowvato-main/routes/modules.templates-sms";
+import IntegrationsWhatsapp from "./knowvato-main/routes/modules.integrations-whatsapp";
+import ModulePage from "./knowvato-main/routes/modules.$module";
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -33,12 +48,39 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
-      <Route path="/public/enquiry-form/:formId" element={<PublicEnquiryForm />} />
-      <Route path="/public/landing-page/:pageId" element={<PublicLandingPage />} />
-      <Route path="/clp/enquirenow" element={<ClarwynEnquiryNow />} />
+      <Route path="/login" element={user ? <Navigate to="/" replace /> : <div className="crm-theme"><Login /></div>} />
+      <Route path="/public/enquiry-form/:formId" element={<div className="crm-theme"><PublicEnquiryForm /></div>} />
+      <Route path="/public/landing-page/:pageId" element={<div className="crm-theme"><PublicLandingPage /></div>} />
+      <Route path="/clp/enquirenow" element={<div className="crm-theme"><ClarwynEnquiryNow /></div>} />
+
+      {/* Knowvato Main Routes */}
       <Route
         path="/"
+        element={
+          <Protected>
+            <MainLayout />
+          </Protected>
+        }
+      >
+        <Route index element={<KnowvatoDashboard />} />
+        <Route path="modules/events" element={<EventManagerLayout />}>
+          <Route index element={<EventsIndex />} />
+          <Route path="create" element={<EventsCreate />} />
+          <Route path="registrants" element={<EventsRegistrants />} />
+          <Route path="scan" element={<EventsScan />} />
+          <Route path="qr" element={<EventsQr />} />
+          <Route path="bulk-qr" element={<EventsBulkQr />} />
+        </Route>
+        <Route path="modules/templates-whatsapp" element={<TemplatesWhatsapp />} />
+        <Route path="modules/templates-email" element={<TemplatesEmail />} />
+        <Route path="modules/templates-sms" element={<TemplatesSms />} />
+        <Route path="modules/integrations-whatsapp" element={<IntegrationsWhatsapp />} />
+        <Route path="modules/:module" element={<ModulePage />} />
+      </Route>
+
+      {/* WhatsApp CRM Routes */}
+      <Route
+        path="/crm"
         element={
           <Protected>
             <Layout />
@@ -59,8 +101,10 @@ export default function App() {
         <Route path="setup/enquiry-forms" element={<EnquiryForms />} />
         <Route path="setup/enquiry-forms/:formId" element={<EnquiryForms />} />
         <Route path="audit" element={<Audit />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
+
+      {/* Fallback to main page */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

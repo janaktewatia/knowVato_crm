@@ -1,0 +1,15 @@
+node_modules/
+.env
+.env.*
+!.env.example
+dist/
+build/
+.DS_Store
+*.log
+platform/services/identity/keys/
+Desktop/
+**/node_modules/
+**/.env
+**/.env.*
+**/dist/
+**/build/

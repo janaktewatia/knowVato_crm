@@ -236,9 +236,9 @@ export default function EnquiryForms() {
     }
   };
 
-  const createNewForm = () => navigate("/setup/enquiry-forms/new");
-  const editForm = (form) => navigate(`/setup/enquiry-forms/${form._id}`);
-  const closeEditor = () => navigate("/setup?active=enquiry-form");
+  const createNewForm = () => navigate("/crm/setup/enquiry-forms/new");
+  const editForm = (form) => navigate(`/crm/setup/enquiry-forms/${form._id}`);
+  const closeEditor = () => navigate("/crm/setup?active=enquiry-form");
   const openPreview = (form) => setPreviewForm(form);
   const closePreview = () => setPreviewForm(null);
 
@@ -340,7 +340,7 @@ export default function EnquiryForms() {
       : [...forms, nextForm];
 
     await saveConfig(nextForms);
-    navigate("/setup?active=enquiry-form");
+    navigate("/crm/setup?active=enquiry-form");
   };
 
   const displayedForms = forms.filter((form) => form.name.toLowerCase().includes((form?.name || "").toLowerCase()));
