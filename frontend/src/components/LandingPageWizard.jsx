@@ -572,30 +572,29 @@ export default function LandingPageWizard({ onSelect, onCancel }) {
             {LAYOUT_FORMATS.map((style) => (
               <div className="col-sm-6 col-md-4 col-lg-3" key={style.id}>
                 <div
-                  className="card h-100 p-2 cursor-pointer hover-format-card border"
-                  onClick={() => handleSelectFormat(style.id)}
+                  className="card h-100 p-2.5 border shadow-sm"
                   style={{
-                    borderRadius: "12px",
-                    transition: "all 0.25s ease-in-out",
-                    cursor: "pointer",
+                    borderRadius: "10px",
                     background: "#ffffff",
                     borderColor: "#e2e8f0"
                   }}
                 >
-                  {/* Visual Miniature Wireframe Mockup Container with Overlay */}
-                  <div className="position-relative overflow-hidden rounded-3 format-card-media-wrapper">
+                  {/* Visual Miniature Wireframe Mockup Container */}
+                  <div className="position-relative overflow-hidden rounded-2 format-card-media-wrapper" style={{ height: "110px" }}>
                     {renderMiniMockup(style.id, selectedForm.color, selectedForm.id)}
-                    <div className="format-card-hover-overlay d-flex align-items-center justify-content-center">
-                      <button className="btn btn-xs btn-primary fw-bold text-white shadow" style={{ fontSize: "10px", borderRadius: "20px", padding: "4px 12px" }}>
-                        Choose Layout <i className="bi bi-arrow-right-short ms-0.5"></i>
-                      </button>
-                    </div>
                   </div>
 
-                  <div className="text-start mt-2 px-1 pb-1">
-                    <span className="fw-bold text-dark d-block text-truncate" style={{ fontSize: "11.5px" }} title={style.id === "blank" ? "Blank Scratch" : style.label}>
+                  <div className="text-start mt-2 px-1 pb-1 flex-grow-1 d-flex flex-column justify-content-between">
+                    <span className="fw-semibold text-dark d-block text-truncate mb-2" style={{ fontSize: "12px" }} title={style.id === "blank" ? "Blank Scratch" : style.label}>
                       {style.id === "blank" ? "Blank Scratch" : style.label}
                     </span>
+                    <button
+                      className="btn btn-sm btn-primary w-100 fw-medium shadow-xs"
+                      style={{ fontSize: "11px", padding: "4px 8px" }}
+                      onClick={() => handleSelectFormat(style.id)}
+                    >
+                      Choose Layout <i className="bi bi-arrow-right-short ms-1"></i>
+                    </button>
                   </div>
                 </div>
               </div>

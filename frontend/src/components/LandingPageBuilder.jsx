@@ -19,7 +19,7 @@ export default function LandingPageBuilder({ initialPage, formsList, onSave, onC
     theme: initialPage?.theme || {
       primaryColor: "#2249b7",
       secondaryColor: "#4f46e5",
-      fontFamily: "Outfit",
+      fontFamily: "Inter",
       borderRadius: "12px",
       backgroundColor: "#f8fafc"
     },
@@ -1222,20 +1222,10 @@ export default function LandingPageBuilder({ initialPage, formsList, onSave, onC
                   ].map((style) => (
                     <div
                       key={style.id}
-                      className="card p-2 border border-light shadow-xs cursor-pointer hover-preset-card"
+                      className="card p-2.5 border border-light shadow-xs"
                       style={{
                         borderRadius: "8px",
-                        transition: "all 0.2s ease-in-out",
-                        cursor: "pointer",
                         background: "#ffffff"
-                      }}
-                      onClick={() => {
-                        const customContent = {
-                          ...(hoveredPresetItem.defaultContent || {}),
-                          presetType: style.id
-                        };
-                        addComponent(hoveredPresetItem, customContent);
-                        setHoveredPresetItem(null);
                       }}
                     >
                       <div className="d-flex flex-column gap-2">
@@ -1243,12 +1233,26 @@ export default function LandingPageBuilder({ initialPage, formsList, onSave, onC
                         {renderStyleMockup(hoveredPresetItem.type, style.id)}
 
                         <div className="text-center">
-                          <span className="fw-bold text-dark" style={{ fontSize: "10px" }}>{getStyleName(hoveredPresetItem.type, style.id).split(":")[0]}</span>
-                          <div className="text-muted" style={{ fontSize: "8px", marginTop: "2px", lineHeight: "1.1" }}>{getStyleName(hoveredPresetItem.type, style.id).split(":")[1]?.trim()}</div>
+                          <span className="fw-semibold text-dark d-block" style={{ fontSize: "10px" }}>{getStyleName(hoveredPresetItem.type, style.id).split(":")[0]}</span>
+                          <div className="text-muted mb-1" style={{ fontSize: "8px", marginTop: "2px", lineHeight: "1.1" }}>{getStyleName(hoveredPresetItem.type, style.id).split(":")[1]?.trim()}</div>
+                          <button
+                            className="btn btn-sm btn-primary w-100 fw-medium shadow-xs"
+                            style={{ fontSize: "10px", padding: "3px 6px" }}
+                            onClick={() => {
+                              const customContent = {
+                                ...(hoveredPresetItem.defaultContent || {}),
+                                presetType: style.id
+                              };
+                              addComponent(hoveredPresetItem, customContent);
+                              setHoveredPresetItem(null);
+                            }}
+                          >
+                            Apply Style
+                          </button>
                         </div>
                       </div>
                     </div>
-                  ))}`
+                  ))}
                 </div>
               </>
             )}

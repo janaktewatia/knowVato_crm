@@ -11,6 +11,7 @@ import { FollowUp } from "../models/FollowUp";
 import { Template, Campaign, Conversation, Message } from "../models/Messaging";
 import { Integration, AuditLog } from "../models/System";
 import { WhatsAppAccount } from "../models/WhatsAppAccount";
+import { ChatbotRule } from "../models/ChatbotRule";
 
 const fullPerm = (m: string): IPermission => ({ module: m, view: true, create: true, edit: true, del: true });
 
@@ -21,7 +22,7 @@ async function wipe() {
     Contact.deleteMany({}), Lead.deleteMany({}), FollowUp.deleteMany({}),
     Template.deleteMany({}), Campaign.deleteMany({}), Conversation.deleteMany({}),
     Message.deleteMany({}), Integration.deleteMany({}), AuditLog.deleteMany({}),
-    WhatsAppAccount.deleteMany({}),
+    WhatsAppAccount.deleteMany({}), ChatbotRule.deleteMany({}),
     Service.deleteMany({}),
   ]);
 }
@@ -243,6 +244,56 @@ async function seed() {
       tenant: T, label: "Pinnacle – Marketing number", vendor: "pinnacle", active: false,
       senderNumber: "+91 99999 00003", apiBaseUrl: "", apiKey: "", verifyToken: "pinnacle-verify",
       health: "unknown", healthNote: "Add Pinnacle API key + base URL (from their doc) to go live",
+    },
+  ]);
+
+  /* Automated Chatbot Rules */
+  await ChatbotRule.create([
+    {
+      tenant: T,
+      name: "Fee Structure Inquiry Bot",
+      triggerType: "keyword",
+      keywords: ["fee", "fees", "cost", "pricing", "payment"],
+      matchType: "contains",
+      actionType: "send_buttons",
+      actionPayload: {
+        text: "Here is information regarding Greenwood Fee Structure for 2026-27. What would you like to explore?",
+        buttons: [
+          { id: "fee_class11", title: "Class XI Fees" },
+          { id: "fee_hostel", title: "Hostel & Transport" },
+          { id: "talk_counsellor", title: "Talk to Counsellor" },
+        ],
+      },
+      active: true,
+      order: 1,
+    },
+    {
+      tenant: T,
+      name: "Admission Inquiry Auto-Response",
+      triggerType: "keyword",
+      keywords: ["admission", "apply", "course", "seat", "join"],
+      matchType: "contains",
+      actionType: "send_template",
+      actionPayload: {
+        templateName: "admission_welcome",
+        languageCode: "en",
+        counsellorName: "Priya Kothari",
+      },
+      active: true,
+      order: 2,
+    },
+    {
+      tenant: T,
+      name: "Default Greeting Menu",
+      triggerType: "default",
+      keywords: [],
+      matchType: "contains",
+      actionType: "send_text",
+      actionPayload: {
+        text: "Welcome to Greenwood International School Admissions Helpline! Reply 'FEE' for fee structure or 'ADMISSION' to apply.",
+      },
+      active: true,
+      order: 99,
     },
   ]);
 

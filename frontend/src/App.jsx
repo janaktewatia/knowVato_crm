@@ -11,14 +11,15 @@ import Conversion from "./pages/Conversion";
 import Contacts from "./pages/Contacts";
 import Conversations from "./pages/Conversations";
 import Campaigns from "./pages/Campaigns";
-import MessageHistory from "./pages/MessageHistory";
 import Templates from "./pages/Templates";
+import ChatbotRules from "./pages/ChatbotRules";
 import Setup from "./pages/Setup";
 import PublicEnquiryForm from "./pages/PublicEnquiryForm";
 import PublicLandingPage from "./pages/PublicLandingPage";
 import EnquiryForms from "./pages/EnquiryForms";
 import Audit from "./pages/Audit";
 import ClarwynEnquiryNow from "./pages/ClarwynEnquiryNow";
+import MessageHistory from "./pages/MessageHistory";
 
 // Knowvato Main Components
 import MainLayout from "./knowvato-main/routes/__root";
@@ -35,6 +36,7 @@ import TemplatesEmail from "./knowvato-main/routes/modules.templates-email";
 import TemplatesSms from "./knowvato-main/routes/modules.templates-sms";
 import IntegrationsWhatsapp from "./knowvato-main/routes/modules.integrations-whatsapp";
 import ModulePage from "./knowvato-main/routes/modules.$module";
+import EasyInOutPage from "./easy-inout/EasyInOutPage";
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -63,6 +65,7 @@ export default function App() {
         }
       >
         <Route index element={<KnowvatoDashboard />} />
+        <Route path="modules/easy-inout/*" element={<EasyInOutPage />} />
         <Route path="modules/events" element={<EventManagerLayout />}>
           <Route index element={<EventsIndex />} />
           <Route path="create" element={<EventsCreate />} />
@@ -71,10 +74,6 @@ export default function App() {
           <Route path="qr" element={<EventsQr />} />
           <Route path="bulk-qr" element={<EventsBulkQr />} />
         </Route>
-        <Route path="modules/templates-whatsapp" element={<TemplatesWhatsapp />} />
-        <Route path="modules/templates-email" element={<TemplatesEmail />} />
-        <Route path="modules/templates-sms" element={<TemplatesSms />} />
-        <Route path="modules/integrations-whatsapp" element={<IntegrationsWhatsapp />} />
         <Route path="modules/:module" element={<ModulePage />} />
       </Route>
 
@@ -97,6 +96,7 @@ export default function App() {
         <Route path="campaigns" element={<Campaigns />} />
         <Route path="history" element={<MessageHistory />} />
         <Route path="templates" element={<Templates />} />
+        <Route path="chatbot" element={<ChatbotRules />} />
         <Route path="setup" element={<Setup />} />
         <Route path="setup/enquiry-forms" element={<EnquiryForms />} />
         <Route path="setup/enquiry-forms/:formId" element={<EnquiryForms />} />

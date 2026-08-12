@@ -9,6 +9,7 @@ import * as leadC from "../controllers/leadController";
 import * as trackC from "../controllers/serviceTrackController";
 import * as fuC from "../controllers/followUpController";
 import * as msgC from "../controllers/messagingController";
+import * as fbC from "../controllers/facebookController";
 
 import { Lead } from "../models/Lead";
 import { FollowUp } from "../models/FollowUp";
@@ -265,19 +266,40 @@ const intCrud = crud(Integration, { module: "setup" });
 r.get("/integrations", require_("setup", "view"), intCrud.list);
 r.patch("/integrations/:id", require_("setup", "edit"), intCrud.update);
 
-/* ---- WhatsApp accounts (multi-vendor; one active) ---- */
+/* ---- WhatsApp accounts & Meta Graph API Profile ---- */
 r.get("/whatsapp-accounts", require_("setup", "view"), msgC.listAccounts);
 r.post("/whatsapp-accounts", require_("setup", "create"), msgC.createAccount);
 r.patch("/whatsapp-accounts/:id", require_("setup", "edit"), msgC.updateAccount);
 r.delete("/whatsapp-accounts/:id", require_("setup", "del"), msgC.deleteAccount);
 r.post("/whatsapp-accounts/:id/activate", require_("setup", "edit"), msgC.activate);
+r.get("/whatsapp-accounts/meta-profile", require_("setup", "view"), msgC.getMetaProfile);
+r.post("/whatsapp-accounts/meta-profile", require_("setup", "edit"), msgC.updateMetaProfile);
 
-/* ---- Templates ---- */
+/* ---- Facebook Lead Integration accounts ---- */
+r.get("/facebook-accounts", require_("setup", "view"), fbC.listAccounts);
+r.post("/facebook-accounts", require_("setup", "create"), fbC.createAccount);
+r.patch("/facebook-accounts/:id", require_("setup", "edit"), fbC.updateAccount);
+r.delete("/facebook-accounts/:id", require_("setup", "del"), fbC.deleteAccount);
+r.post("/facebook-accounts/:id/activate", require_("setup", "edit"), fbC.activate);
+r.post("/facebook-accounts/:id/test", require_("setup", "edit"), fbC.testConnection);
+r.post("/facebook-accounts/:id/fetch-forms", require_("setup", "view"), fbC.fetchLeadForms);
+
+/* ---- Meta Message Templates ---- */
 const tplCrud = crud(Template, { module: "blast", searchFields: ["name"] });
 r.get("/templates", require_("blast", "view"), tplCrud.list);
 r.post("/templates", require_("blast", "create"), tplCrud.create);
+r.post("/templates/create-meta", require_("blast", "create"), msgC.createMetaTemplate);
+r.post("/templates/sync-meta", require_("blast", "edit"), msgC.syncMetaTemplates);
+r.delete("/templates/:name/meta", require_("blast", "del"), msgC.deleteMetaTemplate);
 r.patch("/templates/:id", require_("blast", "edit"), tplCrud.update);
 r.delete("/templates/:id", require_("blast", "del"), tplCrud.remove);
+
+/* ---- Chatbot & Automation Engine Rules ---- */
+r.get("/chatbot-rules", require_("workflows", "view"), msgC.listChatbotRules);
+r.post("/chatbot-rules", require_("workflows", "create"), msgC.createChatbotRule);
+r.patch("/chatbot-rules/:id", require_("workflows", "edit"), msgC.updateChatbotRule);
+r.delete("/chatbot-rules/:id", require_("workflows", "del"), msgC.deleteChatbotRule);
+r.post("/chatbot-rules/test", require_("workflows", "create"), msgC.testChatbotRule);
 
 /* ---- Campaigns ---- */
 const campCrud = crud(Campaign, { module: "blast", searchFields: ["name", "template"] });

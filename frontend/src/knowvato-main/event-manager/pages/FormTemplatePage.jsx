@@ -163,49 +163,41 @@ const FormTemplatePage = () => {
               <div className="row g-3">
                 {filteredTemplates.map((template) => (
                   <div key={template._id} className="col-md-6 col-lg-4">
-                    <div className="template-card">
-                      <div
-                        className="template-card-header"
-                        style={{
-                          background: `linear-gradient(135deg, ${template.color || "#6366f1"} 0%, ${adjustBrightness(template.color || "#6366f1", -20)} 100%)`,
-                        }}
-                      >
-                        <div className="template-icon">
-                          {template.icon || "📋"}
+                    <div className="card h-100 border shadow-xs p-3 d-flex flex-column justify-content-between" style={{ borderRadius: "10px", background: "var(--card)" }}>
+                      <div>
+                        <div className="d-flex align-items-center justify-content-between mb-2">
+                          <div className="d-flex align-items-center gap-2">
+                            <span className="fs-5 p-1 rounded bg-light">{template.icon || "📋"}</span>
+                            <h6 className="fw-semibold mb-0 text-truncate" style={{ fontSize: "14px" }}>
+                              {template.templateName}
+                            </h6>
+                          </div>
+                          {template.isIndustryTemplate && (
+                            <span className="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style={{ fontSize: "10px" }}>
+                              Industry
+                            </span>
+                          )}
                         </div>
-                        {template.isIndustryTemplate && (
-                          <span className="badge bg-white text-dark badge-sm">
-                            Industry
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="template-card-body">
-                        <h6 className="fw-bold mb-1 text-truncate">
-                          {template.templateName}
-                        </h6>
-                        <p className="text-muted small mb-2 text-truncate">
-                          {template.description}
+                        <p className="text-muted small mb-3 text-truncate" style={{ fontSize: "12px" }}>
+                          {template.description || "Pre-built form template"}
                         </p>
-
-                        <div className="template-meta">
-                          <span className="badge bg-light text-dark">
+                        <div className="d-flex gap-1.5 mb-3 flex-wrap">
+                          <span className="badge bg-light text-dark fw-normal border" style={{ fontSize: "11px" }}>
                             {template.category}
                           </span>
-                          <span className="badge bg-light text-dark">
+                          <span className="badge bg-light text-dark fw-normal border" style={{ fontSize: "11px" }}>
                             {template.fields?.length || 0} fields
                           </span>
                         </div>
                       </div>
 
-                      <div className="template-card-footer">
-                        <button
-                          className="btn btn-sm btn-primary w-100"
-                          onClick={() => handleUseTemplate(template)}
-                        >
-                          <FiDownload size={14} className="me-1" /> Use Template
-                        </button>
-                      </div>
+                      <button
+                        className="btn btn-sm btn-primary w-100 fw-medium shadow-xs"
+                        style={{ fontSize: "12px" }}
+                        onClick={() => handleUseTemplate(template)}
+                      >
+                        <FiDownload size={13} className="me-1" /> Use Template
+                      </button>
                     </div>
                   </div>
                 ))}

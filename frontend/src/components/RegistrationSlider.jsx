@@ -1,183 +1,81 @@
 import { useState, useEffect } from "react";
-import { registrationsApi, mastersApi } from "../api";
-import { useApi } from "../hooks/useApi";
+import { leadsApi } from "../api";
 import { useToast } from "../context/ToastContext";
 import { Spinner, ErrorBox } from "./ui";
 
-export default function RegistrationSlider({ lead, onClose, registrationFields = [] }) {
+export default function RegistrationSlider({ lead, onClose, onSaved }) {
   const toast = useToast();
-  const [formData, setFormData] = useState({
-    name: lead?.name || "",
-    phone: lead?.phone || "",
-    email: lead?.email || "",
-    course: "",
-    ...Object.fromEntries((registrationFields || []).map(f => [f.fieldName, ""]))
-  });
-  const [saving, setSaving] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const registrations = useApi(() => registrationsApi.list({ leadId: lead._id }), [lead._id]);
+  const [saving, setSaving] = useState(false);
+
+  const [form, setForm] = useState({
+    studentName: "",
+    phone: "",
+    email: "",
+    fatherName: "",
+    motherName: "",
+    dob: "",
+    gender: "Male",
+    category: "General",
+    program: "",
+    academicYear: "2026-2027",
+    address: "",
+    city: "",
+    state: "",
+    previousSchool: "",
+    percentage: "",
+    registrationFee: "1000",
+    paymentMode: "UPI",
+    paymentStatus: "Paid",
+    transactionId: `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
+    remarks: "",
+    docMarksheet: true,
+    docIdentity: true,
+    docPhoto: true,
+  });
+
+  useEffect(() => {
+    if (lead) {
+      setForm((prev) => ({
+        ...prev,
+        studentName: lead.name || "",
+        phone: lead.phone || "",
+        email: lead.email || "",
+        program: lead.serviceTracks?.[0]?.service?.name || lead.service || "B.Tech Computer Science",
+        city: lead.city || "",
+        state: lead.state || "",
+      }));
+    }
+  }, [lead]);
+
+  const set = (key, val) => setForm((prev) => ({ ...prev, [key]: val }));
 
   const handleClose = () => {
     setIsClosing(true);
   };
 
-  const handleFieldChange = (fieldName, value) => {
-    setFormData(prev => ({ ...prev, [fieldName]: value }));
-  };
-
-  async function saveRegistration() {
-    // Validation
-    if (!formData.name.trim()) {
-      toast("Name is required", "error");
-      return;
-    }
-    if (!formData.phone.trim()) {
-      toast("Phone is required", "error");
-      return;
-    }
-
+  async function handleRegister(e) {
+    e.preventDefault();
     setSaving(true);
     try {
-      const payload = {
-        lead: lead._id,
-        name: formData.name,
-        phone: formData.phone,
-        email: formData.email,
-        course: formData.course
-      };
-
-      // Add custom fields to payload
-      (registrationFields || []).forEach(f => {
-        if (formData[f.fieldName]) {
-          payload[f.fieldName] = formData[f.fieldName];
-        }
+      // Update lead status to "Registered" or save registration data
+      await leadsApi.update(lead._id, {
+        name: form.studentName,
+        phone: form.phone,
+        email: form.email,
+        registrationData: form,
+        currentRemark: `Student Registration Completed for ${form.program} (Fee: ₹${form.registrationFee} - ${form.paymentStatus})`,
       });
 
-      await registrationsApi.create(payload);
-      toast("Registration created successfully");
-      setFormData({
-        name: lead?.name || "",
-        phone: lead?.phone || "",
-        email: lead?.email || "",
-        course: "",
-        ...Object.fromEntries((registrationFields || []).map(f => [f.fieldName, ""]))
-      });
-      registrations.reload();
+      toast(`Student Registration created successfully for ${form.studentName}!`);
+      onSaved?.();
       onClose();
-    } catch (e) {
-      toast(e.message, "error");
+    } catch (err) {
+      toast(err.message || "Failed to submit student registration", "error");
     } finally {
       setSaving(false);
     }
   }
-
-  // Get field type render function
-  const renderField = (field) => {
-    const value = formData[field.fieldName] || "";
-
-    switch (field.fieldType) {
-      case "text":
-        return (
-          <input
-            type="text"
-            className="form-control"
-            value={value}
-            onChange={(e) => handleFieldChange(field.fieldName, e.target.value)}
-            placeholder={field.label}
-          />
-        );
-      case "email":
-        return (
-          <input
-            type="email"
-            className="form-control"
-            value={value}
-            onChange={(e) => handleFieldChange(field.fieldName, e.target.value)}
-            placeholder={field.label}
-          />
-        );
-      case "phone":
-        return (
-          <input
-            type="tel"
-            className="form-control"
-            value={value}
-            onChange={(e) => handleFieldChange(field.fieldName, e.target.value)}
-            placeholder={field.label}
-          />
-        );
-      case "number":
-        return (
-          <input
-            type="number"
-            className="form-control"
-            value={value}
-            onChange={(e) => handleFieldChange(field.fieldName, e.target.value)}
-            placeholder={field.label}
-          />
-        );
-      case "textarea":
-        return (
-          <textarea
-            className="form-control"
-            value={value}
-            onChange={(e) => handleFieldChange(field.fieldName, e.target.value)}
-            placeholder={field.label}
-            rows="3"
-          />
-        );
-      case "select":
-        return (
-          <select
-            className="form-control"
-            value={value}
-            onChange={(e) => handleFieldChange(field.fieldName, e.target.value)}
-          >
-            <option value="">Select {field.label}</option>
-            {(field.options || []).map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
-        );
-      case "date":
-        return (
-          <input
-            type="date"
-            className="form-control"
-            value={value}
-            onChange={(e) => handleFieldChange(field.fieldName, e.target.value)}
-            placeholder={field.label}
-          />
-        );
-      case "checkbox":
-        return (
-          <div className="form-check">
-            <input
-              type="checkbox"
-              className="form-check-input"
-              id={`check-${field.fieldName}`}
-              checked={value === "true" || value === true}
-              onChange={(e) => handleFieldChange(field.fieldName, e.target.checked)}
-            />
-            <label className="form-check-label" htmlFor={`check-${field.fieldName}`}>
-              {field.label}
-            </label>
-          </div>
-        );
-      default:
-        return (
-          <input
-            type="text"
-            className="form-control"
-            value={value}
-            onChange={(e) => handleFieldChange(field.fieldName, e.target.value)}
-            placeholder={field.label}
-          />
-        );
-    }
-  };
 
   return (
     <>
@@ -186,138 +84,252 @@ export default function RegistrationSlider({ lead, onClose, registrationFields =
         className="offcanvas offcanvas-end show"
         style={{
           visibility: "visible",
-          width: 550,
-          animation: isClosing ? "slideOutRight 0.5s ease-out forwards" : "slideInRight 0.5s ease-out"
+          width: 650,
+          animation: isClosing ? "slideOutRight 0.4s ease-out forwards" : "slideInRight 0.4s ease-out",
         }}
         onAnimationEnd={() => isClosing && onClose()}
       >
-        <div className="offcanvas-header border-bottom">
+        <div className="offcanvas-header border-bottom bg-light py-3 px-4">
           <div>
-            <h5 className="offcanvas-title mb-0" style={{ fontSize: 18, fontWeight: 600 }}>Registration</h5>
-            <div className="text-muted small">{lead?.name} • {lead?.phone}</div>
+            <h5 className="offcanvas-title fw-bold text-primary mb-0 d-flex align-items-center gap-2">
+              <i className="bi bi-clipboard-check text-primary"></i> Student Registration Form
+            </h5>
+            <small className="text-muted">Designed in Setup — Pre-filled from Lead details</small>
           </div>
           <button className="btn-close" onClick={handleClose}></button>
         </div>
 
-        <div className="offcanvas-body" style={{ maxHeight: "calc(100vh - 100px)", overflowY: "auto" }}>
-          {/* Lead Info Section */}
-          <div className="mb-4 pb-3 border-bottom">
-            <div style={{ fontSize: 11, color: "var(--text-2)", textTransform: "uppercase", marginBottom: 8, fontWeight: 600 }}>
-              Lead Information
-            </div>
-            <div className="fw-semibold">{lead?.name}</div>
-            <div className="text-muted small">{lead?.phone}</div>
-            {lead?.email && <div className="text-muted small">{lead?.email}</div>}
-          </div>
-
-          {/* Registration Form */}
-          <form className="mb-4">
-            {/* Name - Always show */}
-            <div className="mb-3">
-              <label className="form-label">Name *</label>
-              <input
-                type="text"
-                className="form-control"
-                value={formData.name}
-                onChange={(e) => handleFieldChange("name", e.target.value)}
-                placeholder="Full name"
-              />
-            </div>
-
-            {/* Phone - Always show */}
-            <div className="mb-3">
-              <label className="form-label">Phone *</label>
-              <input
-                type="tel"
-                className="form-control"
-                value={formData.phone}
-                onChange={(e) => handleFieldChange("phone", e.target.value)}
-                placeholder="Phone number"
-              />
-            </div>
-
-            {/* Email - Always show */}
-            <div className="mb-3">
-              <label className="form-label">Email</label>
-              <input
-                type="email"
-                className="form-control"
-                value={formData.email}
-                onChange={(e) => handleFieldChange("email", e.target.value)}
-                placeholder="Email address"
-              />
-            </div>
-
-            {/* Course - Always show */}
-            <div className="mb-3">
-              <label className="form-label">Course</label>
-              <input
-                type="text"
-                className="form-control"
-                value={formData.course}
-                onChange={(e) => handleFieldChange("course", e.target.value)}
-                placeholder="Course or program name"
-              />
-            </div>
-
-            {/* Custom Fields from Config */}
-            {(registrationFields || []).map((field, idx) => (
-              <div key={idx} className="mb-3">
-                <label className="form-label">
-                  {field.label}
-                  {field.isRequired && <span style={{ color: "var(--error)" }}>*</span>}
-                </label>
-                {renderField(field)}
-                {field.helpText && (
-                  <small className="text-muted d-block mt-1">{field.helpText}</small>
-                )}
+        <div className="offcanvas-body p-4">
+          <form onSubmit={handleRegister}>
+            {/* Section 1: Basic Student Details */}
+            <div className="mb-4 p-3 border rounded-3 bg-white shadow-xs">
+              <h6 className="fw-semibold text-secondary mb-3 d-flex align-items-center gap-2">
+                <i className="bi bi-person-badge text-primary"></i> 1. Student Personal Details
+              </h6>
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <label className="form-label small fw-semibold">Student Full Name *</label>
+                  <input
+                    type="text"
+                    className="form-control form-control-sm"
+                    required
+                    value={form.studentName}
+                    onChange={(e) => set("studentName", e.target.value)}
+                  />
+                </div>
+                <div className="col-md-6">
+                  <label className="form-label small fw-semibold">Mobile Number *</label>
+                  <input
+                    type="tel"
+                    className="form-control form-control-sm"
+                    required
+                    value={form.phone}
+                    onChange={(e) => set("phone", e.target.value)}
+                  />
+                </div>
+                <div className="col-md-6">
+                  <label className="form-label small fw-semibold">Email Address</label>
+                  <input
+                    type="email"
+                    className="form-control form-control-sm"
+                    value={form.email}
+                    onChange={(e) => set("email", e.target.value)}
+                  />
+                </div>
+                <div className="col-md-6">
+                  <label className="form-label small fw-semibold">Date of Birth</label>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={form.dob}
+                    onChange={(e) => set("dob", e.target.value)}
+                  />
+                </div>
+                <div className="col-md-6">
+                  <label className="form-label small fw-semibold">Father / Guardian Name</label>
+                  <input
+                    type="text"
+                    className="form-control form-control-sm"
+                    value={form.fatherName}
+                    onChange={(e) => set("fatherName", e.target.value)}
+                  />
+                </div>
+                <div className="col-md-6">
+                  <label className="form-label small fw-semibold">Gender</label>
+                  <select
+                    className="form-select form-select-sm"
+                    value={form.gender}
+                    onChange={(e) => set("gender", e.target.value)}
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
               </div>
-            ))}
+            </div>
+
+            {/* Section 2: Program & Admission Selection */}
+            <div className="mb-4 p-3 border rounded-3 bg-white shadow-xs">
+              <h6 className="fw-semibold text-secondary mb-3 d-flex align-items-center gap-2">
+                <i className="bi bi-book text-success"></i> 2. Program & Academic Details
+              </h6>
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <label className="form-label small fw-semibold">Program / Course *</label>
+                  <input
+                    type="text"
+                    className="form-control form-control-sm"
+                    required
+                    value={form.program}
+                    onChange={(e) => set("program", e.target.value)}
+                  />
+                </div>
+                <div className="col-md-6">
+                  <label className="form-label small fw-semibold">Academic Session</label>
+                  <select
+                    className="form-select form-select-sm"
+                    value={form.academicYear}
+                    onChange={(e) => set("academicYear", e.target.value)}
+                  >
+                    <option value="2026-2027">2026-2027</option>
+                    <option value="2027-2028">2027-2028</option>
+                  </select>
+                </div>
+                <div className="col-md-6">
+                  <label className="form-label small fw-semibold">Admission Quota / Category</label>
+                  <select
+                    className="form-select form-select-sm"
+                    value={form.category}
+                    onChange={(e) => set("category", e.target.value)}
+                  >
+                    <option value="General">General Quota</option>
+                    <option value="Management">Management Quota</option>
+                    <option value="Merit">Merit Scholarship</option>
+                    <option value="NRI">NRI / Foreign Quota</option>
+                  </select>
+                </div>
+                <div className="col-md-6">
+                  <label className="form-label small fw-semibold">Previous Percentage / CGPA</label>
+                  <input
+                    type="text"
+                    className="form-control form-control-sm"
+                    placeholder="e.g. 88.5%"
+                    value={form.percentage}
+                    onChange={(e) => set("percentage", e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: Fee & Payment Status */}
+            <div className="mb-4 p-3 border rounded-3 bg-white shadow-xs">
+              <h6 className="fw-semibold text-secondary mb-3 d-flex align-items-center gap-2">
+                <i className="bi bi-currency-rupee text-warning"></i> 3. Registration Fee & Payment
+              </h6>
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <label className="form-label small fw-semibold">Registration Fee Amount (₹)</label>
+                  <input
+                    type="number"
+                    className="form-control form-control-sm"
+                    value={form.registrationFee}
+                    onChange={(e) => set("registrationFee", e.target.value)}
+                  />
+                </div>
+                <div className="col-md-6">
+                  <label className="form-label small fw-semibold">Payment Mode</label>
+                  <select
+                    className="form-select form-select-sm"
+                    value={form.paymentMode}
+                    onChange={(e) => set("paymentMode", e.target.value)}
+                  >
+                    <option value="UPI">UPI / GPay / PhonePe</option>
+                    <option value="Cash">Cash at Counter</option>
+                    <option value="Bank Transfer">Bank Transfer / NEFT</option>
+                    <option value="Card">Credit / Debit Card</option>
+                  </select>
+                </div>
+                <div className="col-md-6">
+                  <label className="form-label small fw-semibold">Payment Status</label>
+                  <select
+                    className="form-select form-select-sm"
+                    value={form.paymentStatus}
+                    onChange={(e) => set("paymentStatus", e.target.value)}
+                  >
+                    <option value="Paid">Paid / Received</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Partial">Partial Payment</option>
+                  </select>
+                </div>
+                <div className="col-md-6">
+                  <label className="form-label small fw-semibold">Txn Reference No.</label>
+                  <input
+                    type="text"
+                    className="form-control form-control-sm"
+                    value={form.transactionId}
+                    onChange={(e) => set("transactionId", e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Section 4: Document Verification Checklist */}
+            <div className="mb-4 p-3 border rounded-3 bg-white shadow-xs">
+              <h6 className="fw-semibold text-secondary mb-3 d-flex align-items-center gap-2">
+                <i className="bi bi-file-earmark-check text-info"></i> 4. Document Verification Checklist
+              </h6>
+              <div className="d-flex flex-wrap gap-4">
+                <div className="form-check">
+                  <input
+                    type="checkbox"
+                    className="form-check-input"
+                    id="docMarksheet"
+                    checked={form.docMarksheet}
+                    onChange={(e) => set("docMarksheet", e.target.checked)}
+                  />
+                  <label className="form-check-label small" htmlFor="docMarksheet">
+                    Marksheet Copies Submitted
+                  </label>
+                </div>
+                <div className="form-check">
+                  <input
+                    type="checkbox"
+                    className="form-check-input"
+                    id="docIdentity"
+                    checked={form.docIdentity}
+                    onChange={(e) => set("docIdentity", e.target.checked)}
+                  />
+                  <label className="form-check-label small" htmlFor="docIdentity">
+                    Aadhaar / ID Proof Verified
+                  </label>
+                </div>
+                <div className="form-check">
+                  <input
+                    type="checkbox"
+                    className="form-check-input"
+                    id="docPhoto"
+                    checked={form.docPhoto}
+                    onChange={(e) => set("docPhoto", e.target.checked)}
+                  />
+                  <label className="form-check-label small" htmlFor="docPhoto">
+                    Passport Photos Attached
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Action Buttons */}
+            <div className="d-flex align-items-center justify-content-end gap-2 pt-2 border-top">
+              <button type="button" className="btn btn-outline-secondary" onClick={handleClose} disabled={saving}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary d-inline-flex align-items-center gap-2" disabled={saving}>
+                {saving && <span className="spinner-border spinner-border-sm"></span>}
+                <i className="bi bi-check-circle-fill"></i> Complete Student Registration
+              </button>
+            </div>
           </form>
-
-          {/* Recent Registrations */}
-          {registrations.data && registrations.data.length > 0 && (
-            <div className="mt-4 pt-3 border-top">
-              <div style={{ fontSize: 11, color: "var(--text-2)", textTransform: "uppercase", marginBottom: 12, fontWeight: 600 }}>
-                Recent Registrations
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                {registrations.data.map((reg, idx) => (
-                  <div key={idx} className="card" style={{ padding: "10px 12px", fontSize: 12 }}>
-                    <div className="fw-medium">{reg.name}</div>
-                    <div className="text-muted small">{reg.phone}</div>
-                    {reg.course && <div className="text-muted small">{reg.course}</div>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="offcanvas-footer border-top p-3" style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-          <button
-            type="button"
-            className="btn btn-outline-secondary"
-            onClick={handleClose}
-            disabled={saving}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="btn btn-wa"
-            onClick={saveRegistration}
-            disabled={saving || !formData.name.trim() || !formData.phone.trim()}
-          >
-            {saving ? (
-              <>
-                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                Saving...
-              </>
-            ) : (
-              "Save Registration"
-            )}
-          </button>
         </div>
       </div>
     </>

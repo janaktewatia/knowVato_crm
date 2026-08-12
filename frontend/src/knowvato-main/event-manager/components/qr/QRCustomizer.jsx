@@ -1,7 +1,181 @@
 import React, { useEffect, useState } from "react";
 import { useQR } from "../../context/QRContext";
 import { ChromePicker } from "react-color";
-import { FiChevronDown, FiChevronUp } from "react-icons/fi";
+import { FiChevronDown, FiChevronUp, FiCheck, FiLayers, FiDroplet } from "react-icons/fi";
+
+const bodyStyles = [
+  {
+    id: "square",
+    name: "Square",
+    svg: (
+      <svg viewBox="0 0 24 24" className="w-100 h-100">
+        <rect x="3" y="3" width="7" height="7" rx="0" fill="currentColor" />
+        <rect x="14" y="3" width="7" height="7" rx="0" fill="currentColor" />
+        <rect x="3" y="14" width="7" height="7" rx="0" fill="currentColor" />
+        <rect x="14" y="14" width="7" height="7" rx="0" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    id: "dots",
+    name: "Dots",
+    svg: (
+      <svg viewBox="0 0 24 24" className="w-100 h-100">
+        <circle cx="6.5" cy="6.5" r="3.5" fill="currentColor" />
+        <circle cx="17.5" cy="6.5" r="3.5" fill="currentColor" />
+        <circle cx="6.5" cy="17.5" r="3.5" fill="currentColor" />
+        <circle cx="17.5" cy="17.5" r="3.5" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    id: "rounded",
+    name: "Rounded",
+    svg: (
+      <svg viewBox="0 0 24 24" className="w-100 h-100">
+        <rect x="3" y="3" width="7" height="7" rx="2" fill="currentColor" />
+        <rect x="14" y="3" width="7" height="7" rx="2" fill="currentColor" />
+        <rect x="3" y="14" width="7" height="7" rx="2" fill="currentColor" />
+        <rect x="14" y="14" width="7" height="7" rx="2" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    id: "extra-rounded",
+    name: "Extra Round",
+    svg: (
+      <svg viewBox="0 0 24 24" className="w-100 h-100">
+        <rect x="3" y="3" width="7" height="7" rx="3.5" fill="currentColor" />
+        <rect x="14" y="3" width="7" height="7" rx="3.5" fill="currentColor" />
+        <rect x="3" y="14" width="7" height="7" rx="3.5" fill="currentColor" />
+        <rect x="14" y="14" width="7" height="7" rx="3.5" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    id: "classy",
+    name: "Classy",
+    svg: (
+      <svg viewBox="0 0 24 24" className="w-100 h-100">
+        <path d="M3,3 h7 v7 h-7 z" fill="currentColor" />
+        <path d="M14,3 h7 a4,4 0 0 1 -4,4 h-3 z" fill="currentColor" />
+        <path d="M3,14 h3 a4,4 0 0 1 4,4 v3 h-7 z" fill="currentColor" />
+        <path d="M14,14 h7 v7 h-7 z" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    id: "classy-rounded",
+    name: "Classy Soft",
+    svg: (
+      <svg viewBox="0 0 24 24" className="w-100 h-100">
+        <rect x="3" y="3" width="7" height="7" rx="1.5" fill="currentColor" />
+        <path d="M14,3 h7 a4,4 0 0 1 -4,4 h-3 z" fill="currentColor" />
+        <path d="M3,14 h3 a4,4 0 0 1 4,4 v3 h-7 z" fill="currentColor" />
+        <rect x="14" y="14" width="7" height="7" rx="1.5" fill="currentColor" />
+      </svg>
+    ),
+  },
+];
+
+const eyeFrameStyles = [
+  {
+    id: "square",
+    name: "Square Frame",
+    svg: (
+      <svg viewBox="0 0 24 24" className="w-100 h-100">
+        <rect x="3" y="3" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="3" />
+      </svg>
+    ),
+  },
+  {
+    id: "dot",
+    name: "Circle Frame",
+    svg: (
+      <svg viewBox="0 0 24 24" className="w-100 h-100">
+        <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeWidth="3" />
+      </svg>
+    ),
+  },
+  {
+    id: "extra-rounded",
+    name: "Rounded Frame",
+    svg: (
+      <svg viewBox="0 0 24 24" className="w-100 h-100">
+        <rect x="3" y="3" width="18" height="18" rx="6" fill="none" stroke="currentColor" strokeWidth="3" />
+      </svg>
+    ),
+  },
+];
+
+const eyeBallStyles = [
+  {
+    id: "square",
+    name: "Square Eye",
+    svg: (
+      <svg viewBox="0 0 24 24" className="w-100 h-100">
+        <rect x="7" y="7" width="10" height="10" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    id: "dot",
+    name: "Circle Eye",
+    svg: (
+      <svg viewBox="0 0 24 24" className="w-100 h-100">
+        <circle cx="12" cy="12" r="5.5" fill="currentColor" />
+      </svg>
+    ),
+  },
+];
+
+const stylePresets = [
+  {
+    name: "Classic",
+    style: "square",
+    eyeFrameStyle: "square",
+    eyeBallStyle: "square",
+    gradientType: "none",
+    foregroundColor: "#000000",
+    backgroundColor: "#ffffff",
+  },
+  {
+    name: "Modern Dots",
+    style: "dots",
+    eyeFrameStyle: "dot",
+    eyeBallStyle: "dot",
+    gradientType: "linear",
+    gradientStart: "#3b82f6",
+    gradientEnd: "#1d4ed8",
+  },
+  {
+    name: "Emerald Round",
+    style: "extra-rounded",
+    eyeFrameStyle: "extra-rounded",
+    eyeBallStyle: "dot",
+    gradientType: "linear",
+    gradientStart: "#10b981",
+    gradientEnd: "#047857",
+  },
+  {
+    name: "Classy Luxury",
+    style: "classy",
+    eyeFrameStyle: "extra-rounded",
+    eyeBallStyle: "square",
+    gradientType: "linear",
+    gradientStart: "#8b5cf6",
+    gradientEnd: "#6d28d9",
+  },
+  {
+    name: "Sunset Flare",
+    style: "rounded",
+    eyeFrameStyle: "extra-rounded",
+    eyeBallStyle: "dot",
+    gradientType: "linear",
+    gradientStart: "#f97316",
+    gradientEnd: "#ec4899",
+  },
+];
 
 const QRCustomizer = () => {
   const { qrData, updateQRData } = useQR();
@@ -10,8 +184,9 @@ const QRCustomizer = () => {
   const [pickerColor, setPickerColor] = useState(qrData.foregroundColor);
 
   const [sections, setSections] = useState({
+    presets: true,
+    style: true,
     colors: true,
-    style: false,
   });
 
   useEffect(() => {
@@ -27,68 +202,189 @@ const QRCustomizer = () => {
     }));
   };
 
-  // ================= BODY SHAPES =================
-
-  const bodyShapePaths = {
-    square:
-      "M2,2 h6 v6 h-6 z M10,2 h6 v6 h-6 z M2,10 h6 v6 h-6 z M10,10 h6 v6 h-6 z",
-
-    dots: "M5,5 m-2.5,0 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0",
-
-    rounded:
-      "M2,2 h6 a1,1 0 0 1 1,1 v5 a1,1 0 0 1 -1,1 h-6 a1,1 0 0 1 -1,-1 v-5 a1,1 0 0 1 1,-1 z",
-
-    "extra-rounded":
-      "M2,2 h6 a2,2 0 0 1 2,2 v4 a2,2 0 0 1 -2,2 h-6 a2,2 0 0 1 -2,-2 v-4 a2,2 0 0 1 2,-2 z",
-
-    classy: "M2,2 h6 v6 h-6 z",
-
-    "classy-rounded":
-      "M2,2 h6 a1,1 0 0 1 1,1 v5 a1,1 0 0 1 -1,1 h-6 a1,1 0 0 1 -1,-1 v-5 a1,1 0 0 1 1,-1 z",
-  };
-
-  // ================= EYE FRAME SHAPES =================
-
-  const eyeFramePaths = {
-    square: "M2,2 h14 v14 h-14 z M4,4 h10 v10 h-10 z",
-
-    dot: "M9,2 m-7,0 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0",
-
-    "extra-rounded":
-      "M2,2 h14 a3,3 0 0 1 3,3 v10 a3,3 0 0 1 -3,3 h-14 a3,3 0 0 1 -3,-3 v-10 a3,3 0 0 1 3,-3 z",
-  };
-
-  // ================= EYE BALL SHAPES =================
-
-  const eyeBallPaths = {
-    square: "M5,5 h8 v8 h-8 z",
-
-    dot: "M9,9 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0",
-  };
-
   return (
     <div className="qr-customizer">
-      <h5 className="mb-3">Customize QR Code</h5>
+      <h5 className="mb-3 font-semibold text-slate-800">Customize QR Code</h5>
+
+      {/* ================= QUICK PRESETS ================= */}
+      <div className="customizer-section mb-4 border-bottom pb-3">
+        <div
+          className="d-flex justify-content-between align-items-center cursor-pointer mb-2"
+          onClick={() => toggleSection("presets")}
+          style={{ cursor: "pointer" }}
+        >
+          <div className="d-flex align-items-center gap-2">
+            <FiLayers className="text-primary" />
+            <h6 className="mb-0 font-semibold">Quick Presets</h6>
+          </div>
+          {sections.presets ? <FiChevronUp /> : <FiChevronDown />}
+        </div>
+
+        {sections.presets && (
+          <div className="d-flex flex-wrap gap-2 mt-3">
+            {stylePresets.map((preset) => (
+              <button
+                key={preset.name}
+                type="button"
+                className="btn btn-sm btn-outline-dark d-inline-flex align-items-center gap-1.5 rounded-pill px-3 py-1.5"
+                style={{ fontSize: "12px", fontWeight: "500" }}
+                onClick={() => updateQRData(preset)}
+              >
+                <span>{preset.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ================= STYLE SECTION ================= */}
+      <div className="customizer-section mb-4 border-bottom pb-3">
+        <div
+          className="d-flex justify-content-between align-items-center cursor-pointer mb-2"
+          onClick={() => toggleSection("style")}
+          style={{ cursor: "pointer" }}
+        >
+          <div className="d-flex align-items-center gap-2">
+            <FiLayers className="text-primary" />
+            <h6 className="mb-0 font-semibold">QR Style & Shapes</h6>
+          </div>
+          {sections.style ? <FiChevronUp /> : <FiChevronDown />}
+        </div>
+
+        {sections.style && (
+          <div className="mt-3">
+            {/* BODY SHAPE */}
+            <div className="mb-4">
+              <label className="form-label small fw-bold mb-2 text-secondary uppercase tracking-wider" style={{ fontSize: "11px" }}>
+                Body Pattern Style
+              </label>
+              <div className="row g-2">
+                {bodyStyles.map((item) => {
+                  const active = qrData.style === item.id;
+                  return (
+                    <div key={item.id} className="col-4 col-sm-2">
+                      <button
+                        type="button"
+                        className={`btn w-100 p-2 d-flex flex-column align-items-center justify-content-center transition-all ${
+                          active
+                            ? "btn-primary shadow-sm"
+                            : "btn-outline-light text-dark border"
+                        }`}
+                        style={{
+                          height: "64px",
+                          borderRadius: "10px",
+                          borderColor: active ? "var(--bs-primary)" : "#e2e8f0",
+                        }}
+                        onClick={() => updateQRData({ style: item.id })}
+                      >
+                        <div style={{ width: "24px", height: "24px" }}>
+                          {item.svg}
+                        </div>
+                        <span style={{ fontSize: "10px", marginTop: "4px", fontWeight: active ? "600" : "400" }}>
+                          {item.name}
+                        </span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* EYE FRAME */}
+            <div className="mb-4">
+              <label className="form-label small fw-bold mb-2 text-secondary uppercase tracking-wider" style={{ fontSize: "11px" }}>
+                Eye Frame Outer Shape
+              </label>
+              <div className="row g-2">
+                {eyeFrameStyles.map((item) => {
+                  const active = qrData.eyeFrameStyle === item.id;
+                  return (
+                    <div key={item.id} className="col-4 col-sm-4">
+                      <button
+                        type="button"
+                        className={`btn w-100 p-2 d-flex flex-column align-items-center justify-content-center transition-all ${
+                          active
+                            ? "btn-primary shadow-sm"
+                            : "btn-outline-light text-dark border"
+                        }`}
+                        style={{
+                          height: "64px",
+                          borderRadius: "10px",
+                          borderColor: active ? "var(--bs-primary)" : "#e2e8f0",
+                        }}
+                        onClick={() => updateQRData({ eyeFrameStyle: item.id })}
+                      >
+                        <div style={{ width: "24px", height: "24px" }}>
+                          {item.svg}
+                        </div>
+                        <span style={{ fontSize: "10px", marginTop: "4px", fontWeight: active ? "600" : "400" }}>
+                          {item.name}
+                        </span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* EYE BALL */}
+            <div className="mb-3">
+              <label className="form-label small fw-bold mb-2 text-secondary uppercase tracking-wider" style={{ fontSize: "11px" }}>
+                Eye Ball Inner Shape
+              </label>
+              <div className="row g-2">
+                {eyeBallStyles.map((item) => {
+                  const active = qrData.eyeBallStyle === item.id;
+                  return (
+                    <div key={item.id} className="col-6 col-sm-6">
+                      <button
+                        type="button"
+                        className={`btn w-100 p-2 d-flex flex-column align-items-center justify-content-center transition-all ${
+                          active
+                            ? "btn-primary shadow-sm"
+                            : "btn-outline-light text-dark border"
+                        }`}
+                        style={{
+                          height: "64px",
+                          borderRadius: "10px",
+                          borderColor: active ? "var(--bs-primary)" : "#e2e8f0",
+                        }}
+                        onClick={() => updateQRData({ eyeBallStyle: item.id })}
+                      >
+                        <div style={{ width: "24px", height: "24px" }}>
+                          {item.svg}
+                        </div>
+                        <span style={{ fontSize: "10px", marginTop: "4px", fontWeight: active ? "600" : "400" }}>
+                          {item.name}
+                        </span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* ================= COLORS SECTION ================= */}
-
       <div className="customizer-section mb-3 border-bottom pb-3">
         <div
-          className="d-flex justify-content-between align-items-center cursor-pointer"
+          className="d-flex justify-content-between align-items-center cursor-pointer mb-2"
           onClick={() => toggleSection("colors")}
           style={{ cursor: "pointer" }}
         >
-          <h6 className="mb-0">Colors & Gradient</h6>
-
+          <div className="d-flex align-items-center gap-2">
+            <FiDroplet className="text-primary" />
+            <h6 className="mb-0 font-semibold">Colors & Gradient</h6>
+          </div>
           {sections.colors ? <FiChevronUp /> : <FiChevronDown />}
         </div>
 
         {sections.colors && (
           <div className="mt-3">
             <div className="mb-3">
-              <label className="form-label small d-block mb-2">
-                Color Mode
-              </label>
+              <label className="form-label small d-block mb-2">Color Mode</label>
               <div className="btn-group gap-2" role="group">
                 <button
                   type="button"
@@ -103,7 +399,7 @@ const QRCustomizer = () => {
                     })
                   }
                 >
-                  Foreground
+                  Solid Color
                 </button>
                 <button
                   type="button"
@@ -129,9 +425,8 @@ const QRCustomizer = () => {
             {qrData.gradientType === "none" ? (
               <div className="mb-3">
                 <label className="form-label small">Foreground Color</label>
-
                 <div
-                  className="color-preview border rounded p-2 d-flex align-items-center"
+                  className="color-preview border rounded-3 p-2 d-flex align-items-center justify-content-between shadow-xs"
                   style={{
                     backgroundColor: qrData.foregroundColor,
                     height: "40px",
@@ -139,17 +434,16 @@ const QRCustomizer = () => {
                   }}
                   onClick={() => setShowColorPicker("foregroundColor")}
                 >
-                  <span className="text-white ms-2">
+                  <span className="text-white ms-2 font-mono" style={{ fontSize: "12px", textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>
                     {qrData.foregroundColor}
                   </span>
+                  <span className="badge bg-white text-dark me-1" style={{ fontSize: "10px" }}>Change</span>
                 </div>
               </div>
             ) : (
               <>
                 <div className="mb-3">
-                  <label className="form-label small d-block mb-2">
-                    Gradient Type
-                  </label>
+                  <label className="form-label small d-block mb-2">Gradient Type</label>
                   <div className="btn-group gap-2" role="group">
                     {[
                       { value: "linear", label: "Linear" },
@@ -179,7 +473,7 @@ const QRCustomizer = () => {
                   <div className="col-sm-6">
                     <label className="form-label small">Gradient Start</label>
                     <div
-                      className="color-preview border rounded p-2 d-flex align-items-center"
+                      className="color-preview border rounded-3 p-2 d-flex align-items-center justify-content-between shadow-xs"
                       style={{
                         backgroundColor: qrData.gradientStart,
                         height: "40px",
@@ -187,15 +481,16 @@ const QRCustomizer = () => {
                       }}
                       onClick={() => setShowColorPicker("gradientStart")}
                     >
-                      <span className="text-white ms-2">
+                      <span className="text-white ms-2 font-mono" style={{ fontSize: "12px", textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>
                         {qrData.gradientStart}
                       </span>
+                      <span className="badge bg-white text-dark me-1" style={{ fontSize: "10px" }}>Pick</span>
                     </div>
                   </div>
                   <div className="col-sm-6">
                     <label className="form-label small">Gradient End</label>
                     <div
-                      className="color-preview border rounded p-2 d-flex align-items-center"
+                      className="color-preview border rounded-3 p-2 d-flex align-items-center justify-content-between shadow-xs"
                       style={{
                         backgroundColor: qrData.gradientEnd,
                         height: "40px",
@@ -203,9 +498,10 @@ const QRCustomizer = () => {
                       }}
                       onClick={() => setShowColorPicker("gradientEnd")}
                     >
-                      <span className="text-white ms-2">
+                      <span className="text-white ms-2 font-mono" style={{ fontSize: "12px", textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>
                         {qrData.gradientEnd}
                       </span>
+                      <span className="badge bg-white text-dark me-1" style={{ fontSize: "10px" }}>Pick</span>
                     </div>
                   </div>
                 </div>
@@ -215,141 +511,7 @@ const QRCustomizer = () => {
         )}
       </div>
 
-      {/* ================= STYLE SECTION ================= */}
-
-      <div className="customizer-section mb-3 border-bottom pb-3">
-        <div
-          className="d-flex justify-content-between align-items-center cursor-pointer"
-          onClick={() => toggleSection("style")}
-          style={{ cursor: "pointer" }}
-        >
-          <h6 className="mb-0">QR Style</h6>
-
-          {sections.style ? <FiChevronUp /> : <FiChevronDown />}
-        </div>
-
-        {sections.style && (
-          <div className="mt-3">
-            {/* BODY SHAPE */}
-
-            <label className="form-label small fw-bold mb-2">Body Shape</label>
-
-            <div className="d-flex flex-wrap gap-2 mb-3">
-              {Object.entries(bodyShapePaths).map(([value, path]) => (
-                <button
-                  key={value}
-                  className={`btn p-2 ${
-                    qrData.style === value
-                      ? "btn-primary border-primary"
-                      : "btn-light border"
-                  }`}
-                  style={{
-                    width: "50px",
-                    height: "50px",
-                  }}
-                  onClick={() =>
-                    updateQRData({
-                      style: value,
-                    })
-                  }
-                  title={value}
-                >
-                  <svg
-                    viewBox="0 0 18 18"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                    }}
-                  >
-                    <path d={path} fill="currentColor" />
-                  </svg>
-                </button>
-              ))}
-            </div>
-
-            {/* EYE FRAME */}
-
-            <label className="form-label small fw-bold mb-2">
-              Eye Frame Shape
-            </label>
-
-            <div className="d-flex flex-wrap gap-2 mb-3">
-              {Object.entries(eyeFramePaths).map(([value, path]) => (
-                <button
-                  key={value}
-                  className={`btn p-2 ${
-                    qrData.eyeFrameStyle === value
-                      ? "btn-primary border-primary"
-                      : "btn-light border"
-                  }`}
-                  style={{
-                    width: "50px",
-                    height: "50px",
-                  }}
-                  onClick={() =>
-                    updateQRData({
-                      eyeFrameStyle: value,
-                    })
-                  }
-                  title={value}
-                >
-                  <svg
-                    viewBox="0 0 18 18"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                    }}
-                  >
-                    <path d={path} fill="currentColor" fillRule="evenodd" />
-                  </svg>
-                </button>
-              ))}
-            </div>
-
-            {/* EYE BALL */}
-
-            <label className="form-label small fw-bold mb-2">
-              Eye Ball Shape
-            </label>
-
-            <div className="d-flex flex-wrap gap-2 mb-3">
-              {Object.entries(eyeBallPaths).map(([value, path]) => (
-                <button
-                  key={value}
-                  className={`btn p-2 ${
-                    qrData.eyeBallStyle === value
-                      ? "btn-primary border-primary"
-                      : "btn-light border"
-                  }`}
-                  style={{
-                    width: "50px",
-                    height: "50px",
-                  }}
-                  onClick={() =>
-                    updateQRData({
-                      eyeBallStyle: value,
-                    })
-                  }
-                  title={value}
-                >
-                  <svg
-                    viewBox="0 0 18 18"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                    }}
-                  >
-                    <path d={path} fill="currentColor" />
-                  </svg>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ================= COLOR PICKER ================= */}
-
+      {/* ================= COLOR PICKER OVERLAY ================= */}
       {showColorPicker && (
         <div
           className="color-picker-overlay"
@@ -360,7 +522,7 @@ const QRCustomizer = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="color-picker-header">
-              <span className="fw-semibold">Choose color</span>
+              <span className="fw-semibold">Choose Color</span>
               <button
                 type="button"
                 className="btn btn-sm btn-outline-secondary"

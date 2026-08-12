@@ -3,7 +3,7 @@
 
 const BASE = import.meta.env.VITE_API_BASE || ""; // "" → use Vite proxy in dev
 
-let token = localStorage.getItem("wacrm_token") || null;
+let token = (typeof window !== "undefined" ? localStorage.getItem("wacrm_token") : null) || null;
 
 export function setToken(t) {
   token = t;
@@ -11,12 +11,13 @@ export function setToken(t) {
   else localStorage.removeItem("wacrm_token");
 }
 export function getToken() {
-  return token;
+  return token || (typeof window !== "undefined" ? localStorage.getItem("wacrm_token") : null);
 }
 
 async function request(method, path, body) {
+  const activeToken = getToken();
   const headers = { "Content-Type": "application/json" };
-  if (token) headers.Authorization = `Bearer ${token}`;
+  if (activeToken) headers.Authorization = `Bearer ${activeToken}`;
 
   const res = await fetch(`${BASE}/api${path}`, {
     method,

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import * as msgC from "../controllers/messagingController";
+import * as fbC from "../controllers/facebookController";
 
 const r = Router();
 
@@ -12,5 +13,12 @@ const r = Router();
  */
 r.get("/whatsapp/:tenantId", msgC.webhookVerify);
 r.post("/whatsapp/:tenantId", msgC.webhookReceive);
+
+/**
+ * Facebook Lead Gen Webhooks
+ *   GET/POST  /webhooks/facebook/:tenantId
+ */
+r.get("/facebook/:tenantId", fbC.fbWebhookVerify);
+r.post("/facebook/:tenantId", fbC.fbWebhookReceive);
 
 export default r;

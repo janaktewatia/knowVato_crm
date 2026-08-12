@@ -2,21 +2,53 @@ import { Request, Response } from "express";
 import { Campaign, Message, Conversation, Template } from "../models/Messaging";
 import { Lead } from "../models/Lead";
 import { LeadStatus, LeadSource } from "../models/Masters";
+import { ChatbotRule } from "../models/ChatbotRule";
 import { asyncHandler, ok, ApiError, audit } from "../utils/http";
 import { launchCampaign } from "../services/campaignService";
-import { sendText, sendTemplate, verifyWebhook, parseInbound, activeVendor } from "../services/whatsapp";
+import {
+  sendText,
+  sendTemplate,
+  sendMedia,
+  sendLocation,
+  sendInteractiveButtons,
+  sendInteractiveList,
+  createMetaTemplate as createMetaTemplateService,
+  fetchMetaTemplates as fetchMetaTemplatesService,
+  deleteMetaTemplate as deleteMetaTemplateService,
+  getPhoneProfile as getPhoneProfileService,
+  updateBusinessProfile as updateBusinessProfileService,
+  verifyWebhook,
+  parseInbound,
+  activeVendor,
+} from "../services/whatsapp";
+import { processChatbotInbound } from "../services/chatbotEngine";
 import { activateAccount, invalidateProvider } from "../services/providers/registry";
 import { config } from "../config";
 import { WhatsAppAccount } from "../models/WhatsAppAccount";
 import { sendEmail, renderTemplate } from "../services/email";
 import { convertToLead } from "../services/leadService";
 
-/* ───────── Shared send (called by OTHER modules via the platform SDK) ─────────
-   POST /messages/send  { channel:"whatsapp", to, template, params, text }
-   Lets Event Management / Website Builder / etc. send through the same
-   Communication service, using the same shared templates and active vendor. */
+/* ───────── Shared send (called by OTHER modules via the platform SDK) ───────── */
 export const sharedSend = asyncHandler(async (req: Request, res: Response) => {
-  const { channel = "whatsapp", to, template, params = [], text, subject } = req.body || {};
+  const {
+    channel = "whatsapp",
+    to,
+    template,
+    params = [],
+    text,
+    subject,
+    type,
+    mediaUrl,
+    caption,
+    filename,
+    latitude,
+    longitude,
+    buttons,
+    buttonTitle,
+    sections,
+    header,
+    footer,
+  } = req.body || {};
   if (!to) throw new ApiError(400, "`to` is required");
 
   if (channel === "email") {
@@ -31,28 +63,236 @@ export const sharedSend = asyncHandler(async (req: Request, res: Response) => {
     if (!html) throw new ApiError(400, "Provide `template` or `text` for the email body");
     const result = await sendEmail({ to, subject: subj, html });
     await Message.create({
-      tenant: req.tenantId, direction: "outbound", type: template ? "template" : "text",
-      template, body: html, phone: to, status: "sent", sentAt: new Date(),
-      agent: req.auth?.name || "system", waMessageId: result.messageId, category: "email",
+      tenant: req.tenantId,
+      direction: "outbound",
+      type: template ? "template" : "text",
+      template,
+      body: html,
+      phone: to,
+      status: "sent",
+      sentAt: new Date(),
+      agent: req.auth?.name || "system",
+      waMessageId: result.messageId,
+      category: "email",
     });
-    await audit({ tenant: req.tenantId, user: req.auth?.name, action: "SEND", module: "Communication", entity: to, next: `email: ${template || "text"}` });
+    await audit({
+      tenant: req.tenantId,
+      user: req.auth?.name,
+      action: "SEND",
+      module: "Communication",
+      entity: to,
+      next: `email: ${template || "text"}`,
+    });
     return ok(res, { messageId: result.messageId, simulated: result.simulated, channel: "email" });
   }
 
   if (channel !== "whatsapp") throw new ApiError(400, `Channel '${channel}' not supported yet`);
 
-  let result;
-  if (template) result = await sendTemplate(req.tenantId!, to, template, "en", params);
-  else if (text) result = await sendText(req.tenantId!, to, text);
-  else throw new ApiError(400, "Provide either `template` or `text`");
+  let result: any;
+  let msgType = "text";
+
+  if (type === "media" && mediaUrl) {
+    msgType = "image";
+    result = await sendMedia(req.tenantId!, to, "image", mediaUrl, caption, filename);
+  } else if (type === "location" && latitude && longitude) {
+    msgType = "document";
+    result = await sendLocation(req.tenantId!, to, +latitude, +longitude, caption);
+  } else if (type === "buttons" && buttons && buttons.length > 0) {
+    msgType = "text";
+    result = await sendInteractiveButtons(req.tenantId!, to, text || "Select an option:", buttons, header, footer);
+  } else if (type === "list" && sections && sections.length > 0) {
+    msgType = "text";
+    result = await sendInteractiveList(req.tenantId!, to, text || "Select from menu:", buttonTitle || "Options", sections, header, footer);
+  } else if (template) {
+    msgType = "template";
+    result = await sendTemplate(req.tenantId!, to, template, "en", params);
+  } else if (text) {
+    msgType = "text";
+    result = await sendText(req.tenantId!, to, text);
+  } else {
+    throw new ApiError(400, "Provide template, text, mediaUrl, or interactive payload");
+  }
 
   await Message.create({
-    tenant: req.tenantId, direction: "outbound", type: template ? "template" : "text",
-    template, body: text, phone: to, status: "sent", sentAt: new Date(),
-    agent: req.auth?.name || "system", waMessageId: result.waMessageId,
+    tenant: req.tenantId,
+    direction: "outbound",
+    type: msgType as any,
+    template,
+    body: text || caption || (buttons ? "Interactive buttons" : "Interactive list"),
+    phone: to,
+    status: "sent",
+    sentAt: new Date(),
+    agent: req.auth?.name || "system",
+    waMessageId: result.waMessageId,
   });
-  await audit({ tenant: req.tenantId, user: req.auth?.name, action: "SEND", module: "Communication", entity: to, next: template || "text" });
+  await audit({
+    tenant: req.tenantId,
+    user: req.auth?.name,
+    action: "SEND",
+    module: "Communication",
+    entity: to,
+    next: template || text || type,
+  });
   ok(res, { waMessageId: result.waMessageId, simulated: result.simulated, channel });
+});
+
+/* ───────── Meta Template Creation & Management ───────── */
+
+export const createMetaTemplate = asyncHandler(async (req: Request, res: Response) => {
+  const { name, category = "UTILITY", language = "en", headerType = "NONE", headerText, headerMediaUrl, body, footer, buttons = [] } = req.body || {};
+  if (!name || !body) throw new ApiError(400, "Template name and body are required");
+
+  // Construct Meta Graph API components payload
+  const components: any[] = [];
+
+  // 1. Header
+  if (headerType === "TEXT" && headerText) {
+    components.push({ type: "HEADER", format: "TEXT", text: headerText });
+  } else if (["IMAGE", "VIDEO", "DOCUMENT"].includes(headerType)) {
+    components.push({ type: "HEADER", format: headerType, example: { header_handle: [headerMediaUrl || "https://example.com/media"] } });
+  }
+
+  // 2. Body
+  components.push({ type: "BODY", text: body });
+
+  // 3. Footer
+  if (footer) {
+    components.push({ type: "FOOTER", text: footer });
+  }
+
+  // 4. Buttons
+  if (buttons && buttons.length > 0) {
+    const formattedButtons = buttons.map((b: any) => {
+      if (b.type === "QUICK_REPLY") return { type: "QUICK_REPLY", text: b.text };
+      if (b.type === "URL") return { type: "URL", text: b.text, url: b.url };
+      if (b.type === "PHONE_NUMBER") return { type: "PHONE_NUMBER", text: b.text, phone_number: b.phoneNumber };
+      if (b.type === "COPY_CODE") return { type: "COPY_CODE", example: b.code || "OFFER50" };
+      return { type: "QUICK_REPLY", text: b.text };
+    });
+    components.push({ type: "BUTTONS", buttons: formattedButtons });
+  }
+
+  const metaPayload = {
+    name: name.toLowerCase().replace(/[^a-z0-9_]/g, "_"),
+    category: category.toUpperCase(),
+    language,
+    components,
+  };
+
+  const metaRes = await createMetaTemplateService(req.tenantId!, metaPayload);
+
+  // Save/update locally
+  const tpl = await Template.findOneAndUpdate(
+    { tenant: req.tenantId, name: metaPayload.name },
+    {
+      $set: {
+        tenant: req.tenantId,
+        name: metaPayload.name,
+        channel: "whatsapp",
+        category: category as any,
+        language,
+        status: metaRes.status === "APPROVED" ? "Approved" : "Pending",
+        body,
+        metaId: metaRes.id,
+        components,
+      },
+    },
+    { upsert: true, new: true }
+  );
+
+  await audit({ tenant: req.tenantId, user: req.auth?.name, action: "CREATE", module: "Templates", entity: `Meta Template: ${tpl.name}` });
+  ok(res, { template: tpl, metaResponse: metaRes }, 201);
+});
+
+export const syncMetaTemplates = asyncHandler(async (req: Request, res: Response) => {
+  const metaTemplates = await fetchMetaTemplatesService(req.tenantId!);
+  const synced: any[] = [];
+
+  for (const mt of metaTemplates) {
+    const bodyComp = mt.components?.find((c: any) => c.type === "BODY");
+    const tpl = await Template.findOneAndUpdate(
+      { tenant: req.tenantId, name: mt.name },
+      {
+        $set: {
+          tenant: req.tenantId,
+          name: mt.name,
+          channel: "whatsapp",
+          category: mt.category === "MARKETING" ? "Marketing" : "Utility",
+          language: mt.language || "en",
+          status: mt.status === "APPROVED" ? "Approved" : mt.status === "REJECTED" ? "Rejected" : "Pending",
+          body: bodyComp?.text || "",
+          metaId: mt.id,
+          components: mt.components,
+        },
+      },
+      { upsert: true, new: true }
+    );
+    synced.push(tpl);
+  }
+
+  ok(res, { count: synced.length, templates: synced });
+});
+
+export const deleteMetaTemplate = asyncHandler(async (req: Request, res: Response) => {
+  const { name } = req.params;
+  await deleteMetaTemplateService(req.tenantId!, name);
+  await Template.deleteOne({ tenant: req.tenantId, name });
+  await audit({ tenant: req.tenantId, user: req.auth?.name, action: "DELETE", module: "Templates", entity: `Meta Template: ${name}` });
+  ok(res, { deleted: true });
+});
+
+/* ───────── Meta WABA Profile Graph API ───────── */
+
+export const getMetaProfile = asyncHandler(async (req: Request, res: Response) => {
+  const profile = await getPhoneProfileService(req.tenantId!);
+  ok(res, profile);
+});
+
+export const updateMetaProfile = asyncHandler(async (req: Request, res: Response) => {
+  const updated = await updateBusinessProfileService(req.tenantId!, req.body);
+  await audit({ tenant: req.tenantId, user: req.auth?.name, action: "UPDATE", module: "Setup", entity: "Meta Business Profile" });
+  ok(res, updated);
+});
+
+/* ───────── Chatbot Rules Management ───────── */
+
+export const listChatbotRules = asyncHandler(async (req: Request, res: Response) => {
+  const rules = await ChatbotRule.find({ tenant: req.tenantId }).sort({ order: 1, createdAt: -1 });
+  ok(res, rules);
+});
+
+export const createChatbotRule = asyncHandler(async (req: Request, res: Response) => {
+  const rule = await ChatbotRule.create({ ...req.body, tenant: req.tenantId });
+  await audit({ tenant: req.tenantId, user: req.auth?.name, action: "CREATE", module: "Workflows", entity: `Chatbot Rule: ${rule.name}` });
+  ok(res, rule, 201);
+});
+
+export const updateChatbotRule = asyncHandler(async (req: Request, res: Response) => {
+  const rule = await ChatbotRule.findOneAndUpdate(
+    { _id: req.params.id, tenant: req.tenantId },
+    { $set: req.body },
+    { new: true }
+  );
+  if (!rule) throw new ApiError(404, "Chatbot rule not found");
+  ok(res, rule);
+});
+
+export const deleteChatbotRule = asyncHandler(async (req: Request, res: Response) => {
+  const rule = await ChatbotRule.findOneAndDelete({ _id: req.params.id, tenant: req.tenantId });
+  if (!rule) throw new ApiError(404, "Chatbot rule not found");
+  ok(res, { deleted: true });
+});
+
+export const testChatbotRule = asyncHandler(async (req: Request, res: Response) => {
+  const { messageText, phone = "+919999900000" } = req.body;
+  await processChatbotInbound(req.tenantId!, {
+    kind: "message",
+    from: phone,
+    text: messageText,
+    messageType: "text",
+    timestamp: new Date(),
+  });
+  ok(res, { tested: true, phone, messageText });
 });
 
 /* ───────── Campaigns ───────── */
@@ -73,7 +313,7 @@ export const pauseCampaign = asyncHandler(async (req: Request, res: Response) =>
 
 /* ───────── Conversations (1:1, WABA) ───────── */
 export const replyToConversation = asyncHandler(async (req: Request, res: Response) => {
-  const { text, template } = req.body;
+  const { text, template, type, buttons, listButtonText, sections, mediaUrl, caption } = req.body;
   const conv = await Conversation.findOne({ _id: req.params.id, tenant: req.tenantId });
   if (!conv) throw new ApiError(404, "Conversation not found");
 
@@ -85,8 +325,22 @@ export const replyToConversation = asyncHandler(async (req: Request, res: Respon
     await sendTemplate(req.tenantId!, conv.phone, template);
     conv.messages.push({ from: "me", time: hhmm, type: "template", template, agent: req.auth?.name, at: now });
     conv.last = "Template: " + template;
-    // a template can re-open the window in practice once the user re-engages; for demo we extend
     conv.windowExpiresAt = new Date(Date.now() + 24 * 3600 * 1000);
+  } else if (type === "buttons" && buttons) {
+    if (!windowOpen) throw new ApiError(409, "24-hour window closed — send an approved template instead");
+    await sendInteractiveButtons(req.tenantId!, conv.phone, text || "Select an option:", buttons);
+    conv.messages.push({ from: "me", time: hhmm, type: "text", text: `[BUTTONS] ${text}`, agent: req.auth?.name, at: now });
+    conv.last = `[Buttons] ${text}`;
+  } else if (type === "list" && sections) {
+    if (!windowOpen) throw new ApiError(409, "24-hour window closed — send an approved template instead");
+    await sendInteractiveList(req.tenantId!, conv.phone, text || "Select from menu:", listButtonText || "Menu", sections);
+    conv.messages.push({ from: "me", time: hhmm, type: "text", text: `[LIST] ${text}`, agent: req.auth?.name, at: now });
+    conv.last = `[List] ${text}`;
+  } else if (type === "media" && mediaUrl) {
+    if (!windowOpen) throw new ApiError(409, "24-hour window closed — send an approved template instead");
+    await sendMedia(req.tenantId!, conv.phone, "image", mediaUrl, caption);
+    conv.messages.push({ from: "me", time: hhmm, type: "image", text: caption || "[Media Attachment]", agent: req.auth?.name, at: now });
+    conv.last = caption || "[Image]";
   } else {
     if (!windowOpen) throw new ApiError(409, "24-hour window closed — send an approved template instead");
     if (!text) throw new ApiError(400, "text required");
@@ -98,9 +352,17 @@ export const replyToConversation = asyncHandler(async (req: Request, res: Respon
   await conv.save();
 
   await Message.create({
-    tenant: req.tenantId, conversation: conv._id, direction: "outbound",
-    type: template ? "template" : "text", template, body: text, contactName: conv.name,
-    phone: conv.phone, status: "sent", sentAt: now, agent: req.auth?.name,
+    tenant: req.tenantId,
+    conversation: conv._id,
+    direction: "outbound",
+    type: template ? "template" : type === "media" ? "image" : "text",
+    template,
+    body: text || caption,
+    contactName: conv.name,
+    phone: conv.phone,
+    status: "sent",
+    sentAt: now,
+    agent: req.auth?.name,
   });
   ok(res, conv);
 });
@@ -156,19 +418,15 @@ export const conversionStats = asyncHandler(async (req: Request, res: Response) 
     .sort((a, b) => b.won - a.won);
 
   ok(res, {
-    totals: { leads: leads.length, won, lost, open, convRate: leads.length ? +(won / leads.length * 100).toFixed(1) : 0 },
-    funnel, bySource, byOwner,
+    totals: { leads: leads.length, won, lost, open, convRate: leads.length ? +((won / leads.length) * 100).toFixed(1) : 0 },
+    funnel,
+    bySource,
+    byOwner,
   });
 });
 
-/* ───────── WhatsApp webhook (vendor → us) ─────────
-   The webhook URL carries the tenant id so we know which account/vendor it is:
-     /webhooks/whatsapp/:tenantId
-   Each configured WhatsAppAccount points its callback at its own tenant URL.
-   Verification + payload parsing are delegated to that tenant's active provider,
-   so the same endpoint works for Meta, Pinnacle, or any vendor. */
+/* ───────── WhatsApp webhook (vendor → us) ───────── */
 
-// GET verification handshake (Meta-style; harmless for vendors that don't use it)
 export const webhookVerify = asyncHandler(async (req: Request, res: Response) => {
   const tenantId = req.params.tenantId;
   const mode = req.query["hub.mode"];
@@ -182,7 +440,6 @@ export const webhookVerify = asyncHandler(async (req: Request, res: Response) =>
   res.sendStatus(403);
 });
 
-// POST events: delivery statuses + inbound messages (any vendor)
 export const webhookReceive = asyncHandler(async (req: Request, res: Response) => {
   const tenantId = req.params.tenantId;
   const raw = (req as any).rawBody || Buffer.from(JSON.stringify(req.body));
@@ -190,7 +447,7 @@ export const webhookReceive = asyncHandler(async (req: Request, res: Response) =
   const trusted = await verifyWebhook(tenantId, raw, req.headers as any);
   if (!trusted) throw new ApiError(401, "Invalid webhook signature");
 
-  res.sendStatus(200); // ACK fast, then process
+  res.sendStatus(200); // ACK fast
 
   try {
     const events = await parseInbound(tenantId, req.body);
@@ -201,16 +458,24 @@ export const webhookReceive = asyncHandler(async (req: Request, res: Response) =
         if (ev.status === "read") patch.readAt = ev.timestamp || new Date();
         if (ev.status === "failed") patch.failReason = ev.errorReason || "failed";
         await Message.updateOne({ tenant: tenantId, waMessageId: ev.waMessageId }, { $set: patch });
+      } else if (ev.kind === "template_status_update" && ev.templateName) {
+        await Template.updateOne(
+          { tenant: tenantId, name: ev.templateName },
+          { $set: { status: ev.templateStatus === "APPROVED" ? "Approved" : ev.templateStatus === "REJECTED" ? "Rejected" : "Pending" } }
+        );
       } else if (ev.kind === "message" && ev.from) {
         const now = ev.timestamp || new Date();
         const hhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
         let conv = await Conversation.findOne({ tenant: tenantId, phone: ev.from });
         if (!conv) {
-          // user-initiated: open a new conversation
           conv = await Conversation.create({
-            tenant: tenantId, name: ev.from, phone: ev.from,
-            windowOpenedAt: now, windowExpiresAt: new Date(now.getTime() + 24 * 3600 * 1000),
-            unread: 0, messages: [],
+            tenant: tenantId,
+            name: ev.from,
+            phone: ev.from,
+            windowOpenedAt: now,
+            windowExpiresAt: new Date(now.getTime() + 24 * 3600 * 1000),
+            unread: 0,
+            messages: [],
           });
         }
         conv.messages.push({ from: "them", time: hhmm, type: "text", text: ev.text, at: now });
@@ -220,7 +485,19 @@ export const webhookReceive = asyncHandler(async (req: Request, res: Response) =
         conv.windowOpenedAt = now;
         conv.windowExpiresAt = new Date(now.getTime() + 24 * 3600 * 1000);
         await conv.save();
-        await Message.create({ tenant: tenantId, conversation: conv._id, direction: "inbound", type: "text", body: ev.text, contactName: conv.name, phone: ev.from, status: "received" });
+        await Message.create({
+          tenant: tenantId,
+          conversation: conv._id,
+          direction: "inbound",
+          type: "text",
+          body: ev.text,
+          contactName: conv.name,
+          phone: ev.from,
+          status: "received",
+        });
+
+        // Trigger Chatbot Engine for automated bot flows
+        await processChatbotInbound(tenantId, ev);
       }
     }
   } catch (e) {
@@ -228,7 +505,6 @@ export const webhookReceive = asyncHandler(async (req: Request, res: Response) =
   }
 });
 
-/* ───────── Convert an inbound message to a lead ───────── */
 export const messageToLead = asyncHandler(async (req: Request, res: Response) => {
   const msg = await Message.findOne({ _id: req.params.id, tenant: req.tenantId });
   if (!msg) throw new ApiError(404, "Message not found");
@@ -246,7 +522,7 @@ export const status = asyncHandler(async (req: Request, res: Response) => {
   ok(res, { activeVendor: await activeVendor(req.tenantId!) });
 });
 
-/* ───────── WhatsApp account management (multi-vendor, one active) ───────── */
+/* ───────── WhatsApp account management ───────── */
 export const listAccounts = asyncHandler(async (req: Request, res: Response) => {
   const accounts = await WhatsAppAccount.find({ tenant: req.tenantId }).sort({ createdAt: 1 });
   ok(res, accounts);
@@ -258,7 +534,7 @@ export const createAccount = asyncHandler(async (req: Request, res: Response) =>
   const acc = await WhatsAppAccount.create({
     ...body,
     tenant: req.tenantId,
-    active: isFirst, // first account added becomes active by default
+    active: isFirst,
   });
   if (isFirst) invalidateProvider(String(req.tenantId));
   await audit({ tenant: req.tenantId, user: req.auth?.name, action: "CREATE", module: "Setup", entity: `WhatsApp account: ${acc.label} (${acc.vendor})` });
@@ -266,7 +542,6 @@ export const createAccount = asyncHandler(async (req: Request, res: Response) =>
 });
 
 export const updateAccount = asyncHandler(async (req: Request, res: Response) => {
-  // never allow flipping `active` here — use the activate endpoint
   const { active, tenant, ...patch } = req.body || {};
   const acc = await WhatsAppAccount.findOneAndUpdate(
     { _id: req.params.id, tenant: req.tenantId },
@@ -287,7 +562,6 @@ export const deleteAccount = asyncHandler(async (req: Request, res: Response) =>
   ok(res, { deleted: true });
 });
 
-// Activate exactly one account (deactivates the rest)
 export const activate = asyncHandler(async (req: Request, res: Response) => {
   const acc = await activateAccount(String(req.tenantId), req.params.id);
   await audit({ tenant: req.tenantId, user: req.auth?.name, action: "ACTIVATE", module: "Setup", entity: `WhatsApp account: ${acc.label} (${acc.vendor})`, next: "Active" });

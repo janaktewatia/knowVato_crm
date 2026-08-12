@@ -1870,12 +1870,7 @@ function screenPreview(){
       <div>
         <label class="f" style="font-size:11px; text-transform:uppercase; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Font Style</label>
         <select class="form-select form-select-sm" data-prop="fontFamily" onchange="updateThemeProp('fontFamily', this.value)">
-          <option value="Default" ${getThemeVal('fontFamily')==='Default'?'selected':''}>System default</option>
-          <option value="Inter" ${getThemeVal('fontFamily')==='Inter'?'selected':''}>Inter (Modern)</option>
-          <option value="Outfit" ${getThemeVal('fontFamily')==='Outfit'?'selected':''}>Outfit (Premium)</option>
-          <option value="Montserrat" ${getThemeVal('fontFamily')==='Montserrat'?'selected':''}>Montserrat</option>
-          <option value="Playfair Display" ${getThemeVal('fontFamily')==='Playfair Display'?'selected':''}>Playfair Display (Serif)</option>
-          <option value="Lora" ${getThemeVal('fontFamily')==='Lora'?'selected':''}>Lora (Classic)</option>
+          <option value="Inter" selected>Inter (Standard)</option>
         </select>
       </div>
       <div>

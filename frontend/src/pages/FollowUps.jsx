@@ -12,13 +12,26 @@ export default function FollowUps() {
   const fu = useApi(() => followUpsApi.buckets(), []);
 
   async function complete(id) {
-    try { await followUpsApi.complete(id, "Completed"); toast("Follow-up completed"); fu.reload(); }
-    catch (e) { toast(e.message, "error"); }
+    try {
+      await followUpsApi.complete(id, "Completed");
+      toast("Follow-up completed");
+      fu.reload();
+    } catch (e) {
+      toast(e.message, "error");
+    }
   }
+
   async function reschedule(id, days) {
-    const d = new Date(); d.setDate(d.getDate() + days); d.setHours(10, 0, 0, 0);
-    try { await followUpsApi.reschedule(id, d.toISOString()); toast("Rescheduled"); fu.reload(); }
-    catch (e) { toast(e.message, "error"); }
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    d.setHours(10, 0, 0, 0);
+    try {
+      await followUpsApi.reschedule(id, d.toISOString());
+      toast("Rescheduled");
+      fu.reload();
+    } catch (e) {
+      toast(e.message, "error");
+    }
   }
 
   if (fu.loading) return <Spinner />;
@@ -27,57 +40,142 @@ export default function FollowUps() {
 
   const cards = [
     { key: "overdue", label: "Overdue", icon: "exclamation-triangle", tone: "danger" },
-    { key: "today", label: "Due today", icon: "bell", tone: "warning" },
+    { key: "today", label: "Due Today", icon: "bell", tone: "warning" },
     { key: "upcoming", label: "Upcoming", icon: "clock-history", tone: "info" },
     { key: "done", label: "Completed", icon: "check-circle", tone: "success" },
   ];
 
   return (
-    <div>
-      <PageHeader title="Follow-ups" subtitle="Overdue, due today and upcoming — from the database" />
+    <div className="p-2 space-y-6">
+      <PageHeader title="Follow-ups" subtitle="Overdue, due today and upcoming follow-ups — from database" />
       <ErrorBox error={fu.error} />
 
-      <div className="row row-cols-2 row-cols-md-4 g-3 mb-3">
-        {cards.map((c) => (
-          <div className="col" key={c.key}>
-            <div className={`card kpi-card h-100 cursor-pointer ${bucket === c.key ? "border-" + c.tone : ""}`} onClick={() => setBucket(c.key)} style={bucket === c.key ? { boxShadow: "0 0 0 2px var(--bs-" + c.tone + ")" } : {}}>
-              <div className="card-body">
-                <div className="d-flex justify-content-between"><div className="kpi-label">{c.label}</div><i className={`bi bi-${c.icon} text-${c.tone}`}></i></div>
-                <div className={`kpi-value text-${c.tone}`}>{counts[c.key] ?? 0}</div>
+      {/* KPI Cards Row with generous grid gaps */}
+      <div className="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4 mb-4">
+        {cards.map((c) => {
+          const isActive = bucket === c.key;
+          return (
+            <div className="col" key={c.key}>
+              <div
+                className={`card h-100 p-4 border shadow-xs transition-all ${
+                  isActive ? "border-" + c.tone + " shadow-md" : ""
+                }`}
+                style={{ borderRadius: "14px", backgroundColor: "var(--surface)" }}
+              >
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <div className="kpi-label fw-semibold text-secondary text-xs uppercase tracking-wider">
+                    {c.label}
+                  </div>
+                  <div
+                    className={`p-2 rounded-circle bg-${c.tone}-subtle d-flex align-items-center justify-content-center`}
+                    style={{ width: "36px", height: "36px" }}
+                  >
+                    <i className={`bi bi-${c.icon} text-${c.tone} fs-5`}></i>
+                  </div>
+                </div>
+
+                <div className={`kpi-value text-${c.tone} fw-bold fs-3 my-2`}>
+                  {counts[c.key] ?? 0}
+                </div>
+
+                <button
+                  className={`btn btn-sm ${
+                    isActive ? "btn-" + c.tone : "btn-outline-secondary"
+                  } w-100 fw-medium mt-auto`}
+                  style={{ fontSize: "12px", height: "34px", borderRadius: "8px" }}
+                  onClick={() => setBucket(c.key)}
+                >
+                  {isActive ? "Active Filter" : "Filter List"}
+                </button>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      <div className="card">
-        <div className="card-header bg-white fw-semibold text-capitalize">{bucket === "today" ? "Due today" : bucket}</div>
+      {/* Main Table Card with ample spacing */}
+      <div className="card border shadow-xs rounded-4 overflow-hidden mb-4">
+        <div className="card-header bg-white py-3 px-4 fw-semibold text-capitalize border-bottom d-flex align-items-center justify-content-between">
+          <span className="fs-6 font-semibold">
+            {bucket === "today" ? "Due Today" : bucket.toUpperCase()} Follow-ups
+          </span>
+          <span className="badge bg-secondary-subtle text-secondary px-3 py-1.5 rounded-pill">
+            {items.length} Task{items.length === 1 ? "" : "s"}
+          </span>
+        </div>
+
         <div className="table-responsive">
           <table className="table table-hover mb-0 align-middle">
-            <thead><tr><th>Lead</th><th>Type</th><th>Note</th><th>Owner</th><th>Due</th><th className="text-end">Action</th></tr></thead>
+            <thead className="bg-light">
+              <tr>
+                <th className="py-3 px-4">Lead</th>
+                <th className="py-3">Type</th>
+                <th className="py-3">Note</th>
+                <th className="py-3">Owner</th>
+                <th className="py-3">Due Date</th>
+                <th className="py-3 px-4 text-end">Action</th>
+              </tr>
+            </thead>
             <tbody>
-              {items.length === 0 ? <tr><td colSpan={6}><EmptyState icon="check2-circle" text="Nothing here." /></td></tr> : items.map((f) => (
-                <tr key={f._id}>
-                  <td><div className="fw-medium">{f.leadName}</div><div className="text-secondary" style={{ fontSize: 11 }}>{f.phone}</div></td>
-                  <td className="small"><i className={`bi bi-${ICON[f.type] || "bell"} me-1`}></i>{f.type}</td>
-                  <td className="small">{f.note}</td>
-                  <td className="small">{(f.owner || "").split(" ")[0]}</td>
-                  <td className="small">{new Date(f.due).toLocaleString()}</td>
-                  <td className="text-end">
-                    {f.done ? <span className="badge text-bg-success">{f.outcome || "Done"}</span> : (
-                      <div className="btn-group btn-group-sm">
-                        <button className="btn btn-wa" onClick={() => complete(f._id)}><i className="bi bi-check-lg"></i></button>
-                        <button className="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"></button>
-                        <ul className="dropdown-menu dropdown-menu-end">
-                          <li><button className="dropdown-item" onClick={() => reschedule(f._id, 1)}>Tomorrow</button></li>
-                          <li><button className="dropdown-item" onClick={() => reschedule(f._id, 3)}>In 3 days</button></li>
-                          <li><button className="dropdown-item" onClick={() => reschedule(f._id, 7)}>Next week</button></li>
-                        </ul>
-                      </div>
-                    )}
+              {items.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-5">
+                    <EmptyState icon="check2-circle" text="No follow-ups found for this filter." />
                   </td>
                 </tr>
-              ))}
+              ) : (
+                items.map((f) => (
+                  <tr key={f._id}>
+                    <td className="py-3 px-4">
+                      <div className="fw-medium text-foreground">{f.leadName}</div>
+                      <div className="text-muted small">{f.phone}</div>
+                    </td>
+                    <td className="small">
+                      <i className={`bi bi-${ICON[f.type] || "bell"} me-1 text-primary`}></i>
+                      {f.type}
+                    </td>
+                    <td className="small text-muted">{f.note || "—"}</td>
+                    <td className="small">{(f.owner || "").split(" ")[0]}</td>
+                    <td className="small">{new Date(f.due).toLocaleString()}</td>
+                    <td className="py-3 px-4 text-end">
+                      {f.done ? (
+                        <span className="badge text-bg-success px-2.5 py-1">{f.outcome || "Done"}</span>
+                      ) : (
+                        <div className="btn-group btn-group-sm">
+                          <button
+                            className="btn btn-wa d-inline-flex align-items-center gap-1"
+                            onClick={() => complete(f._id)}
+                            title="Mark Completed"
+                          >
+                            <i className="bi bi-check-lg"></i> Complete
+                          </button>
+                          <button
+                            className="btn btn-outline-secondary dropdown-toggle"
+                            data-bs-toggle="dropdown"
+                          ></button>
+                          <ul className="dropdown-menu dropdown-menu-end shadow-sm">
+                            <li>
+                              <button className="dropdown-item" onClick={() => reschedule(f._id, 1)}>
+                                Tomorrow
+                              </button>
+                            </li>
+                            <li>
+                              <button className="dropdown-item" onClick={() => reschedule(f._id, 3)}>
+                                In 3 days
+                              </button>
+                            </li>
+                            <li>
+                              <button className="dropdown-item" onClick={() => reschedule(f._id, 7)}>
+                                Next week
+                              </button>
+                            </li>
+                          </ul>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

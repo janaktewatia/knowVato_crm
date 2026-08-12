@@ -280,19 +280,20 @@ export default function KnowvatoDashboard() {
             {quickActions.map((a) => {
               const url = a.slug === "whatsapp" ? "/crm" : a.slug === "events" ? "/modules/events" : `/modules/${a.slug}`;
               return (
-                <Link
+                <div
                   key={a.title}
-                  to={url}
-                  className="group rounded-lg border bg-card hover:shadow-md hover:-translate-y-0.5 transition-all p-4 flex flex-col items-start gap-3 text-decoration-none text-foreground"
+                  className="rounded-lg border bg-card p-3 flex flex-col justify-between items-start gap-2 shadow-xs"
                 >
-                  <div className={`h-9 w-9 rounded-md flex items-center justify-center ${a.hue}`}>
-                    <a.icon className="h-5 w-5" />
+                  <div className={`h-8 w-8 rounded-md flex items-center justify-center ${a.hue}`}>
+                    <a.icon className="h-4 w-4" />
                   </div>
-                  <div className="text-sm font-medium">{a.title}</div>
-                  <div className="text-xs text-muted-foreground inline-flex items-center gap-1">
-                    <Plus className="h-3 w-3" /> Create
-                  </div>
-                </Link>
+                  <div className="text-sm font-medium text-foreground">{a.title}</div>
+                  <Button asChild size="sm" variant="outline" className="w-full text-xs h-7 mt-1">
+                    <Link to={url} className="text-decoration-none">
+                      <Plus className="h-3 w-3 mr-1" /> Open
+                    </Link>
+                  </Button>
+                </div>
               );
             })}
           </div>

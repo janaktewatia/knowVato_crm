@@ -3,14 +3,14 @@
 
 /* Default theme variables (Clean Slate) */
 .em-shell {
-  --primary: #0085A8;
+  --primary: #0f172a;
   --primary-foreground: #ffffff;
-  --background: #F7FBFE;
+  --background: var(--page-bg, #f8fafc);
   --surface: #FFFFFF;
-  --foreground: #40474D;
-  --pill: #E8EFF5;
-  --pill-text: #40474D;
-  --tab-track: #EBF2F8;
+  --foreground: #0f172a;
+  --pill: #f1f5f9;
+  --pill-text: #0f172a;
+  --tab-track: #e2e8f0;
 }
 
 .em-shell *,

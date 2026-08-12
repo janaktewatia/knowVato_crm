@@ -2,12 +2,22 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { Avatar } from "./ui";
+import BreadcrumbNav from "./BreadcrumbNav";
 
 const NAV = [
   {
-    label: "Workspace",
     items: [
-      { to: "/", end: true, icon: "house", label: "Knowvato Home", module: "dashboard" },
+      { to: "/", end: true, icon: "house", label: "Home", module: "dashboard" },
+    ],
+  },
+  {
+    label: "WhatsApp Manager",
+    items: [
+      { to: "/crm/chat", icon: "chat-dots", label: "Conversations", module: "chat" },
+      { to: "/crm/campaigns", icon: "send", label: "Bulk Campaigns", module: "blast" },
+      { to: "/crm/history", icon: "clock-history", label: "Message History", module: "reports" },
+      { to: "/crm/templates", icon: "file-text", label: "Templates", module: "blast" },
+      { to: "/crm/chatbot", icon: "robot", label: "Chatbot & Bot Flows", module: "setup" },
     ],
   },
   {
@@ -21,15 +31,6 @@ const NAV = [
     ],
   },
   {
-    label: "Engage",
-    items: [
-      { to: "/crm/chat", icon: "chat-dots", label: "Conversations", module: "chat" },
-      { to: "/crm/campaigns", icon: "send", label: "Bulk Campaigns", module: "blast" },
-      { to: "/crm/history", icon: "clock-history", label: "Message History", module: "reports" },
-      { to: "/crm/templates", icon: "file-text", label: "Templates", module: "blast" },
-    ],
-  },
-  {
     label: "Administration",
     items: [
       { to: "/crm/setup", icon: "gear", label: "Setup", module: "setup" },
@@ -39,7 +40,7 @@ const NAV = [
 ];
 
 const TITLES = {
-  "/": "Knowvato Home",
+  "/": "Home",
   "/crm": "Dashboard",
   "/crm/leads": "Leads",
   "/crm/followups": "Follow-ups",
@@ -49,8 +50,14 @@ const TITLES = {
   "/crm/campaigns": "Bulk Campaigns",
   "/crm/history": "Message History",
   "/crm/templates": "Templates",
+  "/crm/chatbot": "Chatbot & Bot Flows",
   "/crm/setup": "Setup",
   "/crm/audit": "Audit Logs",
+};
+
+const findSectionForPath = (pathname) => {
+  const entry = NAV.find((group) => group.items.some((it) => it.to === pathname));
+  return entry ? entry.label : "";
 };
 
 export default function Layout() {
@@ -66,7 +73,18 @@ export default function Layout() {
     localStorage.setItem("sidebar-open", JSON.stringify(sidebarOpen));
   }, [sidebarOpen]);
 
+  const [expandedSection, setExpandedSection] = useState(() => {
+    return findSectionForPath(window.location.pathname) || "WhatsApp Manager";
+  });
+
+  const activeSection = findSectionForPath(loc.pathname);
+
+  useEffect(() => {
+    if (activeSection) setExpandedSection(activeSection);
+  }, [activeSection]);
+
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  const toggleSection = (section) => setExpandedSection((current) => (current === section ? "" : section));
 
   const isPreviewOnly = loc.search.includes("startScreen=preview_only");
   if (isPreviewOnly) {
@@ -98,28 +116,36 @@ export default function Layout() {
         </div>
 
         <div className="flex-grow-1 overflow-auto">
-          {NAV.map((group) => {
+          {NAV.map((group, idx) => {
             const visible = group.items.filter((it) => can(it.module, "view"));
             if (!visible.length) return null;
+            const hasLabel = Boolean(group.label);
+            const isOpen = !hasLabel || expandedSection === group.label;
             return (
-              <div className="nav-section" key={group.label}>
-                <div className="nav-label">{group.label}</div>
-                {visible.map((it) => (
-                  <NavLink
-                    key={it.to}
-                    to={it.to}
-                    end={it.end}
-                    className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}
-                    onClick={() => {
-                      if (it.to === "/crm/setup") {
-                        setSidebarOpen(false);
-                      }
-                    }}
+              <div className="nav-section" key={group.label || `group-${idx}`}>
+                {hasLabel && (
+                  <button
+                    type="button"
+                    className={`nav-label nav-toggle ${isOpen ? "open" : ""}`}
+                    onClick={() => toggleSection(group.label)}
                   >
-                    <i className={`bi bi-${it.icon}`}></i>
-                    <span>{it.label}</span>
-                  </NavLink>
-                ))}
+                    <span>{group.label}</span>
+                    <i className={`bi bi-chevron-${isOpen ? "down" : "right"}`} />
+                  </button>
+                )}
+                <div className={`nav-group ${isOpen ? "open" : "collapsed"}`}>
+                  {visible.map((it) => (
+                    <NavLink
+                      key={it.to}
+                      to={it.to}
+                      end={it.end}
+                      className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}
+                    >
+                      <i className={`bi bi-${it.icon}`}></i>
+                      <span>{it.label}</span>
+                    </NavLink>
+                  ))}
+                </div>
               </div>
             );
           })}
@@ -138,8 +164,8 @@ export default function Layout() {
       </aside>
 
       <div className="main">
-        <div className="topbar">
-          <h2 className="h6 mb-0 fw-semibold">{title}</h2>
+        <div className="topbar px-3 d-flex align-items-center justify-content-between">
+          <BreadcrumbNav />
           <div className="ms-auto d-flex align-items-center gap-3 text-secondary">
             <i className="bi bi-bell"></i>
             <span className="small">{user?.email}</span>

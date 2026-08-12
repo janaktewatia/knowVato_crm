@@ -11,8 +11,8 @@
   --popover-foreground: oklch(0.18 0.04 260);
 
   /* Brand */
-  --primary: oklch(0.45 0.18 265);
-  --primary-foreground: oklch(0.99 0 0);
+  --primary: #0f172a;
+  --primary-foreground: #ffffff;
 
   /* Neutrals */
   --secondary: oklch(0.96 0.01 260);
@@ -679,7 +679,8 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
   pointer-events: auto;
 }
 
-.sidebar {
+.events-module .sidebar,
+.event-manager-layout .sidebar {
   width: 248px;
   position: fixed;
   top: 0;
@@ -740,7 +741,7 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
 }
 
 .sidebar__submenu.open {
-  max-height: 140px;
+  max-height: 1000px !important;
   opacity: 1;
   margin-top: 0.4rem;
 }

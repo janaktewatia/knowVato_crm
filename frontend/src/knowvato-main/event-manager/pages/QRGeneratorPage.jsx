@@ -107,12 +107,13 @@ const QRGeneratorPage = () => {
                             address: "",
                           });
                         }}
-                        className={`qr-type-button btn d-flex align-items-center justify-content-center gap-2 ${activeTab === type.id ? "btn-primary" : "btn-outline-secondary"}`}
+                        className={`qr-type-button btn btn-sm d-inline-flex align-items-center justify-content-center gap-2 ${
+                          activeTab === type.id ? "btn-primary" : "btn-outline-secondary"
+                        }`}
+                        style={{ height: "38px", minHeight: "38px", fontSize: "13px", fontWeight: "500", borderRadius: "8px", padding: "0 14px" }}
                       >
-                        <Icon
-                          className={`fs-5 ${activeTab === type.id ? "text-white" : "text-secondary"}`}
-                        />
-                        {type.name}
+                        <Icon className="flex-shrink-0" style={{ fontSize: "16px" }} />
+                        <span>{type.name}</span>
                       </button>
                     );
                   })}
@@ -150,19 +151,30 @@ const QRGeneratorPage = () => {
               <div className="mt-4 mb-3">
                 <div className="d-flex align-items-center justify-content-center mb-2 gap-3">
                   <label className="form-label small mb-0">QR Size:</label>
-                  <div className="fw-bold">{qrData.size}px</div>
+                  <div className="fw-bold">{qrData.size || 0}px</div>
                   <input
                     type="number"
                     className="form-control form-control-sm"
                     style={{ width: "90px" }}
-                    min={150}
+                    min={50}
                     max={2000}
                     step={1}
-                    value={qrData.size}
+                    value={qrData.size === undefined || qrData.size === null ? "" : qrData.size}
                     onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === "") {
+                        updateQRData({ size: "" });
+                        return;
+                      }
+                      const val = parseInt(raw, 10);
+                      if (!isNaN(val)) {
+                        updateQRData({ size: val });
+                      }
+                    }}
+                    onBlur={(e) => {
                       let val = parseInt(e.target.value, 10);
-                      if (isNaN(val)) val = qrData.size;
-                      val = Math.max(150, Math.min(2000, val));
+                      if (isNaN(val) || val < 50) val = 50;
+                      if (val > 2000) val = 2000;
                       updateQRData({ size: val });
                     }}
                   />
@@ -170,10 +182,10 @@ const QRGeneratorPage = () => {
                 <input
                   type="range"
                   className="form-range"
-                  min="150"
+                  min="50"
                   max="2000"
                   step="10"
-                  value={qrData.size}
+                  value={Number(qrData.size) || 50}
                   onChange={(e) =>
                     updateQRData({
                       size: parseInt(e.target.value, 10),

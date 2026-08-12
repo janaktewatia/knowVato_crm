@@ -19,32 +19,18 @@ import {
   QrCode,
   Layers,
   UserCheck,
+  Nfc,
+  Bus,
+  FileText,
+  X,
 } from "lucide-react";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  useSidebar,
-} from "@/components/ui/sidebar";
-import {
-  Collapsible,
-  CollapsibleContent,
-} from "@/components/ui/collapsible";
+import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "../../context/AuthContext";
 import { useBookmarks } from "@/lib/bookmarks";
 
 const modules = [
   { title: "Event Manager", slug: "events", icon: CalendarRange },
+  { title: "Easy In-Out", slug: "easy-inout", icon: Nfc },
   { title: "WhatsApp CRM", slug: "whatsapp", icon: MessageSquare },
   { title: "Website Builder", slug: "website", icon: Globe2 },
   { title: "Communication", slug: "communication", icon: Megaphone },
@@ -53,15 +39,12 @@ const modules = [
   { title: "User Management", slug: "users", icon: Users },
 ];
 
-const configurationSubmenu = [
-  { title: "WhatsApp Template", slug: "templates-whatsapp" },
-  { title: "SMS Template", slug: "templates-sms" },
-  { title: "Email Template", slug: "templates-email" },
-  { title: "WhatsApp Integration", slug: "integrations-whatsapp" },
-  { title: "Email Integration", slug: "integrations-email" },
-  { title: "SMS Integration", slug: "integrations-sms" },
-  { title: "Facebook Integration", slug: "integrations-facebook" },
-  { title: "Other API Integration", slug: "integrations-other" },
+const easyInOutSubmenu = [
+  { title: "Mark In-Out", path: "/modules/easy-inout/inout", icon: Nfc, mobile: true },
+  { title: "Mark Bus Attendance", path: "/modules/easy-inout/bus", icon: Bus, mobile: true },
+  { title: "Report", path: "/modules/easy-inout/report", icon: FileText },
+  { title: "Student Master", path: "/modules/easy-inout/student", icon: Users },
+  { title: "Setup", path: "/modules/easy-inout/setup", icon: Settings },
 ];
 
 const eventsSubmenu = [
@@ -74,218 +57,312 @@ const eventsSubmenu = [
 ];
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, toggleSidebar, openMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
   const pathname = location.pathname;
   const { user, logout } = useAuth();
   const { bookmarks } = useBookmarks();
+
+  const handleLinkClick = () => {
+    if (openMobile) setOpenMobile(false);
+  };
+
   const isConfigurationPath =
     pathname.startsWith("/modules/integrations-") ||
     pathname.startsWith("/modules/templates-") ||
     pathname === "/modules/configuration";
 
-  return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b">
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
-            O
-          </div>
-          {!collapsed && (
-            <div className="flex flex-col leading-tight">
-              <span className="text-sm font-semibold">KnowVato Solutions</span>
-              <span className="text-xs text-muted-foreground">Workspace</span>
+  const renderNavItems = (isMobileDrawer = false) => {
+    const isCollapsed = isMobileDrawer ? false : collapsed;
+    return (
+      <div className="flex-grow overflow-y-auto py-2">
+        {pathname.startsWith("/modules/easy-inout") ? (
+          <div className="nav-section px-2 py-1">
+            {!isCollapsed && (
+              <div className="nav-label text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--sidebar-muted)] px-2 py-1.5 flex items-center justify-between">
+                <span>Easy In-Out</span>
+              </div>
+            )}
+            <div className="space-y-1">
+              <Link
+                to="/"
+                onClick={handleLinkClick}
+                title="Home"
+                className={`nav-link text-decoration-none flex items-center ${
+                  isCollapsed ? "justify-center p-2.5 w-[44px] h-[44px] mx-auto rounded-lg" : "gap-3 px-3 py-2 rounded-lg text-[14px]"
+                } ${pathname === "/" ? "active bg-[var(--sidebar-primary)] text-white font-medium shadow-xs" : "text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]"}`}
+              >
+                <Home className="h-4 w-4 shrink-0" />
+                {!isCollapsed && <span>Home</span>}
+              </Link>
+              {easyInOutSubmenu.map((s) => {
+                const active = pathname === s.path;
+                const Icon = s.icon;
+                return (
+                  <Link
+                    key={s.path}
+                    to={s.path}
+                    onClick={handleLinkClick}
+                    title={s.title}
+                    className={`nav-link text-decoration-none flex items-center ${
+                      isCollapsed ? "justify-center p-2.5 w-[44px] h-[44px] mx-auto rounded-lg" : "gap-3 px-3 py-2 rounded-lg text-[14px]"
+                    } ${active ? "active bg-[var(--sidebar-primary)] text-white font-medium shadow-xs" : "text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]"}`}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    {!isCollapsed && <span className="flex-1">{s.title}</span>}
+                    {!isCollapsed && s.mobile && (
+                      <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-medium">Mobile</span>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
-          )}
-        </div>
-      </SidebarHeader>
-
-      <SidebarContent>
-        {pathname.startsWith("/modules/events") ? (
-          <SidebarGroup>
-            <SidebarGroupLabel>Event Manager</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname === "/"} tooltip="Home">
-                    <Link to="/" className="flex items-center gap-2">
-                      <Home className="h-4 w-4 shrink-0" />
-                      <span>Home</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                {eventsSubmenu.map((s) => {
-                  const active = s.exact ? pathname === s.path : pathname === s.path;
-                  return (
-                    <SidebarMenuItem key={s.path}>
-                      <SidebarMenuButton asChild isActive={active} tooltip={s.title}>
-                        <Link to={s.path} className="flex items-center gap-2">
-                          <s.icon className="h-4 w-4 shrink-0" />
-                          <span>{s.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+          </div>
+        ) : pathname.startsWith("/modules/events") ? (
+          <div className="nav-section px-2 py-1">
+            {!isCollapsed && (
+              <div className="nav-label text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--sidebar-muted)] px-2 py-1.5">
+                Event Manager
+              </div>
+            )}
+            <div className="space-y-1">
+              <Link
+                to="/"
+                onClick={handleLinkClick}
+                title="Home"
+                className={`nav-link text-decoration-none flex items-center ${
+                  isCollapsed ? "justify-center p-2.5 w-[44px] h-[44px] mx-auto rounded-lg" : "gap-3 px-3 py-2 rounded-lg text-[14px]"
+                } ${pathname === "/" ? "active bg-[var(--sidebar-primary)] text-white font-medium shadow-xs" : "text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]"}`}
+              >
+                <Home className="h-4 w-4 shrink-0" />
+                {!isCollapsed && <span>Home</span>}
+              </Link>
+              {eventsSubmenu.map((s) => {
+                const active = pathname === s.path;
+                const Icon = s.icon;
+                return (
+                  <Link
+                    key={s.path}
+                    to={s.path}
+                    onClick={handleLinkClick}
+                    title={s.title}
+                    className={`nav-link text-decoration-none flex items-center ${
+                      isCollapsed ? "justify-center p-2.5 w-[44px] h-[44px] mx-auto rounded-lg" : "gap-3 px-3 py-2 rounded-lg text-[14px]"
+                    } ${active ? "active bg-[var(--sidebar-primary)] text-white font-medium shadow-xs" : "text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]"}`}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    {!isCollapsed && <span>{s.title}</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
         ) : (
           <>
-            <SidebarGroup>
-              <SidebarGroupLabel>Main</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname === "/"} tooltip="Dashboard">
-                      <Link to="/" className="flex items-center gap-2">
-                        <LayoutDashboard className="h-4 w-4 shrink-0" />
-                        <span>Dashboard</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+            {/* Workspace */}
+            <div className="nav-section px-2 py-1">
+              {!isCollapsed && (
+                <div className="nav-label text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--sidebar-muted)] px-2 py-1.5">
+                  Workspace
+                </div>
+              )}
+              <div className="space-y-1">
+                <Link
+                  to="/"
+                  onClick={handleLinkClick}
+                  title="Dashboard"
+                  className={`nav-link text-decoration-none flex items-center ${
+                    isCollapsed ? "justify-center p-2.5 w-[44px] h-[44px] mx-auto rounded-lg" : "gap-3 px-3 py-2 rounded-lg text-[14px]"
+                  } ${pathname === "/" ? "active bg-[var(--sidebar-primary)] text-white font-medium shadow-xs" : "text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]"}`}
+                >
+                  <LayoutDashboard className="h-4 w-4 shrink-0" />
+                  {!isCollapsed && <span>Dashboard</span>}
+                </Link>
+              </div>
+            </div>
 
-            <SidebarGroup>
-              <SidebarGroupLabel>Modules</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {modules.map((m) => {
-                    const url = m.slug === "whatsapp" ? "/crm" : m.slug === "events" ? "/modules/events" : `/modules/${m.slug}`;
-                    const active = pathname === url || (m.slug === "whatsapp" && pathname.startsWith("/crm"));
+            {/* Modules */}
+            <div className="nav-section px-2 py-1">
+              {!isCollapsed && (
+                <div className="nav-label text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--sidebar-muted)] px-2 py-1.5">
+                  Modules
+                </div>
+              )}
+              <div className="space-y-1">
+                {modules.map((m) => {
+                  const url = m.slug === "whatsapp" ? "/crm" : m.slug === "easy-inout" ? "/modules/easy-inout/inout" : m.slug === "events" ? "/modules/events" : `/modules/${m.slug}`;
+                  const active = pathname === url || (m.slug === "whatsapp" && pathname.startsWith("/crm")) || (m.slug === "easy-inout" && pathname.startsWith("/modules/easy-inout"));
+                  const Icon = m.icon;
+                  return (
+                    <Link
+                      key={m.slug}
+                      to={url}
+                      onClick={handleLinkClick}
+                      title={m.title}
+                      className={`nav-link text-decoration-none flex items-center ${
+                        isCollapsed ? "justify-center p-2.5 w-[44px] h-[44px] mx-auto rounded-lg" : "gap-3 px-3 py-2 rounded-lg text-[14px]"
+                      } ${active ? "active bg-[var(--sidebar-primary)] text-white font-medium shadow-xs" : "text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]"}`}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      {!isCollapsed && <span>{m.title}</span>}
+                    </Link>
+                  );
+                })}
+
+                <Link
+                  to="/modules/configuration"
+                  onClick={handleLinkClick}
+                  title="Configuration"
+                  className={`nav-link text-decoration-none flex items-center ${
+                    isCollapsed ? "justify-center p-2.5 w-[44px] h-[44px] mx-auto rounded-lg" : "gap-3 px-3 py-2 rounded-lg text-[14px]"
+                  } ${isConfigurationPath ? "active bg-[var(--sidebar-primary)] text-white font-medium shadow-xs" : "text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]"}`}
+                >
+                  <Settings className="h-4 w-4 shrink-0" />
+                  {!isCollapsed && <span>Configuration</span>}
+                </Link>
+              </div>
+            </div>
+
+            {/* Bookmarks */}
+            {bookmarks.length > 0 && (
+              <div className="nav-section px-2 py-1">
+                {!isCollapsed && (
+                  <div className="nav-label text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--sidebar-muted)] px-2 py-1.5">
+                    Bookmarks
+                  </div>
+                )}
+                <div className="space-y-1">
+                  {bookmarks.map((b) => {
+                    const slug = b.url.replace("/modules/", "");
+                    const active = pathname === b.url;
                     return (
-                      <SidebarMenuItem key={m.slug}>
-                        <SidebarMenuButton asChild isActive={active} tooltip={m.title}>
-                          <Link to={url} className="flex items-center gap-2">
-                            <m.icon className="h-4 w-4 shrink-0" />
-                            <span>{m.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
+                      <Link
+                        key={b.url}
+                        to={`/modules/${slug}`}
+                        onClick={handleLinkClick}
+                        title={b.title}
+                        className={`nav-link text-decoration-none flex items-center ${
+                          isCollapsed ? "justify-center p-2.5 w-[44px] h-[44px] mx-auto rounded-lg" : "gap-3 px-3 py-2 rounded-lg text-[14px]"
+                        } ${active ? "active bg-[var(--sidebar-primary)] text-white font-medium shadow-xs" : "text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]"}`}
+                      >
+                        <Bookmark className="h-4 w-4 shrink-0" />
+                        {!isCollapsed && <span className="truncate">{b.title}</span>}
+                      </Link>
                     );
                   })}
-
-                  <Collapsible
-                    open={isConfigurationPath}
-                    className="group/collapsible"
-                  >
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild tooltip="Configuration" isActive={isConfigurationPath}>
-                        <Link
-                          to="/modules/configuration"
-                          className="flex items-center gap-2"
-                        >
-                          <Settings className="h-4 w-4 shrink-0" />
-                          <span>Configuration</span>
-                          <ChevronRight
-                            className={`ml-auto h-4 w-4 transition-transform ${isConfigurationPath ? "rotate-90" : ""}`}
-                          />
-                        </Link>
-                      </SidebarMenuButton>
-                      <CollapsibleContent>
-                        <SidebarMenuSub>
-                          <SidebarMenuSubItem>
-                            <SidebarMenuSubButton asChild isActive={pathname === "/modules/configuration"}>
-                              <Link to="/modules/configuration">
-                                <span>General</span>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                          {configurationSubmenu.map((s) => {
-                            const url = `/modules/${s.slug}`;
-                            return (
-                              <SidebarMenuSubItem key={s.slug}>
-                                <SidebarMenuSubButton asChild isActive={pathname === url}>
-                                  <Link to={`/modules/${s.slug}`}>
-                                    <span>{s.title}</span>
-                                  </Link>
-                                </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
-                            );
-                          })}
-                        </SidebarMenuSub>
-                      </CollapsibleContent>
-                    </SidebarMenuItem>
-                  </Collapsible>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-
-            {bookmarks.length > 0 && (
-              <SidebarGroup>
-                <SidebarGroupLabel>Bookmarks</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {bookmarks.map((b) => {
-                      const slug = b.url.replace("/modules/", "");
-                      return (
-                        <SidebarMenuItem key={b.url}>
-                          <SidebarMenuButton
-                            asChild
-                            isActive={pathname === b.url}
-                            tooltip={b.title}
-                          >
-                            <Link
-                              to={`/modules/${slug}`}
-                              className="flex items-center gap-2"
-                            >
-                              <Bookmark className="h-4 w-4 shrink-0" />
-                              <span>{b.title}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
-                    })}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
+                </div>
+              </div>
             )}
           </>
         )}
-      </SidebarContent>
+      </div>
+    );
+  };
 
-      <SidebarFooter className="border-t">
-        <SidebarMenu>
-          {user ? (
-            <>
-              <SidebarMenuItem>
-                <div className="flex items-center gap-2 px-2 py-1.5">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-semibold text-white">
-                    {user.name.charAt(0).toUpperCase()}
-                  </div>
-                  {!collapsed && (
-                    <div className="flex flex-col leading-tight overflow-hidden">
-                      <span className="text-sm font-medium truncate">{user.name}</span>
-                      <span className="text-xs text-muted-foreground truncate">{user.email}</span>
-                    </div>
-                  )}
+  const renderHeader = (isMobileDrawer = false) => {
+    const isCollapsed = isMobileDrawer ? false : collapsed;
+    return (
+      <div className={`sidebar-header border-b border-[var(--sidebar-border)] p-3 flex items-center ${isCollapsed ? "justify-center" : "justify-between"} min-h-[56px]`}>
+        <div className="brand flex items-center gap-2.5 min-w-0">
+          <span className="mark w-[34px] h-[34px] rounded-[10px] bg-[var(--sidebar-primary)] text-white flex items-center justify-center font-bold flex-shrink-0">
+            <i className="bi bi-layers-half text-base"></i>
+          </span>
+          <div className="brand-copy flex flex-col min-w-0">
+            <div className="brand-title text-[14px] font-semibold text-[var(--sidebar-foreground)] truncate">KnowVato Solutions</div>
+            <div className="brand-sub text-[10.5px] text-[var(--sidebar-muted)] truncate">Admissions Suite</div>
+          </div>
+        </div>
+        {isMobileDrawer ? (
+          <button
+            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100"
+            onClick={() => setOpenMobile(false)}
+          >
+            <X size={20} />
+          </button>
+        ) : (
+          <button
+            className="sidebar-toggle btn btn-sm border-0 p-1 flex-shrink-0 text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]"
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={toggleSidebar}
+          >
+            <i className={`bi ${collapsed ? "bi-layout-sidebar-reverse" : "bi-layout-sidebar"} text-base`}></i>
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  const renderFooter = (isMobileDrawer = false) => {
+    const isCollapsed = isMobileDrawer ? false : collapsed;
+    return (
+      <div className="side-footer border-t border-[var(--sidebar-border)] p-3 mt-auto flex items-center justify-between min-h-[56px]">
+        {user ? (
+          <div className={`flex items-center w-full gap-2 ${isCollapsed ? "justify-center" : "justify-between"}`}>
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-[30px] h-[30px] rounded-full bg-[var(--sidebar-primary)] text-white flex items-center justify-center text-xs font-semibold shrink-0">
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+              {!isCollapsed && (
+                <div className="flex flex-col min-w-0">
+                  <div className="text-[12.5px] font-medium text-[var(--sidebar-foreground)] truncate">{user.name}</div>
+                  <div className="text-[10.5px] text-[var(--sidebar-muted)] truncate">{user.userType?.name || user.email}</div>
                 </div>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton onClick={logout} tooltip="Log out">
-                  <LogOut className="h-4 w-4" />
-                  <span>Log out</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </>
-          ) : (
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                tooltip="Log in"
+              )}
+            </div>
+            {!isCollapsed && (
+              <button
+                className="btn btn-sm border-0 p-1 shrink-0 text-[var(--sidebar-muted)] hover:text-[var(--sidebar-foreground)]"
+                title="Log out"
+                onClick={logout}
               >
-                <Link to="/login">
-                  <LogIn className="h-4 w-4" />
-                  <span>Log in</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
-        </SidebarMenu>
-      </SidebarFooter>
-    </Sidebar>
+                <LogOut className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        ) : (
+          <Link
+            to="/login"
+            onClick={handleLinkClick}
+            title="Log in"
+            className={`nav-link text-decoration-none flex items-center ${
+              isCollapsed ? "justify-center p-2.5 w-[44px] h-[44px] mx-auto rounded-lg" : "gap-3 px-3 py-2 rounded-lg text-[14px]"
+            } text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]`}
+          >
+            <LogIn className="h-4 w-4 shrink-0" />
+            {!isCollapsed && <span>Log in</span>}
+          </Link>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <>
+      {/* Mobile Backdrop & Drawer */}
+      {openMobile && (
+        <div className="fixed inset-0 z-50 md:hidden flex">
+          <div
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setOpenMobile(false)}
+          />
+          <div className="relative z-50 w-72 max-w-[85vw] bg-white h-full flex flex-col shadow-2xl">
+            {renderHeader(true)}
+            {renderNavItems(true)}
+            {renderFooter(true)}
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Sticky Sidebar */}
+      <aside
+        data-collapsed={collapsed}
+        className={`sidebar hidden md:flex ${collapsed ? "sidebar-closed" : ""} border-r border-slate-200 bg-white transition-all duration-300 ease-in-out flex-col sticky top-0 h-screen z-20`}
+      >
+        {renderHeader(false)}
+        {renderNavItems(false)}
+        {renderFooter(false)}
+      </aside>
+    </>
   );
 }

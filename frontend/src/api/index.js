@@ -91,13 +91,36 @@ export const waAccountsApi = {
   update: (id, b) => http.patch(`/whatsapp-accounts/${id}`, b),
   remove: (id) => http.del(`/whatsapp-accounts/${id}`),
   activate: (id) => http.post(`/whatsapp-accounts/${id}/activate`),
+  getMetaProfile: () => http.get("/whatsapp-accounts/meta-profile"),
+  updateMetaProfile: (b) => http.post("/whatsapp-accounts/meta-profile", b),
+};
+
+export const facebookApi = {
+  list: () => http.get("/facebook-accounts"),
+  create: (b) => http.post("/facebook-accounts", b),
+  update: (id, b) => http.patch(`/facebook-accounts/${id}`, b),
+  remove: (id) => http.del(`/facebook-accounts/${id}`),
+  activate: (id) => http.post(`/facebook-accounts/${id}/activate`),
+  testConnection: (id, b) => http.post(`/facebook-accounts/${id}/test`, b),
+  fetchLeadForms: (id) => http.post(`/facebook-accounts/${id}/fetch-forms`),
 };
 
 export const templatesApi = {
   list: (params) => http.get("/templates" + qs(params)),
   create: (b) => http.post("/templates", b),
+  createMeta: (b) => http.post("/templates/create-meta", b),
+  syncMeta: () => http.post("/templates/sync-meta"),
+  deleteMeta: (name) => http.del(`/templates/${encodeURIComponent(name)}/meta`),
   update: (id, b) => http.patch(`/templates/${id}`, b),
   remove: (id) => http.del(`/templates/${id}`),
+};
+
+export const chatbotApi = {
+  list: () => http.get("/chatbot-rules"),
+  create: (b) => http.post("/chatbot-rules", b),
+  update: (id, b) => http.patch(`/chatbot-rules/${id}`, b),
+  remove: (id) => http.del(`/chatbot-rules/${id}`),
+  test: (b) => http.post("/chatbot-rules/test", b),
 };
 
 export const campaignsApi = {

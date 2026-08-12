@@ -108,17 +108,15 @@ export function DataTable({ columns, rows, rowKey = "_id", onRowClick, loading, 
   );
 }
 
-// Colour-coded status pill (neutral structure; colour only conveys meaning)
+// Colour-coded status text (neutral structure; color only conveys status state)
 export function StatusPill({ color, name, sub }) {
   if (!name) return <span className="text-muted">—</span>;
-  const style = color ? { background: color + "1f", color } : undefined;
   return (
     <span className="d-inline-flex flex-column" style={{ lineHeight: 1.25 }}>
-      <span className="pill" style={style}>
-        <span className="dot" style={color ? { background: color } : undefined} />
+      <span style={{ fontSize: "12px", fontWeight: 500, color: color || "var(--text)" }}>
         {name}
       </span>
-      {sub && <span style={{ fontSize: 10, color: "var(--muted)" }}>{sub}</span>}
+      {sub && <span style={{ fontSize: "11px", color: "var(--muted)" }}>{sub}</span>}
     </span>
   );
 }

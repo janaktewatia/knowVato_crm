@@ -135,10 +135,12 @@
 @layer base {
   * {
     border-color: var(--color-border);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   }
 
-  body {
+  body, input, select, textarea, button {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   }
 }

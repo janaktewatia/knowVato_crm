@@ -12,6 +12,7 @@ import MessagingSlider from "../components/MessagingSlider";
 import EditSlider from "../components/EditSlider";
 import FollowUpSlider from "../components/FollowUpSlider";
 import JourneySlider from "../components/JourneySlider";
+import RegistrationSlider from "../components/RegistrationSlider";
 
 export default function Leads() {
   const { can } = useAuth();
@@ -22,6 +23,7 @@ export default function Leads() {
   const [editingLead, setEditingLead] = useState(null);
   const [followUpLead, setFollowUpLead] = useState(null);
   const [journeyLead, setJourneyLead] = useState(null);
+  const [registrationLead, setRegistrationLead] = useState(null);
   const [adding, setAdding] = useState(false);
   const navigate = useNavigate();
   const [visibleColumns, setVisibleColumns] = useState({ name: true, email: true, offerings: true, status: true, nextFollowUp: true, currentRemark: false, nextRemark: false, source: true, owner: true, created: true, actions: true });
@@ -241,6 +243,7 @@ export default function Leads() {
       {editingLead && <EditSlider lead={editingLead} onClose={() => setEditingLead(null)} onSaved={leads.reload} />}
       {followUpLead && <FollowUpSlider lead={followUpLead} onClose={() => setFollowUpLead(null)} statuses={statuses.data || []} services={servicesA.data || []} />}
       {journeyLead && <JourneySlider lead={journeyLead} onClose={() => setJourneyLead(null)} statuses={statuses.data || []} services={servicesA.data || []} />}
+      {registrationLead && <RegistrationSlider lead={registrationLead} onClose={() => setRegistrationLead(null)} onSaved={leads.reload} />}
       {adding && <AddLeadModal onClose={() => setAdding(false)} onSaved={() => { setAdding(false); leads.reload(); }} />}
     </div>
   );

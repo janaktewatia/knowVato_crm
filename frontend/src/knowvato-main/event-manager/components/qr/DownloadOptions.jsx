@@ -162,48 +162,56 @@ const DownloadOptions = () => {
         {/* PNG Button */}
         <div className="col-6 col-md-3">
           <button
-            className={`btn p-1 w-100 ${activeFormat === "png" ? "btn-primary" : "btn-outline-primary"}`}
+            className={`btn btn-sm w-100 d-inline-flex align-items-center justify-content-center gap-1.5 ${
+              activeFormat === "png" ? "btn-primary" : "btn-outline-secondary"
+            }`}
+            style={{ height: "34px", fontSize: "12px", fontWeight: "500", borderRadius: "6px" }}
             onClick={downloadAsPNG}
             disabled={downloading}
           >
-            <FiImage className="me-2" />
-            PNG
+            <FiImage className="flex-shrink-0" style={{ fontSize: "14px" }} />
+            <span>PNG</span>
           </button>
         </div>
 
         {/* JPG Button */}
         <div className="col-6 col-md-3">
           <button
-            className={`btn p-1 w-100 ${activeFormat === "jpg" ? "btn-primary" : "btn-outline-primary"}`}
+            className={`btn btn-sm w-100 d-inline-flex align-items-center justify-content-center gap-1.5 ${
+              activeFormat === "jpg" ? "btn-primary" : "btn-outline-secondary"
+            }`}
+            style={{ height: "34px", fontSize: "12px", fontWeight: "500", borderRadius: "6px" }}
             onClick={downloadAsJPG}
             disabled={downloading}
           >
-            <FiImage className="me-2" />
-            JPG
+            <FiImage className="flex-shrink-0" style={{ fontSize: "14px" }} />
+            <span>JPG</span>
           </button>
         </div>
 
         {/* PDF Button */}
         <div className="col-6 col-md-3">
           <button
-            className="btn p-1 btn-outline-primary w-100"
+            className="btn btn-sm btn-outline-secondary w-100 d-inline-flex align-items-center justify-content-center gap-1.5"
+            style={{ height: "34px", fontSize: "12px", fontWeight: "500", borderRadius: "6px" }}
             onClick={downloadAsPDF}
             disabled={downloading}
           >
-            <FiFileText className="me-2" />
-            PDF
+            <FiFileText className="flex-shrink-0" style={{ fontSize: "14px" }} />
+            <span>PDF</span>
           </button>
         </div>
 
         {/* Copy QR Button */}
         <div className="col-6 col-md-3">
           <button
-            className="btn p-1 btn-secondary w-100"
+            className="btn btn-sm btn-secondary w-100 d-inline-flex align-items-center justify-content-center gap-1.5"
+            style={{ height: "34px", fontSize: "12px", fontWeight: "500", borderRadius: "6px" }}
             onClick={copyToClipboard}
             disabled={downloading}
           >
-            <FiCopy className="me-2" />
-            Copy
+            <FiCopy className="flex-shrink-0" style={{ fontSize: "14px" }} />
+            <span>Copy</span>
           </button>
         </div>
       </div>

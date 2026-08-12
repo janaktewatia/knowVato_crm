@@ -543,22 +543,19 @@ const SetupPage = () => {
 
   return (
     <div
-      className="container-fluid p-2 fade-in d-flex flex-column"
-      style={{ minHeight: "calc(100vh - 1.45rem)" }}
+      className="container-fluid fade-in d-flex flex-column"
+      style={{ padding: "4px", minHeight: "calc(100vh - 1.45rem)" }}
     >
-      <div className="card border-0 shadow-sm mb-3">
-        <div className="card-body p-3">
-          <h2 className="fw-bold mb-1">Setup</h2>
-          <p className="text-muted mb-0">
-            Manage fields, categories, event types, users and configuration.
-          </p>
+      <div className="card border-0 shadow-sm mb-1">
+        <div className="card-body p-2">
+          <h5 className="fw-bold mb-0">Setup</h5>
         </div>
       </div>
 
-      <div className="row g-3 flex-grow-1">
+      <div className="d-flex flex-grow-1" style={{ gap: "4px" }}>
         {/* Sidebar */}
-        <div className="col-12" style={{ flex: "0 0 16%", maxWidth: "16%" }}>
-          <div className="card border-0 shadow-sm h-100">
+        <div style={{ flex: "0 0 240px", maxWidth: "240px", position: "sticky", top: "70px", alignSelf: "start" }}>
+          <div className="card border-0 shadow-sm">
             <div className="card-body p-3">
               <h6 className="fw-semibold mb-3">Setup Menu</h6>
               <div className="d-flex flex-column gap-1">
@@ -584,7 +581,7 @@ const SetupPage = () => {
         </div>
 
         {/* Content */}
-        <div className="col-12" style={{ flex: "0 0 84%", maxWidth: "84%" }}>
+        <div className="flex-grow-1 min-w-0">
           {/* ── User Defined Fields ── */}
           {activeTab === "fields" && (
             <div className="card border-0 shadow-sm h-100">

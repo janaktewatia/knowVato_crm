@@ -329,28 +329,26 @@ const CreateEventPage = () => {
           )}
 
           {!isCreating && !editingId && (
-            <div className="d-flex align-items-center justify-content-between gap-2">
-              <div className="d-flex align-items-center gap-2 flex-grow-1">
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+              <div className="d-flex flex-wrap align-items-center gap-2 flex-grow-1">
                 <h2 className="fw-bold mb-0 me-2">Events</h2>
 
                 {/* Filter button with dropdown */}
                 <div className="position-relative" ref={filterRef}>
                   <button
                     type="button"
-                    className={
-                      "btn btn-sm " +
-                      (activeFilterCount > 0
-                        ? "btn-primary"
-                        : "btn-outline-secondary")
-                    }
+                    className={`btn btn-sm d-inline-flex align-items-center justify-content-center gap-1.5 ${
+                      activeFilterCount > 0 ? "btn-primary" : "btn-outline-secondary"
+                    }`}
+                    style={{ height: "36px", minHeight: "36px", fontSize: "13px", fontWeight: "500", borderRadius: "6px", padding: "0 12px" }}
                     onClick={() => setFilterOpen((o) => !o)}
                   >
-                    <FiFilter className="me-1" />
-                    Filter
+                    <FiFilter className="flex-shrink-0" style={{ fontSize: "15px" }} />
+                    <span>Filter</span>
                     {activeFilterCount > 0 && (
                       <span
                         className="badge bg-white text-primary ms-1"
-                        style={{ fontSize: 10 }}
+                        style={{ fontSize: "10px" }}
                       >
                         {activeFilterCount}
                       </span>
@@ -359,7 +357,7 @@ const CreateEventPage = () => {
 
                   {filterOpen && (
                     <div
-                      className="card border-0 shadow"
+                      className="card border-0 shadow-md"
                       style={{
                         position: "absolute",
                         top: "calc(100% + 6px)",
@@ -367,6 +365,7 @@ const CreateEventPage = () => {
                         zIndex: 999,
                         minWidth: 280,
                         padding: "0.85rem",
+                        borderRadius: "8px",
                       }}
                     >
                       <div className="mb-2">
@@ -424,7 +423,8 @@ const CreateEventPage = () => {
                       </div>
                       <button
                         type="button"
-                        className="btn btn-sm btn-outline-secondary w-100"
+                        className="btn btn-sm btn-outline-secondary w-100 d-inline-flex align-items-center justify-content-center gap-1.5"
+                        style={{ height: "32px", fontSize: "12px" }}
                         onClick={() => {
                           setFilter({
                             eventType: "",
@@ -434,7 +434,7 @@ const CreateEventPage = () => {
                           setFilterOpen(false);
                         }}
                       >
-                        Clear Filters
+                        <span>Clear Filters</span>
                       </button>
                     </div>
                   )}
@@ -451,17 +451,17 @@ const CreateEventPage = () => {
                     placeholder="Search event..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{ paddingRight: "2rem" }}
+                    style={{ height: "36px", fontSize: "13px", borderRadius: "6px", paddingRight: "2.2rem" }}
                   />
                   <FiSearch
-                    size={14}
                     className="text-muted"
                     style={{
                       position: "absolute",
-                      right: "0.6rem",
+                      right: "0.75rem",
                       top: "50%",
                       transform: "translateY(-50%)",
                       pointerEvents: "none",
+                      fontSize: "15px",
                     }}
                   />
                 </div>
@@ -469,14 +469,16 @@ const CreateEventPage = () => {
 
               <button
                 type="button"
-                className="btn btn-primary btn-sm"
+                className="btn btn-primary btn-sm d-inline-flex align-items-center justify-content-center gap-1.5 shadow-xs"
+                style={{ height: "36px", minHeight: "36px", fontSize: "13px", fontWeight: "500", borderRadius: "6px", padding: "0 14px" }}
                 onClick={() => {
                   setEditingId(null);
                   setFormData(createEmptyForm(userFields, categories));
                   navigate("/events?mode=new");
                 }}
               >
-                <FiPlus className="me-1" /> Add Event
+                <FiPlus className="flex-shrink-0" style={{ fontSize: "16px" }} />
+                <span>Add Event</span>
               </button>
             </div>
           )}

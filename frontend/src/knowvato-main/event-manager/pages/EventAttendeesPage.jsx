@@ -1564,61 +1564,109 @@ const EventAttendeesPage = () => {
           </nav>
 
           {/* Row 1: Filter + Search + Count + Action buttons */}
-          <div className="d-flex gap-2 align-items-center mb-2">
+          <div className="d-flex flex-wrap gap-2 align-items-center mb-2">
             <div className="position-relative" ref={filterRef}>
               <button
                 type="button"
-                className={"btn btn-sm " + ((filterCat || filterPass) ? "btn-primary" : "btn-outline-secondary")}
+                className={`btn btn-sm d-inline-flex align-items-center justify-content-center gap-1.5 ${
+                  filterCat || filterPass ? "btn-primary" : "btn-outline-secondary"
+                }`}
+                style={{ height: "36px", minHeight: "36px", fontSize: "13px", fontWeight: "500", borderRadius: "6px" }}
                 onClick={() => setFilterOpen((o) => !o)}
               >
-                <i className="bi bi-funnel me-1" />
-                Filter
+                <i className="bi bi-funnel flex-shrink-0" style={{ fontSize: "14px" }} />
+                <span>Filter</span>
                 {(filterCat || filterPass) && (
-                  <span className="badge bg-white text-primary ms-1" style={{ fontSize: 10 }}>
+                  <span className="badge bg-white text-primary ms-1" style={{ fontSize: "10px" }}>
                     {[filterCat, filterPass].filter(Boolean).length}
                   </span>
                 )}
               </button>
               {filterOpen && (
-                <div className="card border-0 shadow" style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 999, minWidth: 240, padding: "0.85rem" }}>
+                <div
+                  className="card border-0 shadow-md"
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 6px)",
+                    left: 0,
+                    zIndex: 999,
+                    minWidth: 240,
+                    padding: "0.85rem",
+                    borderRadius: "8px",
+                  }}
+                >
                   <div className="mb-2">
                     <label className="form-label small fw-semibold mb-1">Category</label>
-                    <select className="form-select form-select-sm" value={filterCat} onChange={(e) => setFilterCat(e.target.value)}>
+                    <select
+                      className="form-select form-select-sm"
+                      value={filterCat}
+                      onChange={(e) => setFilterCat(e.target.value)}
+                    >
                       <option value="">All Categories</option>
-                      {(eventCats.length > 0 ? eventCats.map((c) => c.label) : DEFAULT_CATEGORIES.map((c) => c.name)).map((name) => (
-                        <option key={name} value={name}>{name}</option>
+                      {(eventCats.length > 0
+                        ? eventCats.map((c) => c.label)
+                        : DEFAULT_CATEGORIES.map((c) => c.name)
+                      ).map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
                       ))}
                     </select>
                   </div>
                   <div className="mb-3">
                     <label className="form-label small fw-semibold mb-1">Pass Status</label>
-                    <select className="form-select form-select-sm" value={filterPass} onChange={(e) => setFilterPass(e.target.value)}>
+                    <select
+                      className="form-select form-select-sm"
+                      value={filterPass}
+                      onChange={(e) => setFilterPass(e.target.value)}
+                    >
                       <option value="">All</option>
                       <option value="generated">Generated</option>
                       <option value="not-generated">Not Generated</option>
                     </select>
                   </div>
-                  <button type="button" className="btn btn-sm btn-outline-secondary w-100"
-                    onClick={() => { setFilterCat(""); setFilterPass(""); setFilterOpen(false); }}>
-                    Clear Filters
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary w-100 d-inline-flex align-items-center justify-content-center gap-1.5"
+                    style={{ height: "32px", fontSize: "12px" }}
+                    onClick={() => {
+                      setFilterCat("");
+                      setFilterPass("");
+                      setFilterOpen(false);
+                    }}
+                  >
+                    <i className="bi bi-x-circle flex-shrink-0" />
+                    <span>Clear Filters</span>
                   </button>
                 </div>
               )}
             </div>
 
-            <div className="position-relative" style={{ width: "300px" }}>
+            <div className="position-relative" style={{ width: "280px" }}>
               <input
                 type="text"
                 className="form-control form-control-sm"
                 placeholder="Search name, phone, email…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                style={{ paddingRight: "2rem" }}
+                style={{ height: "36px", fontSize: "13px", borderRadius: "6px", paddingRight: "2rem" }}
               />
-              <i className="bi bi-search text-muted" style={{ position: "absolute", right: "0.6rem", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", fontSize: 13 }} />
+              <i
+                className="bi bi-search text-muted"
+                style={{
+                  position: "absolute",
+                  right: "0.6rem",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  pointerEvents: "none",
+                  fontSize: "13px",
+                }}
+              />
             </div>
 
-            <span className="text-muted small text-nowrap">{filtered.length}/{eventAttendees.length}</span>
+            <span className="text-muted small text-nowrap font-medium">
+              {filtered.length}/{eventAttendees.length}
+            </span>
 
             {/* Spacer to push buttons to the right */}
             <div style={{ flex: 1 }}></div>
@@ -1626,38 +1674,56 @@ const EventAttendeesPage = () => {
             {/* Action buttons aligned right */}
             <button
               type="button"
-              className={`btn btn-sm ${showComm ? "btn-primary" : "btn-outline-secondary"}`}
-              onClick={() => { setCommTarget(null); setShowComm(true); }}
+              className={`btn btn-sm d-inline-flex align-items-center justify-content-center gap-1.5 ${
+                showComm ? "btn-primary" : "btn-outline-secondary"
+              }`}
+              style={{ height: "36px", minHeight: "36px", fontSize: "13px", fontWeight: "500", borderRadius: "6px", padding: "0 12px" }}
+              onClick={() => {
+                setCommTarget(null);
+                setShowComm(true);
+              }}
             >
-              <i className="bi bi-send me-1" /> Send
+              <i className="bi bi-send flex-shrink-0" style={{ fontSize: "14px" }} />
+              <span>Send</span>
             </button>
+
             <button
               type="button"
-              className="btn btn-outline-secondary btn-sm"
+              className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center justify-content-center gap-1.5"
+              style={{ height: "36px", minHeight: "36px", fontSize: "13px", fontWeight: "500", borderRadius: "6px", padding: "0 12px" }}
               onClick={() => navigate(`/events/${eventId}/upload/generatepass`)}
               disabled={isPast || eventAttendees.length === 0}
               title={isPast ? "Event has ended — pass generation is locked" : undefined}
             >
-              <i className="bi bi-qr-code-scan me-1" /> Generate Pass
+              <i className="bi bi-qr-code-scan flex-shrink-0" style={{ fontSize: "14px" }} />
+              <span>Generate Pass</span>
               {selectedEvent?.passDesignSaved && (
-                <i className="bi bi-check-circle-fill ms-1" style={{ color: "var(--success)", fontSize: 12 }} />
+                <i className="bi bi-check-circle-fill ms-1" style={{ color: "var(--success)", fontSize: "12px" }} />
               )}
             </button>
+
             <button
               type="button"
-              className="btn btn-sm btn-outline-secondary"
+              className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center justify-content-center gap-1.5"
+              style={{ height: "36px", minHeight: "36px", fontSize: "13px", fontWeight: "500", borderRadius: "6px", padding: "0 12px" }}
               onClick={() => setShowAddModal(true)}
               disabled={isPast}
             >
-              <i className="bi bi-person-plus me-1" /> Add
+              <i className="bi bi-person-plus flex-shrink-0" style={{ fontSize: "14px" }} />
+              <span>Add</span>
             </button>
+
             <button
               type="button"
-              className={`btn btn-sm ${showImport ? "btn-primary" : "btn-outline-secondary"}`}
+              className={`btn btn-sm d-inline-flex align-items-center justify-content-center gap-1.5 ${
+                showImport ? "btn-primary" : "btn-outline-secondary"
+              }`}
+              style={{ height: "36px", minHeight: "36px", fontSize: "13px", fontWeight: "500", borderRadius: "6px", padding: "0 12px" }}
               onClick={() => setShowImport(true)}
               disabled={isPast}
             >
-              <i className="bi bi-cloud-upload me-1" /> Import
+              <i className="bi bi-cloud-upload flex-shrink-0" style={{ fontSize: "14px" }} />
+              <span>Import</span>
             </button>
           </div>
         </div>

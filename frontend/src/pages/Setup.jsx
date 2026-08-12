@@ -7,6 +7,10 @@ import { PageHeader, Spinner, ErrorBox, EmptyState, Tabs, Modal, IconBtn } from 
 import RegistrationFormBuilder from "../components/RegistrationFormBuilder";
 import LandingPageBuilder from "../components/LandingPageBuilder";
 import LandingPageWizard from "../components/LandingPageWizard";
+import ThemeSwitcher from "../components/ThemeSwitcher";
+import WhatsAppTemplateBuilder from "../components/WhatsAppTemplateBuilder";
+import WhatsAppIntegrationManager from "../components/WhatsAppIntegrationManager";
+import FacebookIntegrationManager from "../components/FacebookIntegrationManager";
 
 const DEFAULT_LANDING_PAGE_CONFIG = {
   brandName: "Your Institution",
@@ -26,9 +30,8 @@ const DEFAULT_LANDING_PAGE_CONFIG = {
 const CATEGORIES = [
   {
     id: "lead-config",
-    icon: "clipboard-data",
     title: "Lead Configuration",
-    color: "#0085a8",
+    color: "#0f172a",
     items: [
       { id: "offerings", label: "Offerings" },
       { id: "status", label: "Lead Statuses" },
@@ -37,9 +40,8 @@ const CATEGORIES = [
   },
   {
     id: "forms",
-    icon: "file-earmark-text",
     title: "Forms",
-    color: "#2e7d57",
+    color: "#0f172a",
     items: [
       { id: "enquiry-form", label: "Enquiry Form" },
       { id: "registration-form", label: "Registration Form" },
@@ -47,10 +49,17 @@ const CATEGORIES = [
     ]
   },
   {
+    id: "ui",
+    title: "UI",
+    color: "#0f172a",
+    items: [
+      { id: "ui-theme", label: "Theme Customization" }
+    ]
+  },
+  {
     id: "academic",
-    icon: "mortarboard",
     title: "Academic Setup",
-    color: "#9a6700",
+    color: "#0f172a",
     items: [
       { id: "sessions", label: "Academic Sessions" },
       { id: "grades", label: "Grades" }
@@ -58,9 +67,8 @@ const CATEGORIES = [
   },
   {
     id: "workflow",
-    icon: "diagram-3",
     title: "Workflows",
-    color: "#5b4b8a",
+    color: "#0f172a",
     items: [
       { id: "workflows", label: "Workflows" },
       { id: "comm-templates", label: "Communication Templates" },
@@ -69,11 +77,11 @@ const CATEGORIES = [
   },
   {
     id: "integrations",
-    icon: "puzzle",
     title: "Integrations",
-    color: "#6b7280",
+    color: "#0f172a",
     items: [
-      { id: "facebook", label: "Facebook" },
+      { id: "whatsapp-integration", label: "WhatsApp Integration" },
+      { id: "facebook-integration", label: "Facebook Integration" },
       { id: "google-form", label: "Google Form" },
       { id: "api-integration", label: "API Integration" }
     ]
@@ -95,13 +103,19 @@ export default function Setup() {
   };
   const [selected, setSelected] = useState(getActiveSection);
   const [mode, setMode] = useState(getMode);
-  const [openCategories, setOpenCategories] = useState(() => Object.fromEntries(CATEGORIES.map((cat) => [cat.id, true])));
+
+  const [openCategories, setOpenCategories] = useState({
+    "lead-config": true,
+    forms: true,
+    ui: true,
+    academic: true,
+    workflow: true,
+    integrations: true,
+  });
 
   useEffect(() => {
     const active = getActiveSection();
-    if (active && active !== selected) {
-      setSelected(active);
-    }
+    setSelected(active);
     const currentMode = getMode();
     if (currentMode !== mode) {
       setMode(currentMode);
@@ -113,20 +127,21 @@ export default function Setup() {
   };
 
   const selectSection = (item) => {
-    setSelected(item.id);
+    const id = typeof item === "string" ? item : item.id;
+    setSelected(id);
     setMode("list");
-    navigate(`/crm/setup?active=${item.id}&mode=list`);
+    navigate(`/crm/setup?active=${id}&mode=list`);
   };
 
-  const hideSidebar = (selected === "registration-form" || selected === "landing-page") && mode === "editor";
+  const hideSidebar = (selected === "registration-form" || selected === "landing-page" || selected === "whatsapp-templates") && mode === "editor";
 
   return (
-    <div style={{ padding: "0" }}>
-      <div style={hideSidebar ? { display: "block", marginBottom: "8px", padding: "0 2px" } : { display: "grid", gridTemplateColumns: "240px minmax(0, 1fr)", gap: "12px", marginBottom: "8px", padding: "0 2px" }}>
+    <div style={{ padding: "4px" }}>
+      <div style={hideSidebar ? { display: "block", marginBottom: "4px" } : { display: "grid", gridTemplateColumns: "minmax(240px, 260px) minmax(0, 1fr)", gap: "4px", marginBottom: "4px" }}>
         {!hideSidebar && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px", position: "sticky", top: 16, alignSelf: "start" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px", position: "sticky", top: "70px", maxHeight: "calc(100vh - 86px)", overflowY: "auto", paddingRight: "2px", zIndex: 5 }}>
             {CATEGORIES.map((cat) => (
-              <div key={cat.id} style={{ border: "1px solid var(--border)", borderRadius: "16px", background: "var(--surface)", overflow: "hidden" }}>
+              <div key={cat.id} style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", background: "var(--surface)", overflow: "visible", width: "100%", height: "auto", minHeight: "fit-content", maxHeight: "none" }}>
                 <button
                   type="button"
                   onClick={() => toggleCategory(cat.id)}
@@ -136,7 +151,7 @@ export default function Setup() {
                     alignItems: "center",
                     justifyContent: "space-between",
                     gap: "10px",
-                    padding: "12px 14px",
+                    padding: "10px 14px",
                     border: "none",
                     background: "transparent",
                     color: "var(--text)",
@@ -144,38 +159,44 @@ export default function Setup() {
                     textAlign: "left"
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <i className={`bi bi-${cat.icon}`} style={{ color: cat.color, fontSize: 17 }}></i>
-                    <div>
-                      <div style={{ fontSize: "13px", fontWeight: 600 }}>{cat.title}</div>
-                      <div style={{ fontSize: "11px", color: "var(--text-2)" }}>{cat.items.length} options</div>
-                    </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cat.title}</div>
+                    <div style={{ fontSize: "11px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{cat.items.length} options</div>
                   </div>
-                  <i className={`bi bi-chevron-${openCategories[cat.id] ? "down" : "right"}`} style={{ fontSize: 14, color: "var(--text-2)" }}></i>
+                  <i className={`bi bi-chevron-${openCategories[cat.id] ? "down" : "right"}`} style={{ fontSize: 13, color: "var(--text-2)", flexShrink: 0 }}></i>
                 </button>
 
                 {openCategories[cat.id] && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "4px", padding: "8px 10px 12px" }}>
-                    {cat.items.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => selectSection(item)}
-                        style={{
-                          width: "100%",
-                          padding: "8px 10px",
-                          border: "none",
-                          background: selected === item.id ? `${cat.color}22` : "transparent",
-                          color: selected === item.id ? cat.color : "var(--text-2)",
-                          fontWeight: selected === item.id ? 600 : 500,
-                          textAlign: "left",
-                          borderRadius: "8px",
-                          cursor: "pointer"
-                        }}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "2px", padding: "2px 8px 8px", height: "auto", minHeight: "fit-content", maxHeight: "none", overflow: "visible" }}>
+                    {cat.items.map((item) => {
+                      const isSelected = selected === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => selectSection(item)}
+                          style={{
+                            width: "100%",
+                            padding: "6px 10px",
+                            border: "none",
+                            borderLeft: isSelected ? "3px solid var(--text)" : "3px solid transparent",
+                            background: isSelected ? "var(--surface-2)" : "transparent",
+                            color: isSelected ? "var(--text)" : "var(--text-2)",
+                            fontWeight: isSelected ? 500 : 400,
+                            textAlign: "left",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "8px",
+                            transition: "all 0.15s ease"
+                          }}
+                        >
+                          <span style={{ fontSize: "12.5px", whiteSpace: "nowrap" }}>{item.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -190,12 +211,15 @@ export default function Setup() {
           {selected === "registration-form" && <RegistrationFormConfig />}
           {selected === "enquiry-form" && <EnquiryFormConfig />}
           {selected === "landing-page" && <LandingPageTab />}
+          {selected === "ui-theme" && <ThemeSwitcher />}
           {selected === "sessions" && <AcademicSessions />}
           {selected === "grades" && <Grades />}
           {selected === "teams" && <Teams />}
           {selected === "workflows" && <WorkflowsTab />}
           {selected === "comm-templates" && <CommunicationTemplatesConfig />}
-          {selected === "facebook" && <IntegrationPlaceholder title="Facebook" />}
+          {selected === "whatsapp-templates" && <WhatsAppTemplatesSetup />}
+          {selected === "whatsapp-integration" && <WhatsAppIntegrationManager />}
+          {(selected === "facebook" || selected === "facebook-integration") && <FacebookIntegrationManager />}
           {selected === "google-form" && <IntegrationPlaceholder title="Google Form" />}
           {selected === "api-integration" && <IntegrationPlaceholder title="API Integration" />}
         </div>
@@ -218,7 +242,7 @@ function ServicesMaster() {
   }
   async function remove(id) { if (confirm("Delete this offering?")) { try { await servicesApi.remove(id); toast("Deleted"); list.reload(); } catch (e) { toast(e.message, "error"); } } }
   return (
-    <div className="card" style={{ borderRadius: "16px" }}>
+    <div className="card" style={{ borderRadius: "var(--radius)" }}>
       <div className="card-header d-flex justify-content-between align-items-center">
         <div><span className="fw-semibold">Offerings</span><div className="text-muted small">Pipelines a lead can be in. Each can have its own statuses.</div></div>
         <button className="btn btn-sm btn-wa" onClick={() => setEdit({ name: "", color: COLORS[0], icon: "grid", isRecurring: false })}>Add offering</button>
@@ -229,8 +253,8 @@ function ServicesMaster() {
         <tbody>
           {list.loading ? <tr><td colSpan={3}><Spinner /></td></tr> : (list.data || []).map((s) => (
             <tr key={s._id}>
-              <td><i className={`bi bi-${s.icon} me-2`} style={{ color: s.color }}></i><span className="fw-medium">{s.name}</span></td>
-              <td><span className="badge" style={{ background: s.isRecurring ? "#2e7d57" : "#7a5c2e" }}>{s.isRecurring ? "Recurring" : "One-time"}</span></td>
+              <td><span style={{ fontSize: "12px", fontWeight: 400, color: "var(--text)" }}>{s.name}</span></td>
+              <td><span style={{ fontSize: "12px", color: s.isRecurring ? "#16a34a" : "#6b7280", fontWeight: 400 }}>{s.isRecurring ? "Recurring" : "One-time"}</span></td>
               <td className="text-end"><IconBtn icon="pencil" onClick={() => setEdit(s)} />{!s.builtIn && <IconBtn icon="trash" danger onClick={() => remove(s._id)} />}</td>
             </tr>
           ))}
@@ -238,22 +262,22 @@ function ServicesMaster() {
       </table></div>
       {edit && (
         <Modal title={edit._id ? "Edit offering" : "Add offering"} onClose={() => setEdit(null)}
-          footer={<><button className="btn btn-outline-secondary" onClick={() => setEdit(null)}>Cancel</button><button className="btn btn-wa" disabled={!edit.name} onClick={() => save(edit)}>Save</button></>}>
-          <label className="form-label">Name</label>
-          <input className="form-control mb-3" value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="e.g. Hostel, Transport, Scholarship" />
-          <label className="form-label">Colour</label>
-          <div className="d-flex flex-wrap gap-2 mb-3">{COLORS.map((c) => <button key={c} onClick={() => setEdit({ ...edit, color: c })} style={{ width: 28, height: 28, borderRadius: 6, background: c, border: edit.color === c ? "3px solid #1f2630" : "1px solid #ccc" }} />)}</div>
-          <label className="form-label">Icon</label>
+          footer={<><button className="btn btn-outline-secondary btn-sm" onClick={() => setEdit(null)}>Cancel</button><button className="btn btn-wa btn-sm" disabled={!edit.name} onClick={() => save(edit)}>Save</button></>}>
+          <label className="form-label small fw-semibold">Name</label>
+          <input className="form-control form-control-sm mb-3" style={{ fontSize: "12.5px" }} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="e.g. Hostel, Transport, Scholarship" />
+          <label className="form-label small fw-semibold">Colour</label>
+          <div className="d-flex flex-wrap gap-2 mb-3">{COLORS.map((c) => <button key={c} onClick={() => setEdit({ ...edit, color: c })} style={{ width: 26, height: 26, borderRadius: 6, background: c, border: edit.color === c ? "3px solid #1f2630" : "1px solid #ccc" }} />)}</div>
+          <label className="form-label small fw-semibold">Icon</label>
           <div className="d-flex flex-wrap gap-2 mb-3">{ICONS.map((ic) => <button key={ic} onClick={() => setEdit({ ...edit, icon: ic })} className="btn btn-sm" style={{ border: edit.icon === ic ? "2px solid var(--accent)" : "1px solid var(--border-2)" }}><i className={`bi bi-${ic}`}></i></button>)}</div>
-          <label className="form-label">Frequency</label>
+          <label className="form-label small fw-semibold">Frequency</label>
           <div className="d-flex gap-3">
             <div className="form-check">
               <input className="form-check-input" type="radio" id="oneTime" name="frequency" checked={!edit.isRecurring} onChange={() => setEdit({ ...edit, isRecurring: false })} />
-              <label className="form-check-label" htmlFor="oneTime">One-time</label>
+              <label className="form-check-label small" htmlFor="oneTime">One-time</label>
             </div>
             <div className="form-check">
               <input className="form-check-input" type="radio" id="recurring" name="frequency" checked={edit.isRecurring} onChange={() => setEdit({ ...edit, isRecurring: true })} />
-              <label className="form-check-label" htmlFor="recurring">Recurring</label>
+              <label className="form-check-label small" htmlFor="recurring">Recurring</label>
             </div>
           </div>
         </Modal>
@@ -281,21 +305,21 @@ function CombinedStatusMaster() {
   async function removeStatus(id) { if (confirm("Delete status?")) { try { await mastersApi.removeStatus(id); toast("Deleted"); list.reload(); } catch (e) { toast(e.message, "error"); } } }
 
   return (
-    <div className="card" style={{ borderRadius: "16px" }}>
-      <div className="card-header d-flex justify-content-between">
-        <div><span className="fw-semibold">Lead Statuses</span><div className="text-muted small">Create statuses with sub-statuses and map to offerings.</div></div>
+    <div className="card" style={{ borderRadius: "var(--radius)" }}>
+      <div className="card-header d-flex justify-content-between align-items-center">
+        <div><span className="fw-semibold" style={{ fontSize: "14px" }}>Lead Statuses</span><div className="text-muted small">Create statuses with sub-statuses and map to offerings.</div></div>
         <button className="btn btn-sm btn-wa" onClick={() => setEdit({ name: "", color: COLORS[0], subStatuses: [""], offerings: [], followUpRequired: false, isWon: false, isLost: false })}>Add Status</button>
       </div>
       <ErrorBox error={list.error} />
       <div className="table-responsive">
-        <table className="table mb-0 align-middle">
-          <thead><tr><th>Status</th><th>Sub-Statuses</th><th>Offerings</th><th>Follow-up</th><th>Type</th><th></th></tr></thead>
+        <table className="table mb-0 align-middle" style={{ fontSize: "12px" }}>
+          <thead><tr className="table-light"><th style={{ fontSize: "12px", fontWeight: 600 }}>Status</th><th style={{ fontSize: "12px", fontWeight: 600 }}>Sub-Statuses</th><th style={{ fontSize: "12px", fontWeight: 600 }}>Offerings</th><th style={{ fontSize: "12px", fontWeight: 600 }}>Follow-up</th><th style={{ fontSize: "12px", fontWeight: 600 }}>Type</th><th className="text-end" style={{ fontSize: "12px", fontWeight: 600 }}>Actions</th></tr></thead>
           <tbody>
             {list.loading ? <tr><td colSpan={6}><Spinner /></td></tr> : !list.data || list.data.length === 0 ? (
               <tr><td colSpan={6} className="text-center text-muted py-4">No statuses created yet. Click "Add Status" to create one.</td></tr>
             ) : (list.data || []).map((s) => (
               <tr key={s._id}>
-                <td><span className="pill" style={{ background: s.color + "22", color: s.color }}>{s.name}</span></td>
+                <td><span style={{ fontSize: "12px", fontWeight: 400, color: "var(--text)" }}>{s.name}</span></td>
                 <td>
                   {s.subStatuses && s.subStatuses.length > 0 ? (
                     <button className="btn btn-sm btn-link p-0" onClick={() => setExpandedId(expandedId === s._id ? null : s._id)}>
@@ -445,16 +469,21 @@ function SourceMaster() {
   const [form, setForm] = useState({ name: "" });
   async function add() { if (!form.name) return; try { await mastersApi.createSource(form); toast("Added"); setForm({ name: "" }); list.reload(); } catch (e) { toast(e.message, "error"); } }
   return (
-    <div className="card" style={{ borderRadius: "16px" }}>
-      <div className="card-header bg-white fw-semibold">Lead sources</div>
-      <div className="card-body">
+    <div className="card" style={{ borderRadius: "var(--radius)" }}>
+      <div className="card-header bg-white fw-semibold" style={{ fontSize: "14px" }}>Lead sources</div>
+      <div className="card-body" style={{ fontSize: "12px" }}>
         <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
-          <input className="form-control form-control-sm" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={{ flex: 1 }} />
-          <button className="btn btn-sm btn-wa" onClick={add} style={{ padding: "6px 12px", whiteSpace: "nowrap" }} title="Add source"><i className="bi bi-plus-lg"></i></button>
+          <input className="form-control form-control-sm" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={{ flex: 1, fontSize: "12.5px" }} placeholder="Enter lead source (e.g. Website, Instagram)" />
+          <button className="btn btn-sm btn-wa" onClick={add} style={{ padding: "5px 12px", fontSize: "12px" }} title="Add source"><i className="bi bi-plus-lg me-1"></i>Add</button>
         </div>
-        <table className="table table-sm"><tbody>
-          {(list.data || []).map((s) => <tr key={s._id}><td>{s.name}</td><td className="text-end"><button className="btn btn-sm btn-link text-danger" onClick={async () => { await mastersApi.removeSource(s._id); list.reload(); }}><i className="bi bi-trash"></i></button></td></tr>)}
-        </tbody></table>
+        <div className="table-responsive">
+          <table className="table table-hover mb-0 align-middle" style={{ fontSize: "12px" }}>
+            <thead><tr className="table-light"><th style={{ fontSize: "12px", fontWeight: 600 }}>Source Name</th><th className="text-end" style={{ fontSize: "12px", fontWeight: 600 }}>Action</th></tr></thead>
+            <tbody>
+              {(list.data || []).map((s) => <tr key={s._id}><td style={{ fontSize: "12px", fontWeight: 400 }}>{s.name}</td><td className="text-end"><button className="btn btn-sm border-0 text-secondary hover-danger p-1" style={{ fontSize: "12px" }} onClick={async () => { await mastersApi.removeSource(s._id); list.reload(); }}><i className="bi bi-trash" style={{ fontSize: "13px" }}></i></button></td></tr>)}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -470,16 +499,19 @@ function UserTypes() {
     catch (e) { toast(e.message, "error"); }
   }
   return (
-    <div className="card" style={{ borderRadius: "16px" }}>
-      <div className="card-header bg-white d-flex justify-content-between"><span className="fw-semibold">User types & permissions</span><button className="btn btn-sm btn-wa" onClick={() => setEdit({ name: "", desc: "", perms: PERM_MODS.map((m) => ({ module: m, view: false, create: false, edit: false, del: false })) })}>Add</button></div>
+    <div className="card" style={{ borderRadius: "var(--radius)" }}>
+      <div className="card-header bg-white d-flex justify-content-between align-items-center"><span className="fw-semibold" style={{ fontSize: "14px" }}>User types & permissions</span><button className="btn btn-sm btn-wa" onClick={() => setEdit({ name: "", desc: "", perms: PERM_MODS.map((m) => ({ module: m, view: false, create: false, edit: false, del: false })) })}>Add</button></div>
       <ErrorBox error={list.error} />
-      <table className="table mb-0 align-middle"><thead><tr><th>Type</th><th>Description</th><th>Modules</th><th></th></tr></thead>
-        <tbody>
-          {list.loading ? <tr><td colSpan={4}><Spinner /></td></tr> : (list.data || []).map((t) => (
-            <tr key={t._id}><td className="fw-medium">{t.name}</td><td className="small text-secondary">{t.desc}</td><td><span className="badge text-bg-light">{t.perms.filter((p) => p.view).length}/{t.perms.length} modules</span></td><td className="text-end"><button className="btn btn-sm btn-link" onClick={() => setEdit(t)}><i className="bi bi-pencil"></i></button></td></tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="table-responsive">
+        <table className="table table-hover mb-0 align-middle" style={{ fontSize: "12px" }}>
+          <thead><tr className="table-light"><th style={{ fontSize: "12px", fontWeight: 600 }}>Type</th><th style={{ fontSize: "12px", fontWeight: 600 }}>Description</th><th style={{ fontSize: "12px", fontWeight: 600 }}>Modules</th><th className="text-end" style={{ fontSize: "12px", fontWeight: 600 }}>Actions</th></tr></thead>
+          <tbody>
+            {list.loading ? <tr><td colSpan={4}><Spinner /></td></tr> : (list.data || []).map((t) => (
+              <tr key={t._id}><td style={{ fontSize: "12px", fontWeight: 400 }}>{t.name}</td><td style={{ fontSize: "12px" }} className="text-secondary">{t.desc}</td><td style={{ fontSize: "12px" }} className="text-secondary">{t.perms.filter((p) => p.view).length}/{t.perms.length} modules</td><td className="text-end"><button className="btn btn-sm border-0 text-secondary hover-primary p-1" style={{ fontSize: "12px" }} onClick={() => setEdit(t)}><i className="bi bi-pencil" style={{ fontSize: "13px" }}></i></button></td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {edit && <PermModal userType={edit} onClose={() => setEdit(null)} onSave={save} />}
     </div>
   );
@@ -509,7 +541,7 @@ function PermModal({ userType, onClose, onSave }) {
             </tbody>
           </table>
         </div>
-        <div className="modal-footer"><button className="btn btn-outline-secondary" onClick={onClose}>Cancel</button><button className="btn btn-wa" disabled={!name} onClick={() => onSave({ _id: userType._id, name, desc, perms })}>Save</button></div>
+        <div className="modal-footer"><button className="btn btn-sm btn-outline-secondary" onClick={onClose}>Cancel</button><button className="btn btn-sm btn-wa" disabled={!name} onClick={() => onSave({ _id: userType._id, name, desc, perms })}>Save</button></div>
       </div></div></div></>
   );
 }
@@ -526,16 +558,19 @@ function Users() {
     catch (e) { toast(e.message, "error"); }
   }
   return (
-    <div className="card" style={{ borderRadius: "16px" }}>
-      <div className="card-header bg-white d-flex justify-content-between"><span className="fw-semibold">Users</span><button className="btn btn-sm btn-wa" onClick={() => setEdit({ name: "", email: "", userType: types.data?.[0]?._id, designation: "", status: "Active" })}>Add user</button></div>
+    <div className="card" style={{ borderRadius: "var(--radius)" }}>
+      <div className="card-header bg-white d-flex justify-content-between align-items-center"><span className="fw-semibold" style={{ fontSize: "14px" }}>Users</span><button className="btn btn-sm btn-wa" onClick={() => setEdit({ name: "", email: "", userType: types.data?.[0]?._id, designation: "", status: "Active" })}>Add user</button></div>
       <ErrorBox error={list.error} />
-      <table className="table mb-0 align-middle"><thead><tr><th>User</th><th>Email</th><th>Type</th><th>Status</th><th></th></tr></thead>
-        <tbody>
-          {list.loading ? <tr><td colSpan={5}><Spinner /></td></tr> : (list.data || []).map((u) => (
-            <tr key={u._id}><td className="fw-medium">{u.name}</td><td className="small font-monospace">{u.email}</td><td><span className="badge text-bg-info">{typeMap[u.userType]?.name || u.userType?.name || "—"}</span></td><td>{u.status === "Active" ? <span className="badge text-bg-success">Active</span> : <span className="badge text-bg-secondary">{u.status}</span>}</td><td className="text-end"><button className="btn btn-sm btn-link" onClick={() => setEdit({ ...u, userType: u.userType?._id || u.userType })}><i className="bi bi-pencil"></i></button></td></tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="table-responsive">
+        <table className="table table-hover mb-0 align-middle" style={{ fontSize: "12px" }}>
+          <thead><tr className="table-light"><th style={{ fontSize: "12px", fontWeight: 600 }}>User</th><th style={{ fontSize: "12px", fontWeight: 600 }}>Email</th><th style={{ fontSize: "12px", fontWeight: 600 }}>Type</th><th style={{ fontSize: "12px", fontWeight: 600 }}>Status</th><th className="text-end" style={{ fontSize: "12px", fontWeight: 600 }}>Actions</th></tr></thead>
+          <tbody>
+            {list.loading ? <tr><td colSpan={5}><Spinner /></td></tr> : (list.data || []).map((u) => (
+              <tr key={u._id}><td style={{ fontSize: "12px", fontWeight: 400 }}>{u.name}</td><td style={{ fontSize: "12px" }} className="font-monospace text-secondary">{u.email}</td><td style={{ fontSize: "12px" }} className="text-secondary">{typeMap[u.userType]?.name || u.userType?.name || "—"}</td><td><span style={{ fontSize: "12px", fontWeight: 500, color: u.status === "Active" ? "#16a34a" : "#6b7280" }}>{u.status}</span></td><td className="text-end"><button className="btn btn-sm border-0 text-secondary hover-primary p-1" style={{ fontSize: "12px" }} onClick={() => setEdit({ ...u, userType: u.userType?._id || u.userType })}><i className="bi bi-pencil" style={{ fontSize: "13px" }}></i></button></td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {edit && <UserModal user={edit} types={types.data || []} designations={designations.data || []} onClose={() => setEdit(null)} onSave={save} />}
     </div>
   );
@@ -554,7 +589,7 @@ function UserModal({ user, types, designations = [], onClose, onSave }) {
           <div className="col-6"><label className="form-label small">Designation</label><select className="form-select" value={f.designation} onChange={(e) => setF({ ...f, designation: e.target.value })}><option value="">— Select —</option>{designations.map((d) => <option key={d._id} value={d._id}>{d.name}</option>)}</select></div>
           <div className="col-6"><label className="form-label small">Status</label><select className="form-select" value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}><option>Active</option><option>Inactive</option><option>Pending</option></select></div>
         </div></div>
-        <div className="modal-footer"><button className="btn btn-outline-secondary" onClick={onClose}>Cancel</button><button className="btn btn-wa" disabled={!f.name || !f.email} onClick={() => onSave(f)}>Save</button></div>
+        <div className="modal-footer"><button className="btn btn-sm btn-outline-secondary" onClick={onClose}>Cancel</button><button className="btn btn-sm btn-wa" disabled={!f.name || !f.email} onClick={() => onSave(f)}>Save</button></div>
       </div></div></div></>
   );
 }
@@ -572,20 +607,20 @@ function WhatsAppAccounts() {
   return (
     <div className="card">
       <div className="card-header bg-white d-flex justify-content-between align-items-center">
-        <div><span className="fw-semibold">WhatsApp Accounts</span><div className="text-secondary small">Configure multiple vendors — exactly one is active at a time.</div></div>
+        <div><span className="fw-semibold" style={{ fontSize: "14px" }}>WhatsApp Accounts</span><div className="text-secondary small">Configure multiple vendors — exactly one is active at a time.</div></div>
         <button className="btn btn-sm btn-wa" onClick={() => setEdit({ vendor: "meta", label: "", active: false })}>Add account</button>
       </div>
       <ErrorBox error={list.error} />
-      <div className="table-responsive"><table className="table mb-0 align-middle">
-        <thead><tr><th>Account</th><th>Vendor</th><th>Sender</th><th>Active</th><th></th></tr></thead>
+      <div className="table-responsive"><table className="table table-hover mb-0 align-middle" style={{ fontSize: "12px" }}>
+        <thead><tr className="table-light"><th style={{ fontSize: "12px", fontWeight: 600 }}>Account</th><th style={{ fontSize: "12px", fontWeight: 600 }}>Vendor</th><th style={{ fontSize: "12px", fontWeight: 600 }}>Sender</th><th style={{ fontSize: "12px", fontWeight: 600 }}>Status</th><th className="text-end" style={{ fontSize: "12px", fontWeight: 600 }}>Actions</th></tr></thead>
         <tbody>
           {list.loading ? <tr><td colSpan={5}><Spinner /></td></tr> : (list.data || []).length === 0 ? <tr><td colSpan={5}><EmptyState icon="whatsapp" text="No WhatsApp accounts." /></td></tr> : list.data.map((a) => (
-            <tr key={a._id} className={a.active ? "table-success" : ""}>
-              <td className="fw-medium">{a.label}</td>
-              <td><span className="badge text-bg-dark text-uppercase">{a.vendor}</span></td>
-              <td className="small font-monospace">{a.senderNumber || "—"}</td>
-              <td>{a.active ? <span className="badge text-bg-success"><i className="bi bi-check-circle me-1"></i>Active</span> : <button className="btn btn-sm btn-outline-success" onClick={() => activate(a._id)}>Make active</button>}</td>
-              <td className="text-end"><button className="btn btn-sm btn-link" onClick={() => setEdit(a)}><i className="bi bi-pencil"></i></button><button className="btn btn-sm btn-link text-danger" onClick={() => remove(a._id)}><i className="bi bi-trash"></i></button></td>
+            <tr key={a._id}>
+              <td style={{ fontSize: "12px", fontWeight: 400 }}>{a.label}</td>
+              <td style={{ fontSize: "11.5px" }} className="text-secondary text-uppercase">{a.vendor}</td>
+              <td style={{ fontSize: "12px" }} className="font-monospace text-secondary">{a.senderNumber || "—"}</td>
+              <td>{a.active ? <span style={{ fontSize: "12px", fontWeight: 500, color: "#16a34a" }}><i className="bi bi-check-circle me-1"></i>Active</span> : <button className="btn btn-sm border-0 text-success p-1" style={{ fontSize: "12px" }} onClick={() => activate(a._id)}>Make active</button>}</td>
+              <td className="text-end"><div className="d-flex justify-content-end gap-1"><button className="btn btn-sm border-0 text-secondary hover-primary p-1" style={{ fontSize: "12px" }} onClick={() => setEdit(a)}><i className="bi bi-pencil" style={{ fontSize: "13px" }}></i></button><button className="btn btn-sm border-0 text-secondary hover-danger p-1" style={{ fontSize: "12px" }} onClick={() => remove(a._id)}><i className="bi bi-trash" style={{ fontSize: "13px" }}></i></button></div></td>
             </tr>
           ))}
         </tbody>
@@ -626,7 +661,7 @@ function WaModal({ account, onClose, onSave }) {
             <div className="col-12 small text-secondary">Webhook URL to register with Pinnacle: <code>/webhooks/whatsapp/&lt;tenantId&gt;</code></div>
           </>}
         </div></div>
-        <div className="modal-footer"><button className="btn btn-outline-secondary" onClick={onClose}>Cancel</button><button className="btn btn-wa" disabled={!f.label} onClick={() => onSave(clean())}>Save</button></div>
+        <div className="modal-footer"><button className="btn btn-sm btn-outline-secondary" onClick={onClose}>Cancel</button><button className="btn btn-sm btn-wa" disabled={!f.label} onClick={() => onSave(clean())}>Save</button></div>
       </div></div></div></>
   );
 }
@@ -642,15 +677,17 @@ function Integrations() {
     <div className="row g-3">
       {list.loading ? <Spinner /> : (list.data || []).map((it) => (
         <div className="col-md-6" key={it._id}>
-          <div className="card h-100"><div className="card-body d-flex gap-3">
-            <span className="d-grid" style={{ width: 40, height: 40, placeItems: "center", background: "var(--wa-green-soft)", color: "var(--wa-green-dark)", borderRadius: 8 }}><i className={`bi bi-${it.icon || "plug"}`}></i></span>
-            <div className="flex-grow-1">
-              <div className="d-flex justify-content-between"><span className="fw-semibold">{it.name}</span>{it.connected ? <span className="badge text-bg-success">Connected</span> : <span className="badge text-bg-light">Off</span>}</div>
-              <div className="text-secondary small mb-2">{it.desc}</div>
-              {it.account && <div className="small font-monospace text-secondary mb-2">{it.account}</div>}
-              <button className={"btn btn-sm " + (it.connected ? "btn-outline-secondary" : "btn-wa")} onClick={() => toggle(it)}>{it.connected ? "Disconnect" : "Connect"}</button>
+          <div className="card h-100">
+            <div className="card-body p-3">
+              <div className="d-flex justify-content-between align-items-center mb-1">
+                <span className="text-dark" style={{ fontSize: "13px", fontWeight: 500 }}>{it.name}</span>
+                <span style={{ fontSize: "12px", fontWeight: 500, color: it.connected ? "#16a34a" : "#6b7280" }}>{it.connected ? "Connected" : "Off"}</span>
+              </div>
+              <div className="text-secondary small mb-2" style={{ fontSize: "12px" }}>{it.desc}</div>
+              {it.account && <div className="small font-monospace text-secondary mb-2" style={{ fontSize: "11.5px" }}>{it.account}</div>}
+              <button className={"btn btn-sm " + (it.connected ? "btn-outline-secondary" : "btn-wa")} style={{ fontSize: "12px" }} onClick={() => toggle(it)}>{it.connected ? "Disconnect" : "Connect"}</button>
             </div>
-          </div></div>
+          </div>
         </div>
       ))}
     </div>
@@ -707,25 +744,30 @@ function AcademicSessions() {
   async function remove(id) { if (confirm("Delete?")) { try { await sessionsApi.remove(id); toast("Deleted"); list.reload(); } catch (e) { toast(e.message, "error"); } } }
 
   return (
-    <div className="card" style={{ borderRadius: "16px" }}>
-      <div className="card-header bg-white fw-semibold">Academic Sessions/Years</div>
-      <div className="card-body">
+    <div className="card" style={{ borderRadius: "var(--radius)" }}>
+      <div className="card-header bg-white fw-semibold" style={{ fontSize: "14px" }}>Academic Sessions/Years</div>
+      <div className="card-body" style={{ fontSize: "12px" }}>
         <div style={{ display: "flex", gap: "8px", marginBottom: "16px", alignItems: "flex-end" }}>
           <div style={{ flex: 1 }}>
-            <label className="form-label small fw-semibold mb-2">Session Name</label>
-            <input className="form-control form-control-sm" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <label className="form-label small fw-semibold mb-1" style={{ fontSize: "12px" }}>Session Name</label>
+            <input className="form-control form-control-sm" style={{ fontSize: "12.5px" }} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. 2026-2027" />
           </div>
           <div style={{ flex: 1 }}>
-            <label className="form-label small fw-semibold mb-2">From Date</label>
-            <input className="form-control form-control-sm" placeholder="dd-mm-yyyy" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} />
+            <label className="form-label small fw-semibold mb-1" style={{ fontSize: "12px" }}>From Date</label>
+            <input className="form-control form-control-sm" style={{ fontSize: "12.5px" }} placeholder="dd-mm-yyyy" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} />
           </div>
           <div style={{ flex: 1 }}>
-            <label className="form-label small fw-semibold mb-2">To Date</label>
-            <input className="form-control form-control-sm" placeholder="dd-mm-yyyy" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} />
+            <label className="form-label small fw-semibold mb-1" style={{ fontSize: "12px" }}>To Date</label>
+            <input className="form-control form-control-sm" style={{ fontSize: "12.5px" }} placeholder="dd-mm-yyyy" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} />
           </div>
-          <button className="btn btn-sm btn-wa" onClick={add} style={{ padding: "6px 12px", whiteSpace: "nowrap" }} title="Add session"><i className="bi bi-plus-lg"></i></button>
+          <button className="btn btn-sm btn-wa" onClick={add} style={{ padding: "5px 12px", fontSize: "12px" }} title="Add session"><i className="bi bi-plus-lg me-1"></i>Add</button>
         </div>
-        <table className="table table-sm"><thead><tr><th>Session</th><th>From Date</th><th>To Date</th><th></th></tr></thead><tbody>{(list.data || []).map((s) => <tr key={s._id}><td>{s.name}</td><td style={{ fontSize: 13 }}>{formatDateToDDMMYYYY(s.startDate || s.startYear + "-04-01")}</td><td style={{ fontSize: 13 }}>{formatDateToDDMMYYYY(s.endDate || s.endYear + "-03-31")}</td><td className="text-end"><button className="btn btn-sm btn-link text-danger" onClick={() => remove(s._id)}><i className="bi bi-trash"></i></button></td></tr>)}</tbody></table>
+        <div className="table-responsive">
+          <table className="table table-hover mb-0 align-middle" style={{ fontSize: "12px" }}>
+            <thead><tr className="table-light"><th style={{ fontSize: "12px", fontWeight: 600 }}>Session</th><th style={{ fontSize: "12px", fontWeight: 600 }}>From Date</th><th style={{ fontSize: "12px", fontWeight: 600 }}>To Date</th><th className="text-end" style={{ fontSize: "12px", fontWeight: 600 }}>Action</th></tr></thead>
+            <tbody>{(list.data || []).map((s) => <tr key={s._id}><td style={{ fontSize: "12px", fontWeight: 400 }}>{s.name}</td><td style={{ fontSize: "12px" }} className="text-secondary">{formatDateToDDMMYYYY(s.startDate || s.startYear + "-04-01")}</td><td style={{ fontSize: "12px" }} className="text-secondary">{formatDateToDDMMYYYY(s.endDate || s.endYear + "-03-31")}</td><td className="text-end"><button className="btn btn-sm border-0 text-secondary hover-danger p-1" style={{ fontSize: "12px" }} onClick={() => remove(s._id)}><i className="bi bi-trash" style={{ fontSize: "13px" }}></i></button></td></tr>)}</tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -738,14 +780,19 @@ function Grades() {
   async function add() { if (!form.name) return; try { await gradesApi.create(form); toast("Added"); setForm({ name: "" }); list.reload(); } catch (e) { toast(e.message, "error"); } }
   async function remove(id) { if (confirm("Delete?")) { try { await gradesApi.remove(id); toast("Deleted"); list.reload(); } catch (e) { toast(e.message, "error"); } } }
   return (
-    <div className="card" style={{ marginBottom: 0, borderRadius: "16px" }}>
-      <div className="card-header bg-white fw-semibold" style={{ padding: "10px 16px" }}>Grades</div>
-      <div className="card-body" style={{ padding: "12px 16px" }}>
+    <div className="card" style={{ marginBottom: 0, borderRadius: "var(--radius)" }}>
+      <div className="card-header bg-white fw-semibold" style={{ fontSize: "14px" }}>Grades</div>
+      <div className="card-body" style={{ fontSize: "12px" }}>
         <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
-          <input className="form-control form-control-sm" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={{ flex: 1 }} />
-          <button className="btn btn-sm btn-wa" onClick={add} style={{ padding: "6px 12px", whiteSpace: "nowrap" }} title="Add grade"><i className="bi bi-plus-lg"></i></button>
+          <input className="form-control form-control-sm" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={{ flex: 1, fontSize: "12.5px" }} placeholder="Enter grade name (e.g. Grade 1, Class XI)" />
+          <button className="btn btn-sm btn-wa" onClick={add} style={{ padding: "5px 12px", fontSize: "12px" }} title="Add grade"><i className="bi bi-plus-lg me-1"></i>Add</button>
         </div>
-        <table className="table table-sm" style={{ marginBottom: 0 }}><tbody>{(list.data || []).map((g) => <tr key={g._id}><td style={{ padding: "8px 0" }}>{g.name}</td><td className="text-end" style={{ padding: "8px 0" }}><button className="btn btn-sm btn-link text-danger" onClick={() => remove(g._id)}><i className="bi bi-trash"></i></button></td></tr>)}</tbody></table>
+        <div className="table-responsive">
+          <table className="table table-hover mb-0 align-middle" style={{ fontSize: "12px" }}>
+            <thead><tr className="table-light"><th style={{ fontSize: "12px", fontWeight: 600 }}>Grade</th><th className="text-end" style={{ fontSize: "12px", fontWeight: 600 }}>Action</th></tr></thead>
+            <tbody>{(list.data || []).map((g) => <tr key={g._id}><td style={{ fontSize: "12px", fontWeight: 400 }}>{g.name}</td><td className="text-end"><button className="btn btn-sm border-0 text-secondary hover-danger p-1" style={{ fontSize: "12px" }} onClick={() => remove(g._id)}><i className="bi bi-trash" style={{ fontSize: "13px" }}></i></button></td></tr>)}</tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -761,11 +808,17 @@ function Teams() {
   async function save(f) { try { if (f._id) await teamsApi.update(f._id, f); else await teamsApi.create(f); toast("Saved"); setEdit(null); list.reload(); } catch (e) { toast(e.message, "error"); } }
   async function remove(id) { if (confirm("Delete?")) { try { await teamsApi.remove(id); toast("Deleted"); list.reload(); } catch (e) { toast(e.message, "error"); } } }
   return (
-    <div className="card" style={{ borderRadius: "16px" }}>
-      <div className="card-header d-flex justify-content-between"><span className="fw-semibold">Teams</span><button className="btn btn-sm btn-wa" onClick={() => setEdit({ name: "", manager: "", members: [], sources: [] })}>Add team</button></div>
-      <table className="table mb-0 align-middle"><thead><tr><th>Team</th><th>Manager</th><th>Members</th><th></th></tr></thead>
-        <tbody>{(list.data || []).map((t) => <tr key={t._id}><td className="fw-medium">{t.name}</td><td className="small">{t.manager?.name || "—"}</td><td className="small"><button style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", padding: 0, textDecoration: "underline" }} onClick={() => setViewMembers(t)}>{t.members?.length || 0} members</button></td><td className="text-end"><button className="btn btn-sm btn-link" onClick={() => setEdit(t)}><i className="bi bi-pencil"></i></button><button className="btn btn-sm btn-link text-danger" onClick={() => remove(t._id)}><i className="bi bi-trash"></i></button></td></tr>)}</tbody>
-      </table>
+    <div className="card" style={{ borderRadius: "var(--radius)" }}>
+      <div className="card-header d-flex justify-content-between align-items-center">
+        <span className="fw-semibold" style={{ fontSize: "14px" }}>Teams</span>
+        <button className="btn btn-sm btn-wa" onClick={() => setEdit({ name: "", manager: "", members: [], sources: [] })}>Add team</button>
+      </div>
+      <div className="table-responsive">
+        <table className="table table-hover mb-0 align-middle" style={{ fontSize: "12px" }}>
+          <thead><tr className="table-light"><th style={{ fontSize: "12px", fontWeight: 600 }}>Team</th><th style={{ fontSize: "12px", fontWeight: 600 }}>Manager</th><th style={{ fontSize: "12px", fontWeight: 600 }}>Members</th><th className="text-end" style={{ fontSize: "12px", fontWeight: 600 }}>Actions</th></tr></thead>
+          <tbody>{(list.data || []).map((t) => <tr key={t._id}><td style={{ fontSize: "12px", fontWeight: 400 }}>{t.name}</td><td style={{ fontSize: "12px" }} className="text-secondary">{t.manager?.name || "—"}</td><td style={{ fontSize: "12px" }}><button style={{ background: "none", border: "none", color: "var(--accent-ink)", cursor: "pointer", padding: 0, textDecoration: "underline", fontSize: "12px" }} onClick={() => setViewMembers(t)}>{t.members?.length || 0} members</button></td><td className="text-end"><div className="d-flex justify-content-end gap-1"><button className="btn btn-sm border-0 text-secondary hover-primary p-1" style={{ fontSize: "12px" }} onClick={() => setEdit(t)}><i className="bi bi-pencil" style={{ fontSize: "13px" }}></i></button><button className="btn btn-sm border-0 text-secondary hover-danger p-1" style={{ fontSize: "12px" }} onClick={() => remove(t._id)}><i className="bi bi-trash" style={{ fontSize: "13px" }}></i></button></div></td></tr>)}</tbody>
+        </table>
+      </div>
       {edit && <TeamModal team={edit} users={users.data || []} sources={sources.data || []} onClose={() => setEdit(null)} onSave={save} />}
       {viewMembers && <MembersModal team={viewMembers} onClose={() => setViewMembers(null)} />}
     </div>
@@ -907,15 +960,30 @@ function LeadAssignment() {
   const [f, setF] = useState({ strategy: "round_robin", teamId: "", sourceMap: [], stateMap: [], cityMap: [], gradeMap: [] });
   async function save() { try { if (workflow.data?._id) await workflowsApi.update(workflow.data._id, { ...f, type: "LeadAssignment", name: "LeadAssignment", active: true }); else await workflowsApi.create({ ...f, type: "LeadAssignment", name: "LeadAssignment", active: true }); toast("Saved"); workflow.reload(); } catch (e) { toast(e.message, "error"); } }
   return (
-    <div className="card">
-      <div className="card-header"><span className="fw-semibold">Lead Assignment Configuration</span><div className="text-muted small">Configure how new leads are automatically assigned to team members</div></div>
-      <div className="card-body">
-        <label className="form-label small fw-semibold mb-3">Strategy</label>
+    <div className="card" style={{ borderRadius: "var(--radius)" }}>
+      <div className="card-header bg-white"><span className="fw-semibold" style={{ fontSize: "14px" }}>Lead Assignment Configuration</span><div className="text-muted small">Configure how new leads are automatically assigned to team members</div></div>
+      <div className="card-body" style={{ fontSize: "12px" }}>
+        <label className="form-label mb-2" style={{ fontSize: "12px", color: "var(--text)" }}>Strategy</label>
         <div className="row g-2 mb-4">
-          {(config.data?.ASSIGNMENT_STRATEGIES || []).map((s) => <div className="col-md-6" key={s.key}><div className="form-check"><input className="form-check-input" type="radio" checked={f.strategy === s.key} onChange={() => setF({ ...f, strategy: s.key })} id={"strat" + s.key} /><label className="form-check-label" htmlFor={"strat" + s.key}>{s.label}</label></div></div>)}
+          {(config.data?.ASSIGNMENT_STRATEGIES || []).map((s) => (
+            <div className="col-md-6" key={s.key}>
+              <div className="form-check">
+                <input className="form-check-input" type="radio" checked={f.strategy === s.key} onChange={() => setF({ ...f, strategy: s.key })} id={"strat" + s.key} />
+                <label className="form-check-label text-dark" style={{ fontSize: "12px" }} htmlFor={"strat" + s.key}>{s.label}</label>
+              </div>
+            </div>
+          ))}
         </div>
-        {f.strategy === "round_robin" && <div className="mb-3"><label className="form-label small">Team</label><select className="form-select" value={f.teamId} onChange={(e) => setF({ ...f, teamId: e.target.value })}><option value="">— Select —</option>{(teams.data || []).map((t) => <option key={t._id} value={t._id}>{t.name}</option>)}</select></div>}
-        <div className="d-flex gap-2"><button className="btn btn-wa" onClick={save}>Save</button></div>
+        {f.strategy === "round_robin" && (
+          <div className="mb-3">
+            <label className="form-label" style={{ fontSize: "12px", color: "var(--text)" }}>Team</label>
+            <select className="form-select form-select-sm" style={{ fontSize: "12px" }} value={f.teamId} onChange={(e) => setF({ ...f, teamId: e.target.value })}>
+              <option value="">— Select —</option>
+              {(teams.data || []).map((t) => <option key={t._id} value={t._id}>{t.name}</option>)}
+            </select>
+          </div>
+        )}
+        <div className="d-flex gap-2"><button className="btn btn-sm btn-wa" style={{ fontSize: "12px" }} onClick={save}>Save</button></div>
       </div>
     </div>
   );
@@ -1077,7 +1145,7 @@ function RegistrationFormConfig() {
     }
 
     return (
-      <div className="card" style={{ borderRadius: "16px" }}>
+      <div className="card" style={{ borderRadius: "var(--radius)" }}>
         <div className="card-header d-flex justify-content-between align-items-center">
           <div>
             <span className="fw-semibold">{currentForm._id ? "Edit Registration Form" : "Create Registration Form"}</span>
@@ -1103,7 +1171,7 @@ function RegistrationFormConfig() {
   }
 
   return (
-    <div className="card" style={{ borderRadius: "16px" }}>
+    <div className="card" style={{ borderRadius: "var(--radius)" }}>
       <div className="card-header d-flex justify-content-between align-items-center">
         <div>
           <span className="fw-semibold">Registration Forms</span>
@@ -1119,68 +1187,75 @@ function RegistrationFormConfig() {
       {config.loading ? (
         <div className="card-body"><Spinner /></div>
       ) : (
-        <div className="card-body">
-          <div className="row gy-3 mb-4">
-            <div className="col-sm-6">
+        <div className="card-body" style={{ fontSize: "12px" }}>
+          <div className="row gy-3 mb-3 align-items-center">
+            <div className="col-sm-5">
               <input
-                className="form-control"
+                className="form-control form-control-sm"
+                style={{ fontSize: "12.5px", padding: "5px 10px" }}
                 placeholder="Filter by form name"
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
               />
             </div>
-            <div className="col-sm-6 text-sm-end text-muted align-self-center">
+            <div className="col-sm-7 text-sm-end text-muted" style={{ fontSize: "12px" }}>
               {filteredForms.length} form{filteredForms.length === 1 ? "" : "s"} found
             </div>
           </div>
 
           {filteredForms.length === 0 ? (
-            <div className="text-center text-muted py-5">
-              <div className="mb-3"><i className="bi bi-folder2-open" style={{ fontSize: "32px", opacity: 0.5 }}></i></div>
+            <div className="text-center text-muted py-5" style={{ fontSize: "12px" }}>
+              <div className="mb-3"><i className="bi bi-folder2-open" style={{ fontSize: "28px", opacity: 0.5 }}></i></div>
               <div>No registration forms yet.</div>
-              <button className="btn btn-sm btn-outline-wa mt-2" onClick={openNewForm}>Create your first registration form</button>
+              <button className="btn btn-sm btn-outline-wa mt-2" style={{ fontSize: "12px" }} onClick={openNewForm}>Create your first registration form</button>
             </div>
           ) : (
             <div className="table-responsive">
-              <table className="table mb-0 align-middle">
+              <table className="table table-hover mb-0 align-middle" style={{ fontSize: "12px" }}>
                 <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Type</th>
-                    <th>Columns</th>
-                    <th>Steps</th>
-                    <th>Status</th>
-                    <th>Updated</th>
-                    <th></th>
+                  <tr className="table-light">
+                    <th style={{ fontSize: "12px", fontWeight: 600 }}>Name</th>
+                    <th style={{ fontSize: "12px", fontWeight: 600 }}>Type</th>
+                    <th style={{ fontSize: "12px", fontWeight: 600 }}>Columns</th>
+                    <th style={{ fontSize: "12px", fontWeight: 600 }}>Steps</th>
+                    <th style={{ fontSize: "12px", fontWeight: 600 }}>Status</th>
+                    <th style={{ fontSize: "12px", fontWeight: 600 }}>Updated</th>
+                    <th className="text-end" style={{ fontSize: "12px", fontWeight: 600 }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredForms.map((form) => (
                     <tr key={form._id}>
                       <td>
-                        <span className="fw-semibold text-dark d-block">{form.formTitle || form.name}</span>
+                        <span className="font-monospace text-dark d-block" style={{ fontSize: "12px", fontWeight: 400 }}>{form.formTitle || form.name}</span>
                         <span className="text-muted text-capitalize" style={{ fontSize: "11px" }}>
                           Category: {form.formCategory || "registration"}
                         </span>
                       </td>
                       <td>
-                        <span className="badge bg-light text-secondary border">
+                        <span className="text-secondary" style={{ fontSize: "11.5px", fontWeight: 400 }}>
                           {form.formType === "stepper" ? "Multi-Step" : "Single Page"}
                         </span>
                       </td>
-                      <td>{form.formColumns || 2} Cols</td>
-                      <td>{(form.steps || []).length} Step{(form.steps || []).length === 1 ? "" : "s"}</td>
+                      <td style={{ fontSize: "12px" }} className="text-secondary">{form.formColumns || 2} Cols</td>
+                      <td style={{ fontSize: "12px" }} className="text-secondary">{(form.steps || []).length} Step{(form.steps || []).length === 1 ? "" : "s"}</td>
                       <td>
-                        <span className="badge" style={{ background: form.isActive ? "#e6f4ea" : "#f3f2f1", color: form.isActive ? "#10714a" : "#6b6b6b" }}>
+                        <span style={{ fontSize: "12px", fontWeight: 500, color: form.isActive ? "#16a34a" : "#6b7280" }}>
                           {form.isActive ? "Active" : "Inactive"}
                         </span>
                       </td>
-                      <td>{form.updatedAt ? formatDateDMY(form.updatedAt) : "—"}</td>
+                      <td style={{ fontSize: "11.5px" }} className="text-secondary">{form.updatedAt ? formatDateDMY(form.updatedAt) : "—"}</td>
                       <td className="text-end">
-                        <div className="d-flex justify-content-end" style={{ gap: "4px" }}>
-                          <IconBtn icon="eye" title="Preview form" onClick={() => openPreviewForm(form)} />
-                          <IconBtn icon="pencil" title="Edit form" onClick={() => openEditForm(form)} />
-                          <IconBtn icon="trash" title="Delete form" danger onClick={() => deleteForm(form._id)} />
+                        <div className="d-flex justify-content-end gap-1">
+                          <button className="btn btn-sm border-0 text-secondary hover-primary p-1" style={{ fontSize: "12px" }} title="Preview form" onClick={() => openPreviewForm(form)}>
+                            <i className="bi bi-eye" style={{ fontSize: "13px" }}></i>
+                          </button>
+                          <button className="btn btn-sm border-0 text-secondary hover-primary p-1" style={{ fontSize: "12px" }} title="Edit form" onClick={() => openEditForm(form)}>
+                            <i className="bi bi-pencil" style={{ fontSize: "13px" }}></i>
+                          </button>
+                          <button className="btn btn-sm border-0 text-secondary hover-danger p-1" style={{ fontSize: "12px" }} title="Delete form" onClick={() => deleteForm(form._id)}>
+                            <i className="bi bi-trash" style={{ fontSize: "13px" }}></i>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1526,7 +1601,7 @@ function LandingPageList({ onCreate, onEdit, onPreview }) {
   };
 
   return (
-    <div className="card" style={{ borderRadius: "16px" }}>
+    <div className="card" style={{ borderRadius: "var(--radius)" }}>
       <div className="card-header d-flex justify-content-between align-items-center">
         <div>
           <span className="fw-semibold">Landing Pages</span>
@@ -1567,38 +1642,44 @@ function LandingPageList({ onCreate, onEdit, onPreview }) {
             <div className="table-responsive">
               <table className="table mb-0 align-middle">
                 <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Brand Name</th>
-                    <th>Hero CTA</th>
-                    <th>Highlights</th>
-                    <th>Status</th>
-                    <th>Updated</th>
-                    <th></th>
+                  <tr className="table-light">
+                    <th style={{ fontSize: "12px", fontWeight: 600 }}>Name</th>
+                    <th style={{ fontSize: "12px", fontWeight: 600 }}>Brand Name</th>
+                    <th style={{ fontSize: "12px", fontWeight: 600 }}>Hero CTA</th>
+                    <th style={{ fontSize: "12px", fontWeight: 600 }}>Highlights</th>
+                    <th style={{ fontSize: "12px", fontWeight: 600 }}>Status</th>
+                    <th style={{ fontSize: "12px", fontWeight: 600 }}>Updated</th>
+                    <th className="text-end" style={{ fontSize: "12px", fontWeight: 600 }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredPages.map((page) => (
                     <tr key={page._id}>
-                      <td><span className="fw-semibold text-dark">{page.name || "Untitled Landing Page"}</span></td>
-                      <td>{page.brandName || "—"}</td>
+                      <td><span className="font-monospace text-dark" style={{ fontSize: "12px", fontWeight: 400 }}>{page.name || "Untitled Landing Page"}</span></td>
+                      <td style={{ fontSize: "12px" }} className="text-secondary">{page.brandName || "—"}</td>
                       <td>
-                        <span className="badge bg-light text-secondary border">
+                        <span className="text-secondary" style={{ fontSize: "11.5px", fontWeight: 400 }}>
                           {page.heroCtaLabel || "Book a Visit"}
                         </span>
                       </td>
-                      <td>{(page.features || []).length} items</td>
+                      <td style={{ fontSize: "12px" }} className="text-secondary">{(page.features || []).length} items</td>
                       <td>
-                        <span className="badge" style={{ background: page.isActive !== false ? "#e6f4ea" : "#f3f2f1", color: page.isActive !== false ? "#10714a" : "#6b6b6b" }}>
+                        <span style={{ fontSize: "12px", fontWeight: 500, color: page.isActive !== false ? "#16a34a" : "#6b7280" }}>
                           {page.isActive !== false ? "Active" : "Inactive"}
                         </span>
                       </td>
-                      <td>{page.updatedAt ? formatDateDMY(page.updatedAt) : "—"}</td>
+                      <td style={{ fontSize: "11.5px" }} className="text-secondary">{page.updatedAt ? formatDateDMY(page.updatedAt) : "—"}</td>
                       <td className="text-end">
-                        <div className="d-flex justify-content-end" style={{ gap: "4px" }}>
-                          <IconBtn icon="eye" title="Preview page" onClick={() => onPreview(page)} />
-                          <IconBtn icon="pencil" title="Edit page" onClick={() => onEdit(page)} />
-                          <IconBtn icon="trash" title="Delete page" danger onClick={() => deletePage(page._id)} />
+                        <div className="d-flex justify-content-end gap-1">
+                          <button className="btn btn-sm border-0 text-secondary hover-primary p-1" style={{ fontSize: "12px" }} title="Preview page" onClick={() => onPreview(page)}>
+                            <i className="bi bi-eye" style={{ fontSize: "13px" }}></i>
+                          </button>
+                          <button className="btn btn-sm border-0 text-secondary hover-primary p-1" style={{ fontSize: "12px" }} title="Edit page" onClick={() => onEdit(page)}>
+                            <i className="bi bi-pencil" style={{ fontSize: "13px" }}></i>
+                          </button>
+                          <button className="btn btn-sm border-0 text-secondary hover-danger p-1" style={{ fontSize: "12px" }} title="Delete page" onClick={() => deletePage(page._id)}>
+                            <i className="bi bi-trash" style={{ fontSize: "13px" }}></i>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1722,7 +1803,7 @@ function EnquiryFormConfig() {
   const filteredForms = forms.filter((form) => form.name.toLowerCase().includes(filter.toLowerCase()));
 
   return (
-    <div className="card" style={{ borderRadius: "16px" }}>
+    <div className="card" style={{ borderRadius: "var(--radius)" }}>
       <div className="card-header d-flex justify-content-between align-items-center">
         <div>
           <span className="fw-semibold">Enquiry Forms</span>
@@ -1942,41 +2023,44 @@ function EnquiryFormConfig() {
             </div>
           ) : (
             <div className="table-responsive">
-              <table className="table mb-0 align-middle">
+              <table className="table table-hover mb-0 align-middle" style={{ fontSize: "12px" }}>
                 <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Status</th>
-                    <th>Fields</th>
-                    <th>Updated</th>
-                    <th>Link</th>
-                    <th></th>
+                  <tr className="table-light">
+                    <th style={{ fontSize: "12px", fontWeight: 600 }}>Name</th>
+                    <th style={{ fontSize: "12px", fontWeight: 600 }}>Status</th>
+                    <th style={{ fontSize: "12px", fontWeight: 600 }}>Fields</th>
+                    <th style={{ fontSize: "12px", fontWeight: 600 }}>Updated</th>
+                    <th style={{ fontSize: "12px", fontWeight: 600 }}>Link</th>
+                    <th className="text-end" style={{ fontSize: "12px", fontWeight: 600 }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredForms.map((form) => (
                     <tr key={form._id}>
-                      <td>{form.name}</td>
+                      <td style={{ fontSize: "12px", fontWeight: 400 }}>{form.name}</td>
                       <td>
-                        <span className="badge" style={{ background: form.isActive ? "#e6f4ea" : "#f3f2f1", color: form.isActive ? "#10714a" : "#6b6b6b" }}>
+                        <span style={{ fontSize: "12px", fontWeight: 500, color: form.isActive ? "#16a34a" : "#6b7280" }}>
                           {form.isActive ? "Active" : "Inactive"}
                         </span>
                       </td>
-                      <td>{(form.fields || []).filter((field) => field.selected).length}</td>
-                      <td>{form.updatedAt ? formatDateDMY(form.updatedAt) : "—"}</td>
+                      <td style={{ fontSize: "12px" }} className="text-secondary">{(form.fields || []).filter((field) => field.selected).length}</td>
+                      <td style={{ fontSize: "11.5px" }} className="text-secondary">{form.updatedAt ? formatDateDMY(form.updatedAt) : "—"}</td>
                       <td className="text-break">
                         <div className="d-flex align-items-center" style={{ gap: "4px" }}>
-                          <a href={getShareUrl(form._id)} target="_blank" rel="noreferrer" className="text-decoration-none">{getShortSharePath(form._id)}</a>
-                          <button className="btn btn-sm btn-outline-secondary p-1" type="button" title="Copy short link" onClick={() => copyShareLink(form._id)}>
-                            <i className="bi bi-clipboard"></i>
+                          <a href={getShareUrl(form._id)} target="_blank" rel="noreferrer" className="text-decoration-none" style={{ fontSize: "12px" }}>{getShortSharePath(form._id)}</a>
+                          <button className="btn btn-sm border-0 text-secondary p-1" type="button" title="Copy short link" onClick={() => copyShareLink(form._id)}>
+                            <i className="bi bi-clipboard" style={{ fontSize: "13px" }}></i>
                           </button>
                         </div>
                       </td>
                       <td className="text-end">
-                        <div className="d-flex justify-content-end" style={{ gap: "4px" }}>
-                          <IconBtn icon="eye" title="Preview form" onClick={() => openPreview(form)} />
-                          <IconBtn icon="pencil" title="Edit form" onClick={() => openEditForm(form)} />
-                          <IconBtn icon="trash" title="Delete form" danger onClick={() => deleteForm(form._id)} />
+                        <div className="d-flex justify-content-end gap-1">
+                          <button className="btn btn-sm border-0 text-secondary hover-primary p-1" style={{ fontSize: "12px" }} title="Edit enquiry form" onClick={() => openEditForm(form)}>
+                            <i className="bi bi-pencil" style={{ fontSize: "13px" }}></i>
+                          </button>
+                          <button className="btn btn-sm border-0 text-secondary hover-danger p-1" style={{ fontSize: "12px" }} title="Delete form" onClick={() => deleteForm(form._id)}>
+                            <i className="bi bi-trash" style={{ fontSize: "13px" }}></i>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -2106,8 +2190,21 @@ function CommunicationTemplatesConfig() {
 
   const tTabLabel = activeTab === "email" ? "Email" : activeTab === "whatsapp" ? "WhatsApp" : "SMS";
 
+  if (showForm && activeTab === "whatsapp") {
+    return (
+      <WhatsAppTemplateBuilder
+        initialTemplate={editTemplate}
+        onCancel={() => setShowForm(false)}
+        onSaved={() => {
+          setShowForm(false);
+          list.reload();
+        }}
+      />
+    );
+  }
+
   return (
-    <div className="card" style={{ borderRadius: "16px" }}>
+    <div className="card" style={{ borderRadius: "var(--radius)" }}>
       <div className="card-header d-flex justify-content-between align-items-center">
         <div>
           <span className="fw-semibold">Communication Templates</span>
@@ -2134,16 +2231,17 @@ function CommunicationTemplatesConfig() {
           />
         </div>
 
-        <div className="row gy-3 mb-4">
-          <div className="col-sm-6">
+        <div className="row gy-3 mb-3 align-items-center">
+          <div className="col-sm-5">
             <input
-              className="form-control"
+              className="form-control form-control-sm"
+              style={{ fontSize: "12.5px", padding: "5px 10px" }}
               placeholder={`Search ${tTabLabel} templates...`}
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
             />
           </div>
-          <div className="col-sm-6 text-sm-end text-muted align-self-center">
+          <div className="col-sm-7 text-sm-end text-muted" style={{ fontSize: "12px" }}>
             {filteredRows.length} template{filteredRows.length === 1 ? "" : "s"} found
           </div>
         </div>
@@ -2153,76 +2251,64 @@ function CommunicationTemplatesConfig() {
         {list.loading ? (
           <Spinner />
         ) : filteredRows.length === 0 ? (
-          <div className="text-center text-muted py-5">
-            <div className="mb-3"><i className="bi bi-chat-text" style={{ fontSize: "32px", opacity: 0.5 }}></i></div>
+          <div className="text-center text-muted py-5" style={{ fontSize: "12px" }}>
+            <div className="mb-3"><i className="bi bi-chat-text" style={{ fontSize: "28px", opacity: 0.5 }}></i></div>
             <div>No templates configured.</div>
-            <button className="btn btn-sm btn-outline-wa mt-2" onClick={handleCreate}>Create your first template</button>
+            <button className="btn btn-sm btn-outline-wa mt-2" style={{ fontSize: "12px" }} onClick={handleCreate}>Create your first template</button>
           </div>
         ) : (
           <div className="table-responsive">
-            <table className="table mb-0 align-middle">
+            <table className="table table-hover mb-0 align-middle" style={{ fontSize: "12px" }}>
               <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Category</th>
-                  {activeTab === "email" && <th>Subject</th>}
-                  <th>Content</th>
-                  <th>Status</th>
-                  <th>Updated</th>
-                  <th></th>
+                <tr className="table-light">
+                  <th style={{ fontSize: "12px", fontWeight: 600 }}>Name</th>
+                  {activeTab !== "email" && <th style={{ fontSize: "12px", fontWeight: 600 }}>Category</th>}
+                  {activeTab === "email" && <th style={{ fontSize: "12px", fontWeight: 600 }}>Subject</th>}
+                  <th style={{ fontSize: "12px", fontWeight: 600 }}>Content</th>
+                  {activeTab !== "email" && <th style={{ fontSize: "12px", fontWeight: 600 }}>Status</th>}
+                  <th style={{ fontSize: "12px", fontWeight: 600 }}>Updated</th>
+                  <th className="text-end" style={{ fontSize: "12px", fontWeight: 600 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRows.map((t) => (
                   <tr key={t._id}>
                     <td>
-                      <code style={{ fontSize: "11px", background: "var(--surface-light)", padding: "2px 4px", borderRadius: "4px" }}>
+                      <span className="font-monospace text-dark" style={{ fontSize: "12px", fontWeight: 400 }}>
                         {t.name}
-                      </code>
+                      </span>
                     </td>
-                    <td>
-                      <span className="badge bg-light text-secondary border">{t.category || "Utility"}</span>
-                    </td>
-                    {activeTab === "email" && <td><span className="fw-medium text-dark">{t.subject || "—"}</span></td>}
+                    {activeTab !== "email" && (
+                      <td style={{ fontSize: "12px" }} className="text-secondary">
+                        {t.category || "Utility"}
+                      </td>
+                    )}
+                    {activeTab === "email" && <td style={{ fontSize: "12px" }} className="text-dark">{t.subject || "—"}</td>}
                     <td>
                       <span
                         className="small text-muted text-truncate d-inline-block"
-                        style={{ maxWidth: 280 }}
+                        style={{ maxWidth: 280, fontSize: "12px" }}
                         title={t.body}
                       >
                         {(t.body || "").replace(/<[^>]+>/g, " ")}
                       </span>
                     </td>
-                    <td>
-                      <span
-                        className="badge"
-                        style={{
-                          background:
-                            t.status === "Approved"
-                              ? "#e6f4ea"
-                              : t.status === "Pending"
-                              ? "#fef7e0"
-                              : t.status === "Rejected"
-                              ? "#fce8e6"
-                              : "#f3f2f1",
-                          color:
-                            t.status === "Approved"
-                              ? "#10714a"
-                              : t.status === "Pending"
-                              ? "#b06000"
-                              : t.status === "Rejected"
-                              ? "#c5221f"
-                              : "#6b6b6b"
-                        }}
-                      >
-                        {t.status || "Draft"}
-                      </span>
-                    </td>
-                    <td>{t.updatedAt ? formatDateDMY(t.updatedAt) : "—"}</td>
+                    {activeTab !== "email" && (
+                      <td>
+                        <span style={{ fontSize: "12px", fontWeight: 500, color: t.status === "Approved" ? "#16a34a" : t.status === "Rejected" ? "#dc2626" : "#6b7280" }}>
+                          {t.status || "Draft"}
+                        </span>
+                      </td>
+                    )}
+                    <td style={{ fontSize: "11.5px" }} className="text-secondary">{t.updatedAt ? formatDateDMY(t.updatedAt) : "—"}</td>
                     <td className="text-end">
-                      <div className="d-flex justify-content-end" style={{ gap: "4px" }}>
-                        <IconBtn icon="pencil" title="Edit" onClick={() => handleEdit(t)} />
-                        <IconBtn icon="trash" title="Delete" danger onClick={() => handleDelete(t._id)} />
+                      <div className="d-flex justify-content-end gap-1">
+                        <button className="btn btn-sm border-0 text-secondary hover-primary p-1" style={{ fontSize: "12px" }} title="Edit" onClick={() => handleEdit(t)}>
+                          <i className="bi bi-pencil" style={{ fontSize: "13px" }}></i>
+                        </button>
+                        <button className="btn btn-sm border-0 text-secondary hover-danger p-1" style={{ fontSize: "12px" }} title="Delete" onClick={() => handleDelete(t._id)}>
+                          <i className="bi bi-trash" style={{ fontSize: "13px" }}></i>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -2243,7 +2329,8 @@ function CommunicationTemplatesConfig() {
           footer={
             <>
               <button
-                className="btn btn-outline-secondary me-2"
+                className="btn btn-sm btn-outline-secondary me-2"
+                style={{ fontSize: "12px" }}
                 onClick={() => {
                   setShowForm(false);
                   setEditTemplate(null);
@@ -2251,7 +2338,7 @@ function CommunicationTemplatesConfig() {
               >
                 Cancel
               </button>
-              <button className="btn btn-wa" onClick={handleSave}>
+              <button className="btn btn-sm btn-wa" style={{ fontSize: "12px" }} onClick={handleSave}>
                 Save
               </button>
             </>
@@ -2280,7 +2367,7 @@ function CommunicationTemplatesConfig() {
                 />
               </div>
             )}
-            <div className="col-md-6">
+            <div className={activeTab === "email" ? "col-12" : "col-md-6"}>
               <label className="form-label fw-semibold">Language</label>
               <input
                 className="form-control"
@@ -2289,18 +2376,20 @@ function CommunicationTemplatesConfig() {
                 placeholder="en"
               />
             </div>
-            <div className="col-md-6">
-              <label className="form-label fw-semibold">Category</label>
-              <select
-                className="form-select"
-                value={editTemplate.category}
-                onChange={(e) => setEditTemplate({ ...editTemplate, category: e.target.value })}
-              >
-                <option value="Utility">Utility</option>
-                <option value="Marketing">Marketing</option>
-                <option value="Authentication">Authentication</option>
-              </select>
-            </div>
+            {activeTab !== "email" && (
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">Category</label>
+                <select
+                  className="form-select"
+                  value={editTemplate.category}
+                  onChange={(e) => setEditTemplate({ ...editTemplate, category: e.target.value })}
+                >
+                  <option value="Utility">Utility</option>
+                  <option value="Marketing">Marketing</option>
+                  <option value="Authentication">Authentication</option>
+                </select>
+              </div>
+            )}
             {activeTab === "whatsapp" && (
               <div className="col-12">
                 <label className="form-label fw-semibold">Meta Status</label>
@@ -2341,3 +2430,176 @@ function CommunicationTemplatesConfig() {
     </div>
   );
 }
+
+function WhatsAppTemplatesSetup() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const toast = useToast();
+  const list = useApi(() => templatesApi.list({ perPage: 100 }), []);
+  const [filter, setFilter] = useState("");
+  const [activeTemplate, setActiveTemplate] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+
+  const getMode = () => {
+    const params = new URLSearchParams(location.search);
+    return params.get("mode") || "list";
+  };
+  const mode = getMode();
+
+  const handleSyncMeta = async () => {
+    setSyncing(true);
+    try {
+      const res = await templatesApi.syncMeta();
+      toast(`Synced ${res.count} templates from Meta ✓`);
+      list.reload();
+    } catch (e) {
+      toast(e.message, "error");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleDelete = async (name) => {
+    if (!confirm(`Delete template '${name}'?`)) return;
+    try {
+      await templatesApi.deleteMeta(name);
+      toast("Template deleted");
+      list.reload();
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  };
+
+  const openNewTemplate = () => {
+    setActiveTemplate(null);
+    navigate("/crm/setup?active=whatsapp-templates&mode=editor");
+  };
+
+  const openEditTemplate = (tpl) => {
+    setActiveTemplate(tpl);
+    navigate("/crm/setup?active=whatsapp-templates&mode=editor");
+  };
+
+  const closeEditor = () => {
+    navigate("/crm/setup?active=whatsapp-templates&mode=list");
+    list.reload();
+  };
+
+  if (mode === "editor") {
+    return (
+      <WhatsAppTemplateBuilder
+        initialTemplate={activeTemplate}
+        onCancel={closeEditor}
+        onSaved={closeEditor}
+      />
+    );
+  }
+
+  const rows = (list.data || []).filter((t) => (t.channel || "whatsapp") === "whatsapp");
+  const filtered = rows.filter((t) =>
+    (t.name || "").toLowerCase().includes(filter.toLowerCase()) ||
+    (t.body || "").toLowerCase().includes(filter.toLowerCase())
+  );
+
+  return (
+    <div className="card" style={{ borderRadius: "var(--radius)" }}>
+      <div className="card-header d-flex justify-content-between align-items-center">
+        <div>
+          <span className="fw-semibold">WhatsApp Templates</span>
+          <div className="text-muted small">Manage and create Meta WhatsApp message templates.</div>
+        </div>
+        <div className="d-flex gap-2">
+          <button className="btn btn-sm btn-outline-secondary" disabled={syncing} onClick={handleSyncMeta}>
+            {syncing ? <span className="spinner-border spinner-border-sm me-1" /> : <i className="bi bi-arrow-repeat me-1"></i>}
+            Sync Meta
+          </button>
+          <button className="btn btn-sm btn-wa" onClick={openNewTemplate}>
+            <i className="bi bi-plus-lg me-1"></i>Create Template
+          </button>
+        </div>
+      </div>
+
+      <div className="card-body" style={{ fontSize: "12px" }}>
+        <div className="row gy-3 mb-3 align-items-center">
+          <div className="col-sm-5">
+            <input
+              className="form-control form-control-sm"
+              style={{ fontSize: "12.5px", padding: "5px 10px" }}
+              placeholder="Search WhatsApp templates..."
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+            />
+          </div>
+          <div className="col-sm-7 text-sm-end text-muted" style={{ fontSize: "12px" }}>
+            {filtered.length} template{filtered.length === 1 ? "" : "s"} found
+          </div>
+        </div>
+
+        <ErrorBox error={list.error} />
+
+        {list.loading ? (
+          <Spinner />
+        ) : filtered.length === 0 ? (
+          <div className="text-center text-muted py-5" style={{ fontSize: "12px" }}>
+            <div className="mb-3"><i className="bi bi-whatsapp" style={{ fontSize: "28px", opacity: 0.5 }}></i></div>
+            <div>No WhatsApp templates found.</div>
+            <button className="btn btn-sm btn-outline-wa mt-2" style={{ fontSize: "12px" }} onClick={openNewTemplate}>
+              Create your first WhatsApp template
+            </button>
+          </div>
+        ) : (
+          <div className="table-responsive">
+            <table className="table table-hover mb-0 align-middle" style={{ fontSize: "12px" }}>
+              <thead>
+                <tr className="table-light">
+                  <th style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-2)" }}>Name</th>
+                  <th style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-2)" }}>Category</th>
+                  <th style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-2)" }}>Status</th>
+                  <th style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-2)" }}>Content Preview</th>
+                  <th style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-2)" }}>Updated</th>
+                  <th className="text-end" style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-2)" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((t) => (
+                  <tr key={t._id || t.name}>
+                    <td>
+                      <span className="font-monospace text-dark" style={{ fontSize: "12px", fontWeight: 400 }}>{t.name}</span>
+                    </td>
+                    <td>
+                      <span className="text-secondary text-uppercase" style={{ fontSize: "11.5px", fontWeight: 400 }}>{t.category || "UTILITY"}</span>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: "12px", fontWeight: 500, color: t.status === "Approved" ? "#16a34a" : t.status === "Rejected" ? "#dc2626" : "#d97706" }}>
+                        {t.status || "Approved"}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="text-muted text-truncate d-inline-block" style={{ maxWidth: 280, fontSize: "12px" }}>
+                        {t.body}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: "11.5px" }} className="text-secondary">
+                      {t.updatedAt ? new Date(t.updatedAt).toLocaleDateString() : "—"}
+                    </td>
+                    <td className="text-end">
+                      <div className="d-flex justify-content-end gap-1">
+                        <button className="btn btn-sm border-0 text-secondary hover-primary p-1" style={{ fontSize: "12px" }} onClick={() => openEditTemplate(t)} title="Edit template">
+                          <i className="bi bi-pencil" style={{ fontSize: "13px" }}></i>
+                        </button>
+                        <button className="btn btn-sm border-0 text-secondary hover-danger p-1" style={{ fontSize: "12px" }} onClick={() => handleDelete(t.name)} title="Delete template">
+                          <i className="bi bi-trash" style={{ fontSize: "13px" }}></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+

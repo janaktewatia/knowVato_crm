@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 .clarwyn-landing {
   --primary-color: #061A33; /* Dark Blue */
@@ -9,7 +9,7 @@
   --brand-gold: #c39a3f;
   --badge-blue: #186adc;
 
-  font-family: 'Open Sans', sans-serif;
+  font-family: 'Inter', sans-serif !important;
   color: var(--text-dark);
   background-color: var(--nav-bg);
   line-height: 1.5;
@@ -157,7 +157,7 @@
 }
 
 .clarwyn-landing .hero-title {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Inter', sans-serif !important;
   color: var(--primary-color);
   font-size: 85px;
   line-height: 0.95;
@@ -270,7 +270,7 @@
 }
 
 .clarwyn-landing .lens-title {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Inter', sans-serif !important;
   color: #F8F6F0;
   font-size: 34px;
   line-height: 1.1;

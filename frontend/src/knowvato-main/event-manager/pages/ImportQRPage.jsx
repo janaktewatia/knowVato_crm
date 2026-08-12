@@ -583,15 +583,25 @@ const ImportQRPage = () => {
                   <div className="d-flex gap-2 flex-nowrap overflow-auto">
                     {CONTENT_TYPES.map((type) => {
                       const Icon = type.icon;
+                      const isActive = activeType === type.id;
                       return (
                         <button
                           key={type.id}
                           type="button"
-                          className={`btn btn-sm ${activeType === type.id ? "btn-primary" : "btn-outline-secondary"}`}
+                          className={`btn btn-sm d-inline-flex align-items-center justify-content-center gap-1.5 font-medium transition-colors ${
+                            isActive ? "btn-primary shadow-2xs font-semibold" : "btn-outline-secondary"
+                          }`}
+                          style={{
+                            height: "36px",
+                            minHeight: "36px",
+                            fontSize: "13px",
+                            padding: "0 12px",
+                            borderRadius: "6px",
+                          }}
                           onClick={() => setActiveType(type.id)}
                         >
-                          <Icon className="me-1 fs-6" />
-                          {type.name}
+                          <Icon className="flex-shrink-0" style={{ fontSize: "15px" }} />
+                          <span>{type.name}</span>
                         </button>
                       );
                     })}
@@ -614,10 +624,12 @@ const ImportQRPage = () => {
                   </label>
                   <button
                     type="button"
-                    className="btn btn-sm btn-outline-primary download-format"
+                    className="btn btn-sm btn-outline-secondary download-format d-inline-flex align-items-center justify-content-center gap-1.5"
+                    style={{ height: "34px", fontSize: "12px", borderRadius: "6px", fontWeight: "500" }}
                     onClick={downloadTemplate}
                   >
-                    <BiDownload className="me-1" /> Download Format
+                    <BiDownload className="flex-shrink-0" style={{ fontSize: "14px" }} />
+                    <span>Download Format</span>
                   </button>
                 </div>
                 <div className="bulk-file-input-wrapper">
@@ -632,20 +644,18 @@ const ImportQRPage = () => {
 
                   <label
                     htmlFor="excelInput"
-                    className="bulk-file-input-button me-2"
+                    className="bulk-file-input-button btn btn-primary me-2 d-inline-flex align-items-center justify-content-center gap-1.5 cursor-pointer"
                     style={{
                       height: "36px",
-                      fontSize: "0.9rem",
-                      borderRadius: "var(--radius)",
+                      fontSize: "13px",
+                      borderRadius: "6px",
+                      fontWeight: "500",
                     }}
                   >
-                    <BiCloudUpload className="me-2" />
-                    {file ? "Change File" : "Choose File"}
+                    <BiCloudUpload className="flex-shrink-0" style={{ fontSize: "16px" }} />
+                    <span>{file ? "Change File" : "Choose File"}</span>
                   </label>
 
-                  {/* <span className="bulk-file-meta">
-                    {file ? file.name : "No file selected"}
-                  </span> */}
                   <span className="bulk-file-input-hint">
                     Excel or CSV only
                   </span>
@@ -675,7 +685,7 @@ const ImportQRPage = () => {
           <div className="card shadow-sm border-0 rounded-5 h-100 w-100">
             <div className="card-header bg-white border-bottom">
               <div className="d-flex align-items-center gap-2">
-                <BiCloudUpload className="fs-3 text-primary" />
+                <BiCloudUpload className="fs-3" style={{ color: "var(--accent)" }} />
                 <h5 className="mb-0">File Summary</h5>
               </div>
             </div>
@@ -713,12 +723,18 @@ const ImportQRPage = () => {
               <div className="mb-3"></div>
               <div>
                 <button
-                  className="bulk-download-button btn w-100"
+                  className="bulk-download-button btn btn-primary w-100 text-white font-semibold d-inline-flex align-items-center justify-content-center gap-2"
                   type="button"
                   onClick={downloadAllQRCodes}
                   disabled={isProcessing || !getValidRows().length}
+                  style={{
+                    height: "38px",
+                    fontSize: "13px",
+                    borderRadius: "6px",
+                  }}
                 >
-                  <BiDownload className="me-2" /> Download All QR Codes
+                  <BiDownload className="flex-shrink-0" style={{ fontSize: "16px" }} />
+                  <span>Download All QR Codes</span>
                 </button>
               </div>
             </div>
