@@ -7,7 +7,7 @@ import { asyncHandler, ok, ApiError, audit } from "../utils/http";
 /**
  * List Facebook Lead Ads Integration accounts for current tenant
  */
-export const listAccounts = asyncHandler(async (req: Request, res: Response) => {
+export const listAccounts = asyncHandler(async (req: any, res: Response) => {
   const tenant = req.tenantId;
   const list = await Integration.find({ tenant, key: { $regex: /^facebook/i } }).sort({ createdAt: -1 });
   ok(res, list);
@@ -16,12 +16,12 @@ export const listAccounts = asyncHandler(async (req: Request, res: Response) => 
 /**
  * Create a new Facebook Integration account
  */
-export const createAccount = asyncHandler(async (req: Request, res: Response) => {
+export const createAccount = asyncHandler(async (req: any, res: Response) => {
   const tenant = req.tenantId;
   const { pageName, pageId, pageAccessToken, verifyToken, appSecret, active, formMapping } = req.body;
 
   if (!pageName || !pageId) {
-    throw new ApiError("Page Name and Page ID are required", 400);
+    throw new ApiError(400, "Page Name and Page ID are required");
   }
 
   // Set other facebook integrations inactive if this one is set active
@@ -50,18 +50,25 @@ export const createAccount = asyncHandler(async (req: Request, res: Response) =>
     }
   });
 
-  await audit(req, "create", "setup", `Facebook Integration: ${pageName}`, undefined, doc._id.toString());
+  await audit({
+    tenant,
+    user: req.user?.name,
+    action: "create",
+    module: "setup",
+    entity: `Facebook Integration: ${pageName}`,
+    next: doc._id.toString()
+  });
   ok(res, doc, 201);
 });
 
 /**
  * Update an existing Facebook Integration account
  */
-export const updateAccount = asyncHandler(async (req: Request, res: Response) => {
+export const updateAccount = asyncHandler(async (req: any, res: Response) => {
   const tenant = req.tenantId;
   const { id } = req.params;
   const doc = await Integration.findOne({ _id: id, tenant });
-  if (!doc) throw new ApiError("Facebook integration not found", 404);
+  if (!doc) throw new ApiError(404, "Facebook integration not found");
 
   const prev = JSON.stringify(doc);
   const { pageName, pageId, pageAccessToken, verifyToken, appSecret, active, formMapping } = req.body;
@@ -85,48 +92,63 @@ export const updateAccount = asyncHandler(async (req: Request, res: Response) =>
   };
 
   await doc.save();
-  await audit(req, "update", "setup", `Facebook Integration: ${doc.name}`, prev, JSON.stringify(doc));
+  await audit({
+    tenant,
+    user: req.user?.name,
+    action: "update",
+    module: "setup",
+    entity: `Facebook Integration: ${doc.name}`,
+    prev,
+    next: JSON.stringify(doc)
+  });
   ok(res, doc);
 });
 
 /**
  * Delete a Facebook Integration account
  */
-export const deleteAccount = asyncHandler(async (req: Request, res: Response) => {
+export const deleteAccount = asyncHandler(async (req: any, res: Response) => {
   const tenant = req.tenantId;
   const { id } = req.params;
   const doc = await Integration.findOneAndDelete({ _id: id, tenant });
-  if (!doc) throw new ApiError("Facebook integration not found", 404);
-  await audit(req, "delete", "setup", `Facebook Integration: ${doc.name}`, JSON.stringify(doc), undefined);
+  if (!doc) throw new ApiError(404, "Facebook integration not found");
+  await audit({
+    tenant,
+    user: req.user?.name,
+    action: "delete",
+    module: "setup",
+    entity: `Facebook Integration: ${doc.name}`,
+    prev: JSON.stringify(doc)
+  });
   ok(res, { deleted: true });
 });
 
 /**
  * Activate a Facebook Integration
  */
-export const activate = asyncHandler(async (req: Request, res: Response) => {
+export const activate = asyncHandler(async (req: any, res: Response) => {
   const tenant = req.tenantId;
   const { id } = req.params;
   await Integration.updateMany({ tenant, key: { $regex: /^facebook/i } }, { connected: false });
   const doc = await Integration.findOneAndUpdate({ _id: id, tenant }, { connected: true }, { new: true });
-  if (!doc) throw new ApiError("Facebook integration not found", 404);
+  if (!doc) throw new ApiError(404, "Facebook integration not found");
   ok(res, doc);
 });
 
 /**
  * Test Facebook Meta Graph API Connection
  */
-export const testConnection = asyncHandler(async (req: Request, res: Response) => {
+export const testConnection = asyncHandler(async (req: any, res: Response) => {
   const { pageAccessToken, pageId } = req.body;
   const token = pageAccessToken || "";
   
   if (!token) {
-    throw new ApiError("Page Access Token is required to test connection", 400);
+    throw new ApiError(400, "Page Access Token is required to test connection");
   }
 
   try {
     const apiRes = await fetch(`https://graph.facebook.com/v21.0/me?access_token=${encodeURIComponent(token)}`);
-    const data = await apiRes.json();
+    const data: any = await apiRes.json();
 
     if (data.error) {
       return ok(res, { ok: false, error: data.error.message || "Meta API error" });
@@ -141,7 +163,7 @@ export const testConnection = asyncHandler(async (req: Request, res: Response) =
 /**
  * Fetch Facebook Page Lead Generation Forms
  */
-export const fetchLeadForms = asyncHandler(async (req: Request, res: Response) => {
+export const fetchLeadForms = asyncHandler(async (req: any, res: Response) => {
   const tenant = req.tenantId;
   const { id } = req.params;
   const doc = await Integration.findOne({ _id: id, tenant });
@@ -149,12 +171,12 @@ export const fetchLeadForms = asyncHandler(async (req: Request, res: Response) =
   const pageId = doc?.config?.pageId || req.body?.pageId;
 
   if (!token || !pageId) {
-    throw new ApiError("Page Access Token and Page ID are required", 400);
+    throw new ApiError(400, "Page Access Token and Page ID are required");
   }
 
   try {
     const apiRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/leadgen_forms?access_token=${encodeURIComponent(token)}`);
-    const data = await apiRes.json();
+    const data: any = await apiRes.json();
 
     if (data.error) {
       return ok(res, { ok: false, error: data.error.message });
@@ -204,14 +226,14 @@ export const fbWebhookReceive = asyncHandler(async (req: Request, res: Response)
             if (token) {
               try {
                 const leadRes = await fetch(`https://graph.facebook.com/v21.0/${leadgenId}?access_token=${encodeURIComponent(token)}`);
-                const leadData = await leadRes.json();
+                const leadData: any = await leadRes.json();
 
                 if (leadData && leadData.field_data) {
                   let name = "Facebook Lead";
                   let phone = "";
                   let email = "";
 
-                  for (const f of leadData.field_data) {
+                  for (const f of (leadData.field_data as any[])) {
                     if (["full_name", "name", "first_name"].includes(f.name)) name = f.values?.[0] || name;
                     if (["phone_number", "phone", "mobile"].includes(f.name)) phone = f.values?.[0] || phone;
                     if (["email", "email_address"].includes(f.name)) email = f.values?.[0] || email;

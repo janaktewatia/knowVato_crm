@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   CalendarRange,
@@ -13,6 +14,7 @@ import {
   LayoutDashboard,
   Bookmark,
   ChevronRight,
+  ChevronDown,
   Home,
   CalendarPlus,
   ScanLine,
@@ -23,6 +25,9 @@ import {
   Bus,
   FileText,
   X,
+  Sparkles,
+  Film,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "../../context/AuthContext";
@@ -36,6 +41,7 @@ const modules = [
   { title: "Communication", slug: "communication", icon: Megaphone },
   { title: "Front Office", slug: "front-office", icon: Building2 },
   { title: "Reports & Analytics", slug: "reports", icon: BarChart3 },
+  { title: "Utilities", slug: "utilities", icon: Sparkles },
   { title: "User Management", slug: "users", icon: Users },
 ];
 
@@ -56,6 +62,12 @@ const eventsSubmenu = [
   { title: "Bulk QR Code", path: "/modules/events/bulk-qr", icon: Layers },
 ];
 
+const utilitiesSubmenu = [
+  { title: "QR Code", path: "/modules/utilities/qr", icon: QrCode },
+  { title: "Video Edit", path: "/modules/utilities/video-edit", icon: Film },
+  { title: "Photo Edit", path: "/modules/utilities/photo-edit", icon: ImageIcon },
+];
+
 export function AppSidebar() {
   const { state, toggleSidebar, openMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
@@ -63,6 +75,7 @@ export function AppSidebar() {
   const pathname = location.pathname;
   const { user, logout } = useAuth();
   const { bookmarks } = useBookmarks();
+  const [utilitiesOpen, setUtilitiesOpen] = useState(true);
 
   const handleLinkClick = () => {
     if (openMobile) setOpenMobile(false);
@@ -158,6 +171,45 @@ export function AppSidebar() {
               })}
             </div>
           </div>
+        ) : pathname.startsWith("/modules/utilities") ? (
+          <div className="nav-section px-2 py-1">
+            {!isCollapsed && (
+              <div className="nav-label text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--sidebar-muted)] px-2 py-1.5 flex items-center justify-between">
+                <span>Utilities</span>
+              </div>
+            )}
+            <div className="space-y-1">
+              <Link
+                to="/"
+                onClick={handleLinkClick}
+                title="Home"
+                className={`nav-link text-decoration-none flex items-center ${
+                  isCollapsed ? "justify-center p-2.5 w-[44px] h-[44px] mx-auto rounded-lg" : "gap-3 px-3 py-2 rounded-lg text-[14px]"
+                } ${pathname === "/" ? "active bg-[var(--sidebar-primary)] text-white font-medium shadow-xs" : "text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]"}`}
+              >
+                <Home className="h-4 w-4 shrink-0" />
+                {!isCollapsed && <span>Home</span>}
+              </Link>
+              {utilitiesSubmenu.map((s) => {
+                const active = pathname === s.path;
+                const Icon = s.icon;
+                return (
+                  <Link
+                    key={s.path}
+                    to={s.path}
+                    onClick={handleLinkClick}
+                    title={s.title}
+                    className={`nav-link text-decoration-none flex items-center ${
+                      isCollapsed ? "justify-center p-2.5 w-[44px] h-[44px] mx-auto rounded-lg" : "gap-3 px-3 py-2 rounded-lg text-[14px]"
+                    } ${active ? "active bg-[var(--sidebar-primary)] text-white font-medium shadow-xs" : "text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]"}`}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    {!isCollapsed && <span>{s.title}</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
         ) : (
           <>
             {/* Workspace */}
@@ -191,8 +243,89 @@ export function AppSidebar() {
               )}
               <div className="space-y-1">
                 {modules.map((m) => {
-                  const url = m.slug === "whatsapp" ? "/crm" : m.slug === "easy-inout" ? "/modules/easy-inout/inout" : m.slug === "events" ? "/modules/events" : `/modules/${m.slug}`;
-                  const active = pathname === url || (m.slug === "whatsapp" && pathname.startsWith("/crm")) || (m.slug === "easy-inout" && pathname.startsWith("/modules/easy-inout"));
+                  if (m.slug === "utilities") {
+                    const isUtilitiesActive = pathname.startsWith("/modules/utilities");
+                    const Icon = m.icon;
+                    if (isCollapsed) {
+                      return (
+                        <Link
+                          key={m.slug}
+                          to="/modules/utilities/qr"
+                          onClick={handleLinkClick}
+                          title="Utilities"
+                          className={`nav-link text-decoration-none flex items-center justify-center p-2.5 w-[44px] h-[44px] mx-auto rounded-lg ${
+                            isUtilitiesActive
+                              ? "active bg-[var(--sidebar-primary)] text-white font-medium shadow-xs"
+                              : "text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]"
+                          }`}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                        </Link>
+                      );
+                    }
+
+                    return (
+                      <div key={m.slug} className="space-y-1">
+                        <div
+                          onClick={() => setUtilitiesOpen((prev) => !prev)}
+                          className={`nav-link text-decoration-none flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-[14px] cursor-pointer transition-colors ${
+                            isUtilitiesActive
+                              ? "bg-[var(--sidebar-accent)] text-[var(--sidebar-primary)] font-medium"
+                              : "text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Icon className="h-4 w-4 shrink-0" />
+                            <span className="truncate">{m.title}</span>
+                          </div>
+                          <ChevronDown
+                            className={`h-3.5 w-3.5 text-[var(--sidebar-muted)] transition-transform duration-200 ${
+                              utilitiesOpen ? "" : "-rotate-90"
+                            }`}
+                          />
+                        </div>
+
+                        {/* Drill down submenu items */}
+                        {utilitiesOpen && (
+                          <div className="pl-6 pr-1 py-0.5 space-y-1 border-l-2 border-slate-200/80 ml-4 my-1">
+                            {utilitiesSubmenu.map((sub) => {
+                              const subActive = pathname === sub.path;
+                              const SubIcon = sub.icon;
+                              return (
+                                <Link
+                                  key={sub.path}
+                                  to={sub.path}
+                                  onClick={handleLinkClick}
+                                  title={sub.title}
+                                  className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] text-decoration-none transition-colors ${
+                                    subActive
+                                      ? "bg-[var(--sidebar-primary)] text-white font-medium shadow-xs"
+                                      : "text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]"
+                                  }`}
+                                >
+                                  <SubIcon className="h-3.5 w-3.5 shrink-0" />
+                                  <span className="truncate">{sub.title}</span>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  const url =
+                    m.slug === "whatsapp"
+                      ? "/crm"
+                      : m.slug === "easy-inout"
+                      ? "/modules/easy-inout/inout"
+                      : m.slug === "events"
+                      ? "/modules/events"
+                      : `/modules/${m.slug}`;
+                  const active =
+                    pathname === url ||
+                    (m.slug === "whatsapp" && pathname.startsWith("/crm")) ||
+                    (m.slug === "easy-inout" && pathname.startsWith("/modules/easy-inout"));
                   const Icon = m.icon;
                   return (
                     <Link

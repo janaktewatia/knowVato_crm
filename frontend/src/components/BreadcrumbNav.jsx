@@ -189,6 +189,17 @@ export default function BreadcrumbNav() {
       return crumbs;
     }
 
+    if (pathname.startsWith("/modules/utilities")) {
+      const crumbs = [
+        { label: "Home", to: "/" },
+        { label: "Utilities", to: "/modules/utilities" }
+      ];
+      if (pathname === "/modules/utilities/qr") crumbs.push({ label: "QR Code Studio" });
+      else if (pathname === "/modules/utilities/video-edit") crumbs.push({ label: "Video Editor" });
+      else if (pathname === "/modules/utilities/photo-edit") crumbs.push({ label: "Photo Studio" });
+      return crumbs;
+    }
+
     if (pathname.startsWith("/modules/integrations")) {
       const slug = pathname.replace("/modules/", "");
       const labelMap = {

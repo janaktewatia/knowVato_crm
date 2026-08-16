@@ -24,6 +24,10 @@ const TITLES: Record<string, string> = {
   "/modules/communication": "Communication",
   "/modules/front-office": "Front Office",
   "/modules/reports": "Reports & Analytics",
+  "/modules/utilities": "Utilities",
+  "/modules/utilities/qr": "Utilities - QR Code Studio",
+  "/modules/utilities/video-edit": "Utilities - Video Editor",
+  "/modules/utilities/photo-edit": "Utilities - Photo Studio",
   "/modules/configuration": "Configuration",
 };
 

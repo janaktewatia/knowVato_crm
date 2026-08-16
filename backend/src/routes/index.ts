@@ -10,6 +10,22 @@ import * as trackC from "../controllers/serviceTrackController";
 import * as fuC from "../controllers/followUpController";
 import * as msgC from "../controllers/messagingController";
 import * as fbC from "../controllers/facebookController";
+import multer from "multer";
+import path from "path";
+import os from "os";
+import fs from "fs";
+import ffmpeg from "fluent-ffmpeg";
+import ffmpegStatic from "ffmpeg-static";
+const ffmpegBinary = (ffmpegStatic as any)?.default || (ffmpegStatic as any);
+
+
+if (ffmpegBinary) {
+  try {
+    ffmpeg.setFfmpegPath(ffmpegBinary);
+  } catch (e) {
+    console.warn("Could not set ffmpeg path:", e);
+  }
+}
 
 import { Lead } from "../models/Lead";
 import { FollowUp } from "../models/FollowUp";
@@ -27,6 +43,67 @@ import { Tenant } from "../models/Tenant";
 import { convertToLead } from "../services/leadService";
 
 const r = Router();
+
+// Media conversion endpoint (accepts uploaded WebM and returns MP4)
+const uploadDir = path.join(os.tmpdir(), "whatsapp_crm_uploads");
+if (!fs.existsSync(uploadDir)) {
+  try { fs.mkdirSync(uploadDir, { recursive: true }); } catch (e) {}
+}
+const upload = multer({ dest: uploadDir });
+
+r.post(
+  "/media/convert",
+  upload.single("file"),
+  asyncHandler(async (req: any, res: any) => {
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    const inputPath = req.file.path;
+    const outPath = `${inputPath}.mp4`;
+    try {
+      const targetW = req.body.targetWidth ? Number(req.body.targetWidth) : null;
+      const targetH = req.body.targetHeight ? Number(req.body.targetHeight) : null;
+      const fps = req.body.fps ? Number(req.body.fps) : null;
+      const duration = req.body.duration ? Number(req.body.duration) : null;
+      const quality = req.body.quality || "high";
+      // quality -> crf/preset/bitrate mapping
+      const crf = quality === "high" ? 18 : (quality === "low" ? 28 : 23);
+      const preset = quality === "high" ? "medium" : (quality === "low" ? "slow" : "fast");
+      const bitrate = quality === "high" ? "8000k" : (quality === "low" ? "1500k" : "4000k");
+
+      await new Promise((resolve, reject) => {
+        let cmd = ffmpeg(inputPath).outputOptions(["-y"]);
+        if (duration && isFinite(duration) && duration > 0) {
+          cmd = cmd.outputOptions([`-t ${duration.toFixed(3)}`]);
+        }
+        if (fps) cmd = cmd.outputOptions([`-r ${fps}`]);
+        if (targetW && targetH) cmd = cmd.videoFilters(`scale=${targetW}:${targetH}`);
+        cmd = cmd.videoCodec("libx264").audioCodec("aac").outputOptions([`-preset ${preset}`, `-crf ${crf}`, `-b:v ${bitrate}`, `-b:a 192k`, "-movflags +faststart"]);
+        cmd.on("end", () => resolve(null)).on("error", (err: any) => reject(err)).save(outPath as string);
+      });
+
+
+      // Stream converted file back with proper headers
+      const safeFilename = (req.file.originalname || "export").replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9_-]/g, "_");
+      res.setHeader("Content-Type", "video/mp4");
+      res.setHeader("Content-Disposition", `attachment; filename="${safeFilename}.mp4"`);
+      const stream = fs.createReadStream(outPath as string);
+      stream.pipe(res);
+      stream.on("close", () => {
+        try { fs.unlinkSync(inputPath); } catch (e) {}
+        try { fs.unlinkSync(outPath); } catch (e) {}
+      });
+      stream.on("error", (streamErr: any) => {
+        try { fs.unlinkSync(inputPath); } catch (e) {}
+        try { fs.unlinkSync(outPath); } catch (e) {}
+      });
+
+    } catch (err: any) {
+      try { fs.unlinkSync(inputPath); } catch (e) {}
+      try { fs.unlinkSync(outPath); } catch (e) {}
+      console.error("FFmpeg conversion error:", err);
+      res.status(500).json({ error: (err && err.message) || "Conversion failed" });
+    }
+  })
+);
 
 /* ---- public ---- */
 r.post("/auth/login", authC.login);

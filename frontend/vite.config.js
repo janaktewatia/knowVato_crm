@@ -16,6 +16,16 @@ export default defineConfig({
     host: true,
     allowedHosts: true,
     port: 5173,
+    hmr: {
+      protocol: 'ws',
+      host: 'localhost',
+      port: 5173,
+      clientPort: 5173,
+    },
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "credentialless",
+    },
     proxy: {
       "/api": { target: "http://localhost:4001", changeOrigin: true },
       "/webhooks": { target: "http://localhost:4001", changeOrigin: true },

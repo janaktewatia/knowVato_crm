@@ -38,6 +38,13 @@ import IntegrationsWhatsapp from "./knowvato-main/routes/modules.integrations-wh
 import ModulePage from "./knowvato-main/routes/modules.$module";
 import EasyInOutPage from "./easy-inout/EasyInOutPage";
 
+// Utilities Module Components
+import UtilitiesLayout from "./knowvato-main/routes/modules.utilities";
+import UtilitiesOverviewPage from "./knowvato-main/pages/UtilitiesOverviewPage";
+import QRCodeUtilityPage from "./knowvato-main/pages/QRCodeUtilityPage";
+import VideoEditorPage from "./knowvato-main/pages/VideoEditorPage";
+import PhotoEditorPage from "./knowvato-main/pages/PhotoEditorPage";
+
 function Protected({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <Spinner label="Starting…" />;
@@ -73,6 +80,12 @@ export default function App() {
           <Route path="scan" element={<EventsScan />} />
           <Route path="qr" element={<EventsQr />} />
           <Route path="bulk-qr" element={<EventsBulkQr />} />
+        </Route>
+        <Route path="modules/utilities" element={<UtilitiesLayout />}>
+          <Route index element={<UtilitiesOverviewPage />} />
+          <Route path="qr" element={<QRCodeUtilityPage />} />
+          <Route path="video-edit" element={<VideoEditorPage />} />
+          <Route path="photo-edit" element={<PhotoEditorPage />} />
         </Route>
         <Route path="modules/:module" element={<ModulePage />} />
       </Route>

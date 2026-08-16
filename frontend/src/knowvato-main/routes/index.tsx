@@ -94,6 +94,7 @@ const pinnableModules = [
   { title: "Event Manager", slug: "events" },
   { title: "WhatsApp CRM", slug: "whatsapp" },
   { title: "Website Builder", slug: "website" },
+  { title: "Utilities", slug: "utilities" },
   { title: "User Management", slug: "users" },
   { title: "Communication", slug: "communication" },
   { title: "Front Office", slug: "front-office" },
@@ -278,7 +279,7 @@ export default function KnowvatoDashboard() {
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {quickActions.map((a) => {
-              const url = a.slug === "whatsapp" ? "/crm" : a.slug === "events" ? "/modules/events" : `/modules/${a.slug}`;
+              const url = a.slug === "whatsapp" ? "/crm" : a.slug === "events" ? "/modules/events" : a.slug === "utilities" ? "/modules/utilities/qr" : `/modules/${a.slug}`;
               return (
                 <div
                   key={a.title}
