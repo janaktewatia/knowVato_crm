@@ -936,24 +936,21 @@ export default function VideoEditor() {
   // Split Selected Clip at current playhead position
   // Split Clip at current playhead cursor position
   const splitCurrentClip = () => {
-    // 1. Find the active clip under current playhead time
-    const activeMatch = findActiveClipAtTime(currentTime);
-
-    // Determine which track and clip to split:
+    // 1. Check selected track and clip first
     let targetTrack = null;
     let targetClip = null;
     let clipIndex = -1;
 
-    // Check if selected clip is under the playhead
     if (selectedTrackId && selectedClipId) {
       const t = tracks.find((tr) => tr.id === selectedTrackId);
       if (t) {
         const idx = t.clips.findIndex((c) => c.id === selectedClipId);
         if (idx !== -1) {
           const c = t.clips[idx];
-          const cStart = c.startTime || 0;
-          const cEnd = cStart + (c.trimEnd - c.trimStart);
-          if (currentTime >= cStart && currentTime <= cEnd) {
+          const cStart = Number(c.startTime) || 0;
+          const cDur = Math.max(0.01, (Number(c.trimEnd) || 10) - (Number(c.trimStart) || 0));
+          const cEnd = cStart + cDur;
+          if (currentTime >= cStart - 0.1 && currentTime <= cEnd + 0.1) {
             targetTrack = t;
             targetClip = c;
             clipIndex = idx;
@@ -962,19 +959,13 @@ export default function VideoEditor() {
       }
     }
 
-    // Otherwise use the active clip under the playhead
-    if (!targetClip && activeMatch) {
-      targetTrack = activeMatch.track;
-      targetClip = activeMatch.clip;
-      clipIndex = targetTrack.clips.findIndex((c) => c.id === targetClip.id);
-    }
-
-    // If still no clip found, scan all tracks for any clip under playhead
+    // 2. If no target clip from selection, search all tracks for any clip under currentTime
     if (!targetClip) {
       for (const t of tracks) {
         const idx = t.clips.findIndex((c) => {
-          const cStart = c.startTime || 0;
-          const cEnd = cStart + (c.trimEnd - c.trimStart);
+          const cStart = Number(c.startTime) || 0;
+          const cDur = Math.max(0.01, (Number(c.trimEnd) || 10) - (Number(c.trimStart) || 0));
+          const cEnd = cStart + cDur;
           return currentTime >= cStart && currentTime <= cEnd;
         });
         if (idx !== -1) {
@@ -996,14 +987,21 @@ export default function VideoEditor() {
     const cTrimEnd = Number(targetClip.trimEnd) || origDuration;
     const clipEndOnTimeline = clipStartOnTimeline + (cTrimEnd - cTrimStart);
 
-    // Allow splitting anywhere inside the clip (at least 0.05s from edges)
-    if (currentTime <= clipStartOnTimeline + 0.05 || currentTime >= clipEndOnTimeline - 0.05) {
+    // Calculate effective split timestamp (clamp slightly inside clip bounds if near edges)
+    let effectiveSplitTime = currentTime;
+    if (effectiveSplitTime <= clipStartOnTimeline + 0.05) {
+      effectiveSplitTime = clipStartOnTimeline + 0.1;
+    } else if (effectiveSplitTime >= clipEndOnTimeline - 0.05) {
+      effectiveSplitTime = clipEndOnTimeline - 0.1;
+    }
+
+    if (effectiveSplitTime <= clipStartOnTimeline || effectiveSplitTime >= clipEndOnTimeline) {
       return;
     }
 
     pushHistory(tracks);
 
-    const relativeSplitOffset = currentTime - clipStartOnTimeline;
+    const relativeSplitOffset = effectiveSplitTime - clipStartOnTimeline;
     const splitPointVideoTime = cTrimStart + relativeSplitOffset;
 
     const clipA = {
@@ -1038,6 +1036,7 @@ export default function VideoEditor() {
     setSelectedTrackId(targetTrack.id);
     setSelectedClipId(clipB.id);
   };
+
 
 
 
@@ -1288,11 +1287,14 @@ export default function VideoEditor() {
     setSelectedTrackId(trackId);
     setSelectedClipId(clip.id);
 
-    // Immediately seek to exact cursor position on mousedown for instant response
-    seekFromClientX(e.clientX);
+    // Immediately seek to exact cursor position on mousedown when clicking to select/move
+    if (mode === "move") {
+      seekFromClientX(e.clientX);
+    }
 
     const laneEl = timelineTracksRef.current?.querySelector(`[data-track-id="${trackId}"] [data-track-lane="true"]`);
     const laneWidth = laneEl ? (laneEl.offsetWidth || laneEl.clientWidth || laneEl.getBoundingClientRect().width) : 800;
+
 
     setDraggingState({
       mode,
@@ -2733,12 +2735,14 @@ export default function VideoEditor() {
                   <button
                     type="button"
                     onClick={splitCurrentClip}
-                    disabled={!selectedClipId}
-                    title="Split Video at Playhead (S)"
-                    className="h-6 w-6 inline-flex items-center justify-center rounded-[6px] border border-slate-300 bg-white text-slate-800 hover:bg-slate-100 hover:border-slate-400 shadow-2xs transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                    disabled={tracks.flatMap((t) => t.clips).length === 0}
+                    title="Split Video at Cursor / Playhead (S)"
+                    className="h-6 px-2 inline-flex items-center gap-1 rounded-[6px] border border-slate-300 bg-white text-slate-800 hover:bg-slate-100 hover:border-slate-400 shadow-2xs transition-colors cursor-pointer text-[11px] font-medium disabled:opacity-40 disabled:pointer-events-none"
                   >
                     <Scissors className="h-3.5 w-3.5" />
+                    <span>Split</span>
                   </button>
+
 
                   {/* Delete Selected Clip Button */}
                   <button
