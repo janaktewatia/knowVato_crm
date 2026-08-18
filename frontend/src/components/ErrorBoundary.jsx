@@ -100,7 +100,28 @@ export class ErrorBoundary extends React.Component {
                 Try Again
               </button>
               <button
-                onClick={() => { window.location.href = "/"; }}
+                onClick={() => {
+                  try {
+                    localStorage.removeItem("flowchat_studio_data_v1");
+                    localStorage.removeItem("flowchat_studio_data_v2");
+                  } catch (e) {}
+                  window.location.reload();
+                }}
+                style={{
+                  padding: "0.5rem 1.25rem",
+                  backgroundColor: "#dc2626",
+                  color: "#ffffff",
+                  borderRadius: "6px",
+                  border: "none",
+                  fontWeight: "600",
+                  fontSize: "0.875rem",
+                  cursor: "pointer"
+                }}
+              >
+                Reset Flow Storage & Reload
+              </button>
+              <button
+                onClick={() => { window.location.href = "/crm/chatbot"; }}
                 style={{
                   padding: "0.5rem 1.25rem",
                   backgroundColor: "#ffffff",
@@ -112,7 +133,7 @@ export class ErrorBoundary extends React.Component {
                   cursor: "pointer"
                 }}
               >
-                Go to Dashboard
+                Go to Chatbot Studio
               </button>
             </div>
           </div>

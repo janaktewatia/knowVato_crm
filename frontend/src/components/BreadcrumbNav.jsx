@@ -116,11 +116,11 @@ export default function BreadcrumbNav() {
       ];
     }
 
-    if (pathname === "/crm/chatbot") {
+    if (pathname.startsWith("/crm/chatbot")) {
       return [
         { label: "Home", to: "/" },
         { label: "WhatsApp Manager", to: "/crm/chat" },
-        { label: "Chatbot & Bot Flows" }
+        { label: "Chatbot & Bot Flows", to: "/crm/chatbot" }
       ];
     }
 

@@ -5,20 +5,24 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "./styles.css";
 import "./knowvato-main/styles.css";
+import "./flowchat/flowchat.css";
 import { AuthProvider } from "./context/AuthContext";
 import { ToastProvider } from "./context/ToastContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { BotProvider } from "./flowchat/context/BotContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import App from "./App";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <ThemeProvider>
           <ToastProvider>
             <AuthProvider>
-              <App />
+              <BotProvider>
+                <App />
+              </BotProvider>
             </AuthProvider>
           </ToastProvider>
         </ThemeProvider>
@@ -26,4 +30,3 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </ErrorBoundary>
   </React.StrictMode>
 );
-

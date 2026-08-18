@@ -211,7 +211,7 @@ export default function VideoEditor() {
 
   // Active clip at current playback playhead time (for video stage preview)
   const findActiveClipAtTime = (time) => {
-    const videoTracks = tracks.filter((t) => !t.isAudio && !t.muted);
+    const videoTracks = tracks.filter((t) => !t.isAudio);
     const sortedTracks = selectedTrackId
       ? [
           ...videoTracks.filter((t) => t.id === selectedTrackId),
@@ -740,22 +740,51 @@ export default function VideoEditor() {
   const processSingleFile = async (file) => {
     const url = URL.createObjectURL(file);
     const tempVideo = document.createElement("video");
-    tempVideo.preload = "metadata";
+    tempVideo.preload = "auto";
     tempVideo.muted = true;
     tempVideo.playsInline = true;
 
     let dur = 10;
     try {
       dur = await new Promise((resolve) => {
-        const timeout = setTimeout(() => resolve(10), 2000);
-        tempVideo.onloadedmetadata = () => {
-          clearTimeout(timeout);
-          resolve(tempVideo.duration && isFinite(tempVideo.duration) && tempVideo.duration > 0 ? tempVideo.duration : 10);
+        let isDone = false;
+        const done = (finalDur) => {
+          if (!isDone) {
+            isDone = true;
+            clearTimeout(timeout);
+            resolve(finalDur && isFinite(finalDur) && finalDur > 0 ? finalDur : 10);
+          }
         };
-        tempVideo.onerror = () => {
-          clearTimeout(timeout);
-          resolve(10);
+
+        const timeout = setTimeout(() => {
+          const fallback = tempVideo.duration && isFinite(tempVideo.duration) && tempVideo.duration > 0
+            ? tempVideo.duration
+            : 10;
+          done(fallback);
+        }, 4000);
+
+        const onMetaOrData = () => {
+          if (tempVideo.duration && isFinite(tempVideo.duration) && tempVideo.duration > 0) {
+            done(tempVideo.duration);
+          } else if (tempVideo.duration === Infinity) {
+            // WebM Infinity duration workaround: seek to very end to determine true duration
+            tempVideo.currentTime = 1e101;
+            tempVideo.ontimeupdate = () => {
+              tempVideo.ontimeupdate = null;
+              const trueDur = isFinite(tempVideo.duration) && tempVideo.duration > 0
+                ? tempVideo.duration
+                : (isFinite(tempVideo.currentTime) && tempVideo.currentTime > 0 ? tempVideo.currentTime : 10);
+              tempVideo.currentTime = 0;
+              done(trueDur);
+            };
+          }
         };
+
+        tempVideo.onloadedmetadata = onMetaOrData;
+        tempVideo.ondurationchange = onMetaOrData;
+        tempVideo.onloadeddata = onMetaOrData;
+        tempVideo.oncanplay = onMetaOrData;
+        tempVideo.onerror = () => done(10);
         tempVideo.src = url;
       });
     } catch (e) {
@@ -764,9 +793,9 @@ export default function VideoEditor() {
 
     let thumb = null;
     try {
-      tempVideo.currentTime = Math.min(1, Math.max(0.1, dur / 2));
+      tempVideo.currentTime = Math.min(1, Math.max(0.1, (dur || 10) / 2));
       await new Promise((resolve) => {
-        const t = setTimeout(resolve, 500);
+        const t = setTimeout(resolve, 600);
         tempVideo.onseeked = () => {
           clearTimeout(t);
           resolve();
@@ -780,8 +809,10 @@ export default function VideoEditor() {
       canvas.width = 160;
       canvas.height = 90;
       const ctx = canvas.getContext("2d");
-      ctx.drawImage(tempVideo, 0, 0, 160, 90);
-      thumb = canvas.toDataURL("image/jpeg", 0.7);
+      if (ctx && tempVideo.videoWidth && tempVideo.videoHeight) {
+        ctx.drawImage(tempVideo, 0, 0, 160, 90);
+        thumb = canvas.toDataURL("image/jpeg", 0.7);
+      }
     } catch (err) {
       console.warn("Thumbnail generation skipped:", err);
     }
@@ -1537,14 +1568,18 @@ export default function VideoEditor() {
     const rawPct = Math.max(0, Math.min(1, clickX / rect.width));
     const rawTime = rawPct * totalTimelineDuration;
 
-    const { snappedTime, snapGuide: guide } = computeSnapPosition(trackId, rawTime, 5);
+    const fileId = e.dataTransfer.getData("text/video-id") || activeMediaId;
+    const targetFile = files.find((f) => f.id === fileId);
+    const dragDur = targetFile ? targetFile.duration : 10;
+
+    const { snappedTime, snapGuide: guide } = computeSnapPosition(trackId, rawTime, dragDur);
     setSnapGuide(guide);
     setGhostPlacement({
       trackId,
       startTime: snappedTime,
-      duration: 5,
+      duration: dragDur,
       leftPct: (snappedTime / (totalTimelineDuration || 1)) * 100,
-      widthPct: (5 / (totalTimelineDuration || 1)) * 100,
+      widthPct: (dragDur / (totalTimelineDuration || 1)) * 100,
     });
   };
 
@@ -1605,9 +1640,75 @@ export default function VideoEditor() {
     const targetDuration = effectiveExportDuration > 0 ? effectiveExportDuration : (videoClipsMaxEnd > 0 ? videoClipsMaxEnd : 10);
     const exportDuration = Math.max(1, Math.round(targetDuration * 100) / 100);
 
-    // Create a hidden DOM container
+    const videoTracks = tracks.filter((t) => !t.isAudio);
+    const primaryClip = videoTracks.flatMap((t) => t.clips.map((c) => ({ ...c, trackMuted: t.muted })))[0];
+    const srcFileEntry = primaryClip
+      ? (files.find((f) => f.id === primaryClip.fileId) || files.find((f) => f.url === primaryClip.url) || files[0])
+      : files[0];
+
+    // Fast-path: Direct Native FFmpeg Processing for instant 100% accurate duration & quality export
+    if (srcFileEntry?.fileRef && videoTracks.flatMap((t) => t.clips).length <= 1) {
+      try {
+        setExportProgress(15);
+        setExportRenderTime(0);
+
+        const form = new FormData();
+        form.append("file", srcFileEntry.fileRef, srcFileEntry.name || "video.mp4");
+        form.append("trimStart", String(primaryClip ? (primaryClip.trimStart || 0) : 0));
+        form.append("duration", String(exportDuration));
+        form.append("isMuted", String(Boolean(mutedMaster || (primaryClip && primaryClip.isMuted) || (primaryClip && primaryClip.trackMuted) || exportStripAudio)));
+        form.append("targetWidth", String(targetWidth));
+        form.append("targetHeight", String(targetHeight));
+        form.append("fps", String(exportFps || 30));
+        form.append("quality", exportQuality || "high");
+        form.append("format", exportFormat || "mp4");
+        if (blurMasks.length > 0) {
+          form.append("blurMasks", JSON.stringify(blurMasks));
+        }
+
+        const progressTimer = setInterval(() => {
+          setExportProgress((p) => {
+            if (p < 90) return p + 15;
+            return p;
+          });
+        }, 250);
+
+        const resp = await fetch("/api/media/process", {
+          method: "POST",
+          body: form,
+        });
+        clearInterval(progressTimer);
+
+        if (resp.ok) {
+          const array = await resp.arrayBuffer();
+          const mime = exportFormat === "mp3" ? "audio/mpeg" : (exportFormat === "m4a" ? "audio/mp4" : (exportFormat === "webm" ? "video/webm" : "video/mp4"));
+          const outBlob = new Blob([array], { type: mime });
+          const url = URL.createObjectURL(outBlob);
+          const outExt = (exportFormat === "mp3" || exportFormat === "m4a") ? exportFormat : (exportFormat === "mov" ? "mov" : (exportFormat === "webm" ? "webm" : "mp4"));
+          const outName = `Export_${exportAspect.replace(":", "-")}_${Date.now()}.${outExt}`;
+
+          setExportResult({
+            url,
+            name: outName,
+            size: outBlob.size,
+            format: exportFormat.toUpperCase(),
+            aspect: exportAspect,
+            resolution: `${targetWidth}x${targetHeight}`,
+            duration: exportDuration,
+          });
+          setExportProgress(100);
+          setExportRenderTime(exportDuration);
+          setExporting(false);
+          return;
+        }
+      } catch (fastErr) {
+        console.warn("[export] Fast native export fallback to canvas renderer:", fastErr);
+      }
+    }
+
+    // Create a DOM container placed inside viewport to prevent browser video throttling
     const renderContainer = document.createElement("div");
-    renderContainer.style.cssText = "position:fixed;top:-10000px;left:-10000px;width:10px;height:10px;opacity:0.01;pointer-events:none;overflow:hidden;z-index:-999;";
+    renderContainer.style.cssText = "position:fixed;bottom:0;right:0;width:320px;height:240px;opacity:0.001;pointer-events:none;overflow:hidden;z-index:-1;";
     document.body.appendChild(renderContainer);
 
     let audioCtx = null;
@@ -1669,7 +1770,9 @@ export default function VideoEditor() {
           if (!clipElements.has(clip.id)) {
             const v = document.createElement("video");
             v.src = clip.url;
-            v.crossOrigin = "anonymous";
+            if (!clip.url.startsWith("blob:")) {
+              v.crossOrigin = "anonymous";
+            }
             v.preload = "auto";
             v.playsInline = true;
             v.disablePictureInPicture = true;
@@ -1803,8 +1906,9 @@ export default function VideoEditor() {
 
           // 1. Active Video Frame Synchronization & Drawing (Flicker-Free)
           for (const track of tracks) {
-            if (track.muted) continue;
+            if (track.isAudio) continue;
             for (const clip of track.clips) {
+              if (clip.type === "audio") continue;
               const cStart = clip.startTime || 0;
               const cDur = Math.max(0.01, clip.trimEnd - clip.trimStart);
               const cEnd = cStart + cDur;
@@ -1951,7 +2055,7 @@ export default function VideoEditor() {
                   form.append("quality", exportQuality || "high");
 
                   const controller = new AbortController();
-                  const timeoutId = setTimeout(() => controller.abort(), 15000);
+                  const timeoutId = setTimeout(() => controller.abort(), 180000);
                   const resp = await fetch("/api/media/convert", {
                     method: "POST",
                     body: form,
@@ -2435,6 +2539,22 @@ export default function VideoEditor() {
                           ref={(el) => {
                             if (el) videoPlayersRef.current[clip.id] = el;
                             else delete videoPlayersRef.current[clip.id];
+                          }}
+                          onLoadedMetadata={(e) => {
+                            const d = e.currentTarget.duration;
+                            if (d && isFinite(d) && d > 0) {
+                              setTracks((prevTracks) =>
+                                prevTracks.map((t) => ({
+                                  ...t,
+                                  clips: t.clips.map((c) => {
+                                    if (c.id === clip.id && (c.trimEnd === c.originalDuration || !c.originalDuration || c.originalDuration === 10 || c.originalDuration === 5)) {
+                                      return { ...c, originalDuration: d, trimEnd: d };
+                                    }
+                                    return c;
+                                  }),
+                                }))
+                              );
+                            }
                           }}
                           src={clip.url}
                           preload="auto"

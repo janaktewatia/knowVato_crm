@@ -52,6 +52,123 @@ if (!fs.existsSync(uploadDir)) {
 const upload = multer({ dest: uploadDir });
 
 r.post(
+  "/media/process",
+  upload.single("file"),
+  asyncHandler(async (req: any, res: any) => {
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    const inputPath = req.file.path;
+    const format = req.body.format || "mp4";
+    const outExt = (format === "mp3" || format === "m4a") ? format : (format === "mov" ? "mov" : (format === "webm" ? "webm" : "mp4"));
+    const outPath = `${inputPath}.${outExt}`;
+
+    try {
+      const trimStart = req.body.trimStart ? Number(req.body.trimStart) : 0;
+      const duration = req.body.duration ? Number(req.body.duration) : null;
+      const isMuted = req.body.isMuted === "true" || req.body.isMuted === true || req.body.stripAudio === "true";
+      const targetW = req.body.targetWidth ? Number(req.body.targetWidth) : null;
+      const targetH = req.body.targetHeight ? Number(req.body.targetHeight) : null;
+      const fps = req.body.fps ? Number(req.body.fps) : null;
+      const quality = req.body.quality || "high";
+
+      const crf = quality === "high" ? 18 : (quality === "low" ? 28 : 23);
+      const preset = quality === "high" ? "fast" : (quality === "low" ? "faster" : "fast");
+      const bitrate = quality === "high" ? "8000k" : (quality === "low" ? "1500k" : "4000k");
+
+      await new Promise((resolve, reject) => {
+        let cmd = ffmpeg(inputPath).outputOptions(["-y"]);
+
+        // Accurate Seek & Duration
+        if (trimStart > 0 && isFinite(trimStart)) {
+          cmd = cmd.outputOptions([`-ss ${trimStart.toFixed(3)}`]);
+        }
+        if (duration && isFinite(duration) && duration > 0) {
+          cmd = cmd.outputOptions([`-t ${duration.toFixed(3)}`]);
+        }
+
+        // FPS
+        if (fps && isFinite(fps) && fps > 0) {
+          cmd = cmd.outputOptions([`-r ${fps}`]);
+        }
+
+        // Scaling with aspect ratio preservation & letterbox / pillarbox if needed
+        const filters: string[] = [];
+        if (targetW && targetH && targetW > 0 && targetH > 0) {
+          const w = Math.round(targetW / 2) * 2;
+          const h = Math.round(targetH / 2) * 2;
+          filters.push(`scale=${w}:${h}:force_original_aspect_ratio=decrease,pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2:color=black`);
+        }
+
+        if (req.body.blurMasks) {
+          try {
+            const masks = JSON.parse(req.body.blurMasks);
+            if (Array.isArray(masks)) {
+              for (const m of masks) {
+                const effW = targetW || 1280;
+                const effH = targetH || 720;
+                const bx = Math.max(0, Math.floor((m.x / 100) * effW));
+                const by = Math.max(0, Math.floor((m.y / 100) * effH));
+                const bw = Math.min(effW - bx, Math.max(2, Math.ceil((m.width / 100) * effW)));
+                const bh = Math.min(effH - by, Math.max(2, Math.ceil((m.height / 100) * effH)));
+                if (bw > 0 && bh > 0) {
+                  filters.push(`delogo=x=${bx}:y=${by}:w=${bw}:h=${bh}`);
+                }
+              }
+            }
+          } catch (e) {}
+        }
+
+        if (filters.length > 0) {
+          cmd = cmd.videoFilters(filters);
+        }
+
+        if (format === "mp3" || format === "m4a") {
+          cmd = cmd.noVideo().audioCodec(format === "mp3" ? "libmp3lame" : "aac").outputOptions(["-b:a 192k"]);
+        } else {
+          // MP4 / MOV standard H.264
+          cmd = cmd.videoCodec("libx264").outputOptions([
+            `-preset ${preset}`,
+            `-crf ${crf}`,
+            `-b:v ${bitrate}`,
+            "-movflags +faststart",
+            "-pix_fmt yuv420p",
+          ]);
+
+          if (isMuted) {
+            cmd = cmd.noAudio();
+          } else {
+            cmd = cmd.outputOptions(["-c:a aac", "-b:a 192k", "-map 0:v:0", "-map 0:a:0?"]);
+          }
+        }
+
+        cmd.on("end", () => resolve(null))
+           .on("error", (err: any) => reject(err))
+           .save(outPath);
+      });
+
+      const safeFilename = (req.file.originalname || "export").replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9_-]/g, "_");
+      const mime = format === "mp3" ? "audio/mpeg" : (format === "m4a" ? "audio/mp4" : (format === "webm" ? "video/webm" : "video/mp4"));
+      res.setHeader("Content-Type", mime);
+      res.setHeader("Content-Disposition", `attachment; filename="${safeFilename}.${outExt}"`);
+      const stream = fs.createReadStream(outPath);
+      stream.pipe(res);
+      stream.on("close", () => {
+        try { fs.unlinkSync(inputPath); } catch (e) {}
+        try { fs.unlinkSync(outPath); } catch (e) {}
+      });
+      stream.on("error", () => {
+        try { fs.unlinkSync(inputPath); } catch (e) {}
+        try { fs.unlinkSync(outPath); } catch (e) {}
+      });
+    } catch (err: any) {
+      try { fs.unlinkSync(inputPath); } catch (e) {}
+      try { fs.unlinkSync(outPath); } catch (e) {}
+      console.error("FFmpeg process error:", err);
+      res.status(500).json({ error: (err && err.message) || "Processing failed" });
+    }
+  })
+);
+
+r.post(
   "/media/convert",
   upload.single("file"),
   asyncHandler(async (req: any, res: any) => {
@@ -64,7 +181,6 @@ r.post(
       const fps = req.body.fps ? Number(req.body.fps) : null;
       const duration = req.body.duration ? Number(req.body.duration) : null;
       const quality = req.body.quality || "high";
-      // quality -> crf/preset/bitrate mapping
       const crf = quality === "high" ? 18 : (quality === "low" ? 28 : 23);
       const preset = quality === "high" ? "medium" : (quality === "low" ? "slow" : "fast");
       const bitrate = quality === "high" ? "8000k" : (quality === "low" ? "1500k" : "4000k");
@@ -76,26 +192,33 @@ r.post(
         }
         if (fps) cmd = cmd.outputOptions([`-r ${fps}`]);
         if (targetW && targetH) cmd = cmd.videoFilters(`scale=${targetW}:${targetH}`);
-        cmd = cmd.videoCodec("libx264").audioCodec("aac").outputOptions([`-preset ${preset}`, `-crf ${crf}`, `-b:v ${bitrate}`, `-b:a 192k`, "-movflags +faststart"]);
-        cmd.on("end", () => resolve(null)).on("error", (err: any) => reject(err)).save(outPath as string);
+        cmd = cmd.videoCodec("libx264").outputOptions([
+          `-preset ${preset}`,
+          `-crf ${crf}`,
+          `-b:v ${bitrate}`,
+          "-movflags +faststart",
+          "-pix_fmt yuv420p",
+          "-c:a aac",
+          "-b:a 192k",
+          "-map 0:v:0",
+          "-map 0:a:0?",
+        ]);
+        cmd.on("end", () => resolve(null)).on("error", (err: any) => reject(err)).save(outPath);
       });
 
-
-      // Stream converted file back with proper headers
       const safeFilename = (req.file.originalname || "export").replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9_-]/g, "_");
       res.setHeader("Content-Type", "video/mp4");
       res.setHeader("Content-Disposition", `attachment; filename="${safeFilename}.mp4"`);
-      const stream = fs.createReadStream(outPath as string);
+      const stream = fs.createReadStream(outPath);
       stream.pipe(res);
       stream.on("close", () => {
         try { fs.unlinkSync(inputPath); } catch (e) {}
         try { fs.unlinkSync(outPath); } catch (e) {}
       });
-      stream.on("error", (streamErr: any) => {
+      stream.on("error", () => {
         try { fs.unlinkSync(inputPath); } catch (e) {}
         try { fs.unlinkSync(outPath); } catch (e) {}
       });
-
     } catch (err: any) {
       try { fs.unlinkSync(inputPath); } catch (e) {}
       try { fs.unlinkSync(outPath); } catch (e) {}

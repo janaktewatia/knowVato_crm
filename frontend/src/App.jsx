@@ -21,6 +21,9 @@ import Audit from "./pages/Audit";
 import ClarwynEnquiryNow from "./pages/ClarwynEnquiryNow";
 import MessageHistory from "./pages/MessageHistory";
 
+// FlowChat Studio Builder
+import BotBuilder from "./flowchat/pages/BotBuilder";
+
 // Knowvato Main Components
 import MainLayout from "./knowvato-main/routes/__root";
 import KnowvatoDashboard from "./knowvato-main/routes/index";
@@ -61,6 +64,24 @@ export default function App() {
       <Route path="/public/enquiry-form/:formId" element={<div className="crm-theme"><PublicEnquiryForm /></div>} />
       <Route path="/public/landing-page/:pageId" element={<div className="crm-theme"><PublicLandingPage /></div>} />
       <Route path="/clp/enquirenow" element={<div className="crm-theme"><ClarwynEnquiryNow /></div>} />
+
+      {/* Standalone Full-screen Bot Builder routes */}
+      <Route
+        path="/crm/chatbot/builder/:botId"
+        element={
+          <Protected>
+            <BotBuilder />
+          </Protected>
+        }
+      />
+      <Route
+        path="/bot/:botId"
+        element={
+          <Protected>
+            <BotBuilder />
+          </Protected>
+        }
+      />
 
       {/* Knowvato Main Routes */}
       <Route
