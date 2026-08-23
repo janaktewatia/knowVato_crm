@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
+import path from "path";
 import { config } from "./config";
 import { errorHandler, notFound } from "./middleware/auth";
 import apiRoutes from "./routes";
@@ -27,6 +28,9 @@ export function createApp() {
 
   // health
   app.get("/health", (_req, res) => res.json({ ok: true, ts: Date.now(), mode: config.whatsapp.mode }));
+
+  // static files for managed media library
+  app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
   // webhooks (public)
   app.use("/webhooks", webhookRoutes);

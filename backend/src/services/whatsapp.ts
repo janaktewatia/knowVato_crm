@@ -97,35 +97,84 @@ export async function sendInteractiveList(
 
 export async function createMetaTemplate(tenantId: string, templatePayload: any): Promise<any> {
   const provider = await getActiveProvider(tenantId);
-  try {
-    const wabaId = (provider as any).wabaId || (provider as any).phoneNumberId || "DEMO_WABA_ID";
-    return await provider.createMetaTemplate(wabaId, templatePayload);
-  } catch (err: any) {
-    console.warn("[createMetaTemplate] Meta API call notice, fallback to local approval:", err.message);
-    return { id: "tpl_" + Date.now(), status: "APPROVED" };
+  if ((provider as any).vendor !== "meta" || !(provider as any).isLive) {
+    throw new Error("Active WhatsApp account is not a live Meta Cloud API account");
   }
+
+  const wabaId = (provider as any).wabaId;
+  if (!wabaId) {
+    throw new Error("WABA ID is required for Meta template operations. Please save the correct WhatsApp Business Account ID in integration settings.");
+  }
+
+  return provider.createMetaTemplate(wabaId, templatePayload);
 }
 
 export async function fetchMetaTemplates(tenantId: string): Promise<any[]> {
   const provider = await getActiveProvider(tenantId);
-  try {
-    const wabaId = (provider as any).wabaId || (provider as any).phoneNumberId || "DEMO_WABA_ID";
-    return await provider.fetchMetaTemplates(wabaId);
-  } catch (err: any) {
-    console.warn("[fetchMetaTemplates] Meta API call notice, fallback to local list:", err.message);
-    return [];
+  if ((provider as any).vendor !== "meta" || !(provider as any).isLive) {
+    throw new Error("Active WhatsApp account is not a live Meta Cloud API account");
   }
+
+  const wabaId = (provider as any).wabaId;
+  if (!wabaId) {
+    throw new Error("WABA ID is required for Meta template operations. Please save the correct WhatsApp Business Account ID in integration settings.");
+  }
+
+  return provider.fetchMetaTemplates(wabaId);
+}
+
+export async function getMetaTemplateById(tenantId: string, templateId: string): Promise<any> {
+  const provider = await getActiveProvider(tenantId);
+  if ((provider as any).vendor !== "meta" || !(provider as any).isLive) {
+    throw new Error("Active WhatsApp account is not a live Meta Cloud API account");
+  }
+
+  if (!templateId) {
+    throw new Error("Template ID is required for Meta template operations.");
+  }
+
+  return (provider as any).getMetaTemplateById(templateId);
+}
+
+export async function editMetaTemplateById(tenantId: string, templateId: string, payload: any): Promise<any> {
+  const provider = await getActiveProvider(tenantId);
+  if ((provider as any).vendor !== "meta" || !(provider as any).isLive) {
+    throw new Error("Active WhatsApp account is not a live Meta Cloud API account");
+  }
+
+  if (!templateId) {
+    throw new Error("Template ID is required for Meta template operations.");
+  }
+
+  return (provider as any).editMetaTemplateById(templateId, payload);
+}
+
+export async function uploadMetaMedia(
+  tenantId: string,
+  filePath: string,
+  mimeType?: string,
+  fileName?: string
+): Promise<any> {
+  const provider = await getActiveProvider(tenantId);
+  if ((provider as any).vendor !== "meta" || !(provider as any).isLive) {
+    throw new Error("Active WhatsApp account is not a live Meta Cloud API account");
+  }
+
+  return (provider as any).uploadMetaMedia(filePath, mimeType, fileName);
 }
 
 export async function deleteMetaTemplate(tenantId: string, templateName: string): Promise<any> {
   const provider = await getActiveProvider(tenantId);
-  try {
-    const wabaId = (provider as any).wabaId || (provider as any).phoneNumberId || "DEMO_WABA_ID";
-    return await provider.deleteMetaTemplate(wabaId, templateName);
-  } catch (err: any) {
-    console.warn("[deleteMetaTemplate] Meta API call notice, fallback:", err.message);
-    return { success: true };
+  if ((provider as any).vendor !== "meta" || !(provider as any).isLive) {
+    throw new Error("Active WhatsApp account is not a live Meta Cloud API account");
   }
+
+  const wabaId = (provider as any).wabaId;
+  if (!wabaId) {
+    throw new Error("WABA ID is required for Meta template operations. Please save the correct WhatsApp Business Account ID in integration settings.");
+  }
+
+  return provider.deleteMetaTemplate(wabaId, templateName);
 }
 
 export async function getPhoneProfile(tenantId: string): Promise<any> {

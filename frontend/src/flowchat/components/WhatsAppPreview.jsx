@@ -131,6 +131,7 @@ export default function WhatsAppPreview({ bot }) {
   const [typing, setTyping] = useState(false);
   const [awaiting, setAwaiting] = useState('keyword'); // 'keyword' | 'text' | 'form' | null | 'done'
   const [inputVal, setInputVal] = useState('');
+  const [mediaErrors, setMediaErrors] = useState({});
   const [activeFormModal, setActiveFormModal] = useState(null); // form object to fill
   const [formInputs, setFormInputs] = useState({});
   const scrollRef = useRef(null);
@@ -147,6 +148,7 @@ export default function WhatsAppPreview({ bot }) {
     setCurrentNodeId(null);
     setTyping(false);
     setAwaiting('keyword');
+    setMediaErrors({});
     setActiveFormModal(null);
     setFormInputs({});
     setMessages([
@@ -185,6 +187,36 @@ export default function WhatsAppPreview({ bot }) {
           goTo(node.connections?.next);
           break;
         }
+        case 'templateMessage': {
+          const name = node.data?.templateName || 'template_not_set';
+          const lang = node.data?.languageCode || 'en';
+          const preview = renderTemplate(node.data?.previewText || '', vars);
+          pushSystem(`📄 Template sent: ${name} (${lang})`);
+          if (preview) pushBot(preview);
+          goTo(node.connections?.next);
+          break;
+        }
+        case 'mediaMessage': {
+          const mt = String(node.data?.mediaType || 'image').toLowerCase();
+          const caption = renderTemplate(node.data?.caption || '', vars);
+          const url = renderTemplate(node.data?.mediaUrl || '', vars);
+          pushBot(caption, undefined, { mediaType: mt, mediaUrl: url });
+          goTo(node.connections?.next);
+          break;
+        }
+        case 'listMessage': {
+          pushBot(renderTemplate(node.data?.text || '', vars), node.data?.buttons || []);
+          setAwaiting(null);
+          break;
+        }
+        case 'locationMessage': {
+          const lat = node.data?.latitude || '';
+          const lng = node.data?.longitude || '';
+          const name = node.data?.name ? ` (${renderTemplate(node.data.name, vars)})` : '';
+          pushBot(`📍 Location${name}: ${lat}, ${lng}`);
+          goTo(node.connections?.next);
+          break;
+        }
         case 'buttons': {
           pushBot(renderTemplate(node.data?.text || '', vars), node.data?.buttons || []);
           setAwaiting(null);
@@ -200,6 +232,11 @@ export default function WhatsAppPreview({ bot }) {
           if (!form) {
             pushSystem('⚠️ WhatsApp Form not selected in node settings.');
             goTo(node.connections?.cancelled || node.connections?.submitted);
+            return;
+          }
+          if (String(form.status || 'active').toLowerCase() === 'inactive') {
+            pushSystem(`⚠️ Form "${form.name}" is inactive.`);
+            goTo(node.connections?.cancelled || node.connections?.next);
             return;
           }
           pushFormCard(form, node);
@@ -267,11 +304,12 @@ export default function WhatsAppPreview({ bot }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentNodeId, currentBotId]);
 
-  const pushBot = (text, buttons) => setMessages((m) => [...m, { from: 'bot', text, buttons }]);
+  const pushBot = (text, buttons, meta = {}) => setMessages((m) => [...m, { from: 'bot', text, buttons, ...meta }]);
   const pushUser = (text) => setMessages((m) => [...m, { from: 'user', text }]);
   const pushSystem = (text) => setMessages((m) => [...m, { from: 'system', text }]);
   const pushFormCard = (form, node) =>
     setMessages((m) => [...m, { from: 'form_card', form, node }]);
+  const markMediaError = (key) => setMediaErrors((prev) => ({ ...prev, [key]: true }));
 
   const goTo = (nodeId) => setCurrentNodeId(nodeId || null);
 
@@ -429,6 +467,57 @@ export default function WhatsAppPreview({ bot }) {
 
                 {m.from !== 'system' && m.from !== 'form_card' && (
                   <div className={`wa-bubble ${m.from}`}>
+                    {m.mediaUrl && (
+                      <div className="mb-2">
+                        {m.mediaType === 'image' && !mediaErrors[`${i}:${m.mediaUrl}`] && (
+                          <img
+                            src={m.mediaUrl}
+                            alt="media"
+                            style={{ width: '100%', maxWidth: 230, borderRadius: 10, display: 'block' }}
+                            loading="lazy"
+                            onError={() => markMediaError(`${i}:${m.mediaUrl}`)}
+                          />
+                        )}
+                        {m.mediaType === 'video' && !mediaErrors[`${i}:${m.mediaUrl}`] && (
+                          <video
+                            src={m.mediaUrl}
+                            controls
+                            style={{ width: '100%', maxWidth: 230, borderRadius: 10, display: 'block' }}
+                            onError={() => markMediaError(`${i}:${m.mediaUrl}`)}
+                          />
+                        )}
+                        {m.mediaType === 'audio' && !mediaErrors[`${i}:${m.mediaUrl}`] && (
+                          <audio
+                            src={m.mediaUrl}
+                            controls
+                            style={{ width: '100%', maxWidth: 230 }}
+                            onError={() => markMediaError(`${i}:${m.mediaUrl}`)}
+                          />
+                        )}
+                        {m.mediaType === 'document' && (
+                          <a
+                            href={m.mediaUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn btn-sm btn-light border"
+                          >
+                            <i className="bi bi-file-earmark-pdf me-1"></i> Open Document
+                          </a>
+                        )}
+
+                        {mediaErrors[`${i}:${m.mediaUrl}`] && m.mediaType !== 'document' && (
+                          <div className="alert alert-warning py-1 px-2 mb-2" style={{ fontSize: 11 }}>
+                            Media preview failed to load. Check URL or server reachability.
+                          </div>
+                        )}
+
+                        {m.mediaType !== 'document' && (
+                          <div className="mt-1" style={{ fontSize: 10.5 }}>
+                            <a href={m.mediaUrl} target="_blank" rel="noreferrer">View media</a>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {m.text}
                     {m.buttons && m.buttons.length > 0 && (
                       <div className="wa-buttons">
@@ -475,11 +564,6 @@ export default function WhatsAppPreview({ bot }) {
           {/* Input Footer */}
           <form className="wa-footer" onSubmit={handleFormSubmit}>
             <input
-              placeholder={
-                awaiting === 'text'
-                  ? 'Type your answer…'
-                  : 'Type keyword (e.g. hi, admission)…'
-              }
               value={inputVal}
               disabled={typing}
               onChange={(e) => setInputVal(e.target.value)}
@@ -526,7 +610,7 @@ export default function WhatsAppPreview({ bot }) {
                         onChange={(e) => setFormInputs({ ...formInputs, [fld.fieldKey]: e.target.value })}
                         required={fld.required}
                       >
-                        <option value="">{fld.placeholder || 'Select option'}</option>
+                        <option value=""></option>
                         {(fld.options || []).map((opt, oi) => (
                           <option key={oi} value={opt}>{opt}</option>
                         ))}
@@ -535,7 +619,6 @@ export default function WhatsAppPreview({ bot }) {
                       <input
                         type={fld.type === 'number' ? 'number' : fld.type === 'email' ? 'email' : fld.type === 'date' ? 'date' : 'text'}
                         className="form-control form-control-sm"
-                        placeholder={fld.placeholder || ''}
                         value={formInputs[fld.fieldKey] || ''}
                         onChange={(e) => setFormInputs({ ...formInputs, [fld.fieldKey]: e.target.value })}
                         required={fld.required}

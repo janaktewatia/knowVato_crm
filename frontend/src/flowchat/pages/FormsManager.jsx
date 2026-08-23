@@ -4,7 +4,7 @@ import { uid } from '../utils/id';
 import '../flowchat.css';
 
 export default function FormsManager() {
-  const { forms = [], addForm, updateForm, deleteForm, duplicateForm } = useBots() || {};
+  const { forms = [], addForm, updateForm, deleteForm, duplicateForm, isFormInUse, toggleFormStatus } = useBots() || {};
   const [selectedFormId, setSelectedFormId] = useState(forms[0]?.id || null);
   const [editingFieldId, setEditingFieldId] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -21,10 +21,11 @@ export default function FormsManager() {
       submitButtonText: 'Submit Form',
       submitSuccessMessage: 'Thank you! Your form response has been received.',
       targetApiUrl: '',
+      status: 'active',
       fields: [
-        { id: uid('field'), label: 'Full Name', fieldKey: 'full_name', type: 'text', required: true, placeholder: 'e.g. John Doe' },
-        { id: uid('field'), label: 'Phone Number', fieldKey: 'phone', type: 'phone', required: true, placeholder: 'e.g. 9876543210' },
-        { id: uid('field'), label: 'Email Address', fieldKey: 'email', type: 'email', required: false, placeholder: 'e.g. name@example.com' },
+        { id: uid('field'), label: 'Full Name', fieldKey: 'full_name', type: 'text', required: true, placeholder: '' },
+        { id: uid('field'), label: 'Phone Number', fieldKey: 'phone', type: 'phone', required: true, placeholder: '' },
+        { id: uid('field'), label: 'Email Address', fieldKey: 'email', type: 'email', required: false, placeholder: '' },
       ],
     });
     setNewFormTitle('');
@@ -81,65 +82,92 @@ export default function FormsManager() {
       </div>
 
       <div className="row g-4">
-        {/* Left List of Forms */}
-        <div className="col-12 col-lg-3">
+        <div className="col-12">
           <div className="fc-card p-3">
             <div className="d-flex align-items-center justify-content-between mb-2">
               <div className="text-uppercase text-muted fw-bold" style={{ fontSize: 11, letterSpacing: '.06em' }}>
-                Your WhatsApp Forms ({forms.length})
+                WhatsApp Forms ({forms.length})
               </div>
-              <button className="btn btn-sm btn-link p-0 text-decoration-none" onClick={() => setShowCreateModal(true)}>
-                <i className="bi bi-plus-circle"></i>
-              </button>
             </div>
 
-            {forms.length === 0 && <div className="text-muted small p-2">No forms created yet.</div>}
-
-            {forms.map((f) => {
-              const isSelected = activeForm?.id === f.id;
-              return (
-                <div
-                  key={f.id}
-                  onClick={() => setSelectedFormId(f.id)}
-                  className={`p-3 rounded-3 mb-2 transition-all position-relative ${
-                    isSelected ? 'bg-light border border-primary border-2 shadow-xs' : 'border hover-bg-light'
-                  }`}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="d-flex align-items-center justify-content-between mb-1">
-                    <span className="badge bg-info-subtle text-info-emphasis rounded-pill" style={{ fontSize: 10 }}>
-                      <i className="bi bi-ui-checks me-1"></i>{(f.fields || []).length} fields
-                    </span>
-                    <div className="d-flex align-items-center gap-1">
-                      <button
-                        className="btn btn-sm text-secondary p-0 px-1 opacity-75 hover-opacity-100"
-                        title="Duplicate form"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          duplicateForm(f.id);
-                        }}
-                      >
-                        <i className="bi bi-copy"></i>
-                      </button>
-                      {forms.length > 1 && (
-                        <button
-                          className="btn btn-sm text-danger p-0 px-1 opacity-75 hover-opacity-100"
-                          title="Delete form"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (confirm(`Delete form "${f.name}"?`)) deleteForm(f.id);
-                          }}
-                        >
-                          <i className="bi bi-trash3"></i>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="fw-bold text-truncate" style={{ fontSize: 13.5 }}>{f.name}</div>
-                  <div className="text-muted small text-truncate" style={{ fontSize: 11 }}>{f.description}</div>
-                </div>
-              );
-            })}
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Form Name</th>
+                    <th style={{ width: 140 }}>Status</th>
+                    <th style={{ width: 180 }} className="text-end">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {forms.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="text-muted small">No forms created yet.</td>
+                    </tr>
+                  )}
+                  {forms.map((f) => {
+                    const inUse = isFormInUse?.(f.id);
+                    return (
+                      <tr key={f.id} className={selectedFormId === f.id ? 'table-active' : ''}>
+                        <td>
+                          <div className="fw-semibold">{f.name}</div>
+                          <div className="text-muted small">{(f.fields || []).length} fields</div>
+                        </td>
+                        <td>
+                          <button
+                            className={`btn btn-sm rounded-pill ${f.status === 'inactive' ? 'btn-outline-secondary' : 'btn-outline-success'}`}
+                            onClick={() => toggleFormStatus?.(f.id)}
+                          >
+                            {f.status === 'inactive' ? 'Inactive' : 'Active'}
+                          </button>
+                        </td>
+                        <td className="text-end">
+                          <div className="d-inline-flex align-items-center gap-1">
+                            <button
+                              className="btn btn-sm icon-only-action text-info"
+                              title="View"
+                              onClick={() => {
+                                setSelectedFormId(f.id);
+                                setEditingFieldId(null);
+                              }}
+                            >
+                              <i className="bi bi-eye"></i>
+                            </button>
+                            <button
+                              className="btn btn-sm icon-only-action text-primary"
+                              title="Edit"
+                              onClick={() => {
+                                setSelectedFormId(f.id);
+                                setEditingFieldId(f.fields?.[0]?.id || null);
+                              }}
+                            >
+                              <i className="bi bi-pencil"></i>
+                            </button>
+                            <button
+                              className="btn btn-sm icon-only-action text-secondary"
+                              title="Duplicate"
+                              onClick={() => duplicateForm(f.id)}
+                            >
+                              <i className="bi bi-copy"></i>
+                            </button>
+                            <button
+                              className="btn btn-sm icon-only-action text-danger"
+                              title={inUse ? 'Delete disabled: form is used in chatbot flow' : 'Delete'}
+                              disabled={Boolean(inUse)}
+                              onClick={() => {
+                                if (confirm(`Delete form "${f.name}"?`)) deleteForm(f.id);
+                              }}
+                            >
+                              <i className="bi bi-trash3"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -147,7 +175,7 @@ export default function FormsManager() {
         {activeForm ? (
           <>
             {/* Form Fields & Properties Editor */}
-            <div className="col-12 col-lg-5">
+            <div className="col-12 col-lg-7">
               <div className="fc-card p-4">
                 <div className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
                   <h6 className="fw-bold mb-0">Form Configuration</h6>
@@ -187,7 +215,6 @@ export default function FormsManager() {
                     <label className="form-label small fw-semibold">Target API URL (Optional)</label>
                     <input
                       className="form-control form-control-sm"
-                      placeholder="https://api.example.com/leads"
                       value={activeForm.targetApiUrl || ''}
                       onChange={(e) => updateForm(activeForm.id, { targetApiUrl: e.target.value })}
                     />
@@ -275,7 +302,7 @@ export default function FormsManager() {
                             </div>
 
                             <div className="row g-2 mb-2">
-                              <div className="col-7">
+                              <div className="col-12">
                                 <label className="form-label small fw-semibold mb-1">Variable Key</label>
                                 <input
                                   className="form-control form-control-sm"
@@ -283,14 +310,6 @@ export default function FormsManager() {
                                   onChange={(e) =>
                                     handleUpdateField(field.id, { fieldKey: e.target.value.toLowerCase().replace(/\s+/g, '_') })
                                   }
-                                />
-                              </div>
-                              <div className="col-5">
-                                <label className="form-label small fw-semibold mb-1">Placeholder</label>
-                                <input
-                                  className="form-control form-control-sm"
-                                  value={field.placeholder || ''}
-                                  onChange={(e) => handleUpdateField(field.id, { placeholder: e.target.value })}
                                 />
                               </div>
                             </div>
@@ -359,7 +378,7 @@ export default function FormsManager() {
                           </label>
                           {field.type === 'select' ? (
                             <select className="form-select form-select-sm" defaultValue="">
-                              <option value="" disabled>{field.placeholder || 'Select option'}</option>
+                              <option value="" disabled></option>
                               {(field.options || []).map((opt, i) => (
                                 <option key={i} value={opt}>{opt}</option>
                               ))}
@@ -368,7 +387,6 @@ export default function FormsManager() {
                             <input
                               type={field.type === 'number' ? 'number' : field.type === 'email' ? 'email' : field.type === 'date' ? 'date' : 'text'}
                               className="form-control form-control-sm"
-                              placeholder={field.placeholder || ''}
                             />
                           )}
                         </div>
@@ -407,7 +425,6 @@ export default function FormsManager() {
                   <input
                     className="form-control mb-4"
                     autoFocus
-                    placeholder="e.g. Student Enquiry Form, Event RSVP"
                     value={newFormTitle}
                     onChange={(e) => setNewFormTitle(e.target.value)}
                   />

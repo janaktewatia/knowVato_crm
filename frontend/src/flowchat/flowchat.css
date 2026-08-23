@@ -349,6 +349,48 @@
   transform: scale(1.05);
 }
 
+.canvas-context-menu {
+  position: absolute;
+  z-index: 120;
+  min-width: 220px;
+  max-height: 380px;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.2);
+  padding: 8px;
+}
+
+.canvas-context-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 8px 8px;
+  border-bottom: 1px dashed #e2e8f0;
+  margin-bottom: 6px;
+}
+
+.canvas-context-item {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #0f172a;
+  text-align: left;
+}
+
+.canvas-context-item:hover {
+  background: #f1f5f9;
+}
+
 /* Config panel (right) */
 .config-panel {
   width: 360px;

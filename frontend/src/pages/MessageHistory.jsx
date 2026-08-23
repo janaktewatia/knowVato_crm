@@ -22,13 +22,24 @@ export default function MessageHistory() {
     try { await messagesApi.convert(id); toast("Converted to lead"); } catch (e) { toast(e.message, "error"); }
   }
 
+  function getDisplayStatus(m) {
+    if (m.status === "received") return "received";
+    if (m.status === "failed") return "failed";
+    if (m.status === "read" || m.readAt) return "read";
+    if (m.status === "delivered" || m.deliveredAt) return "delivered";
+    if (m.status === "sent") return "sent";
+    return m.status || "queued";
+  }
+
   const columns = [
     { key: "name", label: "Recipient", render: (m) => (
       <div className="d-flex align-items-center gap-2"><Avatar name={m.contactName || m.phone} size={28} /><div><div className="row-name">{m.contactName || "—"}</div><div className="row-sub">{m.phone}</div></div></div>
     ) },
     { key: "template", label: "Template", render: (m) => <span className="small font-monospace">{m.template || "—"}</span> },
-    { key: "dir", label: "Dir", render: (m) => <i className={`bi bi-arrow-${m.direction === "inbound" ? "down-left" : "up-right"}`} style={{ color: m.direction === "inbound" ? "var(--info)" : "var(--accent)" }}></i> },
-    { key: "status", label: "Status", render: (m) => <span className="pill" style={STATUS_STYLE[m.status]}>{m.status}</span> },
+    { key: "status", label: "Status", render: (m) => {
+      const status = getDisplayStatus(m);
+      return <span className="pill" style={STATUS_STYLE[status] || STATUS_STYLE.sent}>{status}</span>;
+    } },
     { key: "sent", label: "Sent", render: (m) => <span className="small">{m.sentAt ? new Date(m.sentAt).toLocaleString() : new Date(m.createdAt).toLocaleString()}</span> },
     { key: "act", label: "", align: "right", render: (m) => m.direction === "inbound" && <button className="btn btn-sm btn-outline-secondary" onClick={() => convert(m._id)}><i className="bi bi-flag me-1"></i>To lead</button> },
   ];
@@ -38,7 +49,7 @@ export default function MessageHistory() {
       <PageHeader title="Message History" subtitle="Delivery log" />
       <FilterBar>
         <Field label="Search" style={{ minWidth: 240 }}>
-          <div className="input-group input-group-sm"><span className="input-group-text"><i className="bi bi-search"></i></span>
+          <div className="input-group input-group-sm search-input-group"><span className="input-group-text"><i className="bi bi-search"></i></span>
             <input className="form-control" placeholder="Name, phone, template…" value={filters.q} onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))} /></div>
         </Field>
         <Field label="Direction" style={{ minWidth: 150 }}>

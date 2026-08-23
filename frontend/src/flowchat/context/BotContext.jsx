@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { uid } from '../utils/id';
 import { NODE_TYPES } from '../data/nodeTypes';
 import { seedData } from '../data/seedData';
+import { flowStudioApi } from '../../api';
 
 const BotContext = createContext(null);
 const STORAGE_KEY = 'flowchat_studio_data_v4';
@@ -11,6 +12,7 @@ const defaultSeedForms = [
   {
     id: 'form_admissions_1',
     name: 'Student Admission Enquiry Form',
+    status: 'active',
     description: 'Collect student name, course, phone, email, and preferred admission intake.',
     submitButtonText: 'Submit Enquiry',
     submitSuccessMessage: 'Thank you! Your admission enquiry has been submitted successfully.',
@@ -18,17 +20,18 @@ const defaultSeedForms = [
     createdAt: Date.now(),
     updatedAt: Date.now(),
     fields: [
-      { id: 'f_name', label: 'Full Name', fieldKey: 'full_name', type: 'text', required: true, placeholder: 'e.g. Priya Sharma' },
-      { id: 'f_phone', label: 'WhatsApp / Contact Number', fieldKey: 'phone', type: 'phone', required: true, placeholder: 'e.g. 9876543210' },
-      { id: 'f_email', label: 'Email Address', fieldKey: 'email', type: 'email', required: true, placeholder: 'e.g. priya@example.com' },
-      { id: 'f_course', label: 'Interested Program / Course', fieldKey: 'course', type: 'select', required: true, placeholder: 'Select Course', options: ['B.Tech Computer Science', 'MBA Leadership', 'B.Des UI/UX', 'B.Com Honours'] },
+      { id: 'f_name', label: 'Full Name', fieldKey: 'full_name', type: 'text', required: true, placeholder: '' },
+      { id: 'f_phone', label: 'WhatsApp / Contact Number', fieldKey: 'phone', type: 'phone', required: true, placeholder: '' },
+      { id: 'f_email', label: 'Email Address', fieldKey: 'email', type: 'email', required: true, placeholder: '' },
+      { id: 'f_course', label: 'Interested Program / Course', fieldKey: 'course', type: 'select', required: true, placeholder: '', options: ['B.Tech Computer Science', 'MBA Leadership', 'B.Des UI/UX', 'B.Com Honours'] },
       { id: 'f_date', label: 'Expected Admission Year / Date', fieldKey: 'admission_date', type: 'date', required: false, placeholder: '' },
-      { id: 'f_remarks', label: 'Questions or Special Requests', fieldKey: 'remarks', type: 'text', required: false, placeholder: 'Type any queries...' },
+      { id: 'f_remarks', label: 'Questions or Special Requests', fieldKey: 'remarks', type: 'text', required: false, placeholder: '' },
     ],
   },
   {
     id: 'form_feedback_2',
     name: 'Campus Visit Booking Form',
+    status: 'active',
     description: 'Schedule an on-campus tour with parent name, date, and visitor count.',
     submitButtonText: 'Confirm Visit Booking',
     submitSuccessMessage: 'Your campus visit has been scheduled! Our team will send directions on WhatsApp.',
@@ -36,11 +39,11 @@ const defaultSeedForms = [
     createdAt: Date.now(),
     updatedAt: Date.now(),
     fields: [
-      { id: 'fv_parent', label: 'Parent / Visitor Name', fieldKey: 'visitor_name', type: 'text', required: true, placeholder: 'e.g. Mr. Rajesh Kumar' },
-      { id: 'fv_phone', label: 'Phone Number', fieldKey: 'phone', type: 'phone', required: true, placeholder: 'e.g. 9876543210' },
-      { id: 'fv_count', label: 'Number of Visitors', fieldKey: 'visitor_count', type: 'number', required: true, placeholder: 'e.g. 2' },
+      { id: 'fv_parent', label: 'Parent / Visitor Name', fieldKey: 'visitor_name', type: 'text', required: true, placeholder: '' },
+      { id: 'fv_phone', label: 'Phone Number', fieldKey: 'phone', type: 'phone', required: true, placeholder: '' },
+      { id: 'fv_count', label: 'Number of Visitors', fieldKey: 'visitor_count', type: 'number', required: true, placeholder: '' },
       { id: 'fv_date', label: 'Preferred Visit Date', fieldKey: 'visit_date', type: 'date', required: true, placeholder: '' },
-      { id: 'fv_slot', label: 'Preferred Time Slot', fieldKey: 'time_slot', type: 'select', required: true, placeholder: 'Select Slot', options: ['Morning 10:00 AM - 12:00 PM', 'Afternoon 02:00 PM - 04:00 PM'] },
+      { id: 'fv_slot', label: 'Preferred Time Slot', fieldKey: 'time_slot', type: 'select', required: true, placeholder: '', options: ['Morning 10:00 AM - 12:00 PM', 'Afternoon 02:00 PM - 04:00 PM'] },
     ],
   },
 ];
@@ -100,6 +103,33 @@ export function BotProvider({ children }) {
   const [clients, setClients] = useState(() => (loadInitial() && loadInitial().clients) || seedData.clients);
   const [bots, setBots] = useState(() => (loadInitial() && loadInitial().bots) || seedData.bots);
   const [forms, setForms] = useState(() => loadInitialForms());
+  const [stateHydrated, setStateHydrated] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await flowStudioApi.getState();
+        const remote = res?.data || {};
+        if (!mounted) return;
+
+        const remoteClients = Array.isArray(remote.clients) ? remote.clients : [];
+        const remoteBots = Array.isArray(remote.bots) ? remote.bots.map((b) => ({ ...b, nodes: normalizeNodes(b.nodes) })) : [];
+        const remoteForms = Array.isArray(remote.forms) ? remote.forms : [];
+
+        if (remoteClients.length) setClients(remoteClients);
+        if (remoteBots.length) setBots(remoteBots);
+        if (remoteForms.length) setForms(remoteForms);
+      } catch (err) {
+        console.warn('Could not load FlowChat state from backend. Using local state.', err);
+      } finally {
+        if (mounted) setStateHydrated(true);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ clients, bots }));
@@ -108,6 +138,18 @@ export function BotProvider({ children }) {
   useEffect(() => {
     localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(forms));
   }, [forms]);
+
+  useEffect(() => {
+    if (!stateHydrated) return;
+    const timer = setTimeout(async () => {
+      try {
+        await flowStudioApi.saveState({ clients, bots, forms, meta: {} });
+      } catch (err) {
+        console.warn('Could not save FlowChat state to backend. Local backup kept.', err);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [clients, bots, forms, stateHydrated]);
 
   // ---------- Clients ----------
   const addClient = (name, industry) => {
@@ -261,12 +303,13 @@ export function BotProvider({ children }) {
       id: uid('wa_form'),
       name: formData.name || 'New WhatsApp Form',
       description: formData.description || '',
+      status: formData.status || 'active',
       submitButtonText: formData.submitButtonText || 'Submit Form',
       submitSuccessMessage: formData.submitSuccessMessage || 'Thank you! Your submission has been received.',
       targetApiUrl: formData.targetApiUrl || '',
       fields: formData.fields || [
-        { id: uid('field'), label: 'Full Name', fieldKey: 'full_name', type: 'text', required: true, placeholder: 'Enter name' },
-        { id: uid('field'), label: 'Phone Number', fieldKey: 'phone', type: 'phone', required: true, placeholder: 'Enter phone' },
+        { id: uid('field'), label: 'Full Name', fieldKey: 'full_name', type: 'text', required: true, placeholder: '' },
+        { id: uid('field'), label: 'Phone Number', fieldKey: 'phone', type: 'phone', required: true, placeholder: '' },
       ],
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -282,7 +325,11 @@ export function BotProvider({ children }) {
   };
 
   const deleteForm = (formId) => {
+    if (isFormInUse(formId)) {
+      return false;
+    }
     setForms((prev) => prev.filter((f) => f.id !== formId));
+    return true;
   };
 
   const duplicateForm = (formId) => {
@@ -296,6 +343,25 @@ export function BotProvider({ children }) {
       updatedAt: Date.now(),
     };
     setForms((prev) => [...prev, clone]);
+  };
+
+  const isFormInUse = (formId) => {
+    if (!formId) return false;
+    return (bots || []).some((bot) =>
+      Object.values(bot.nodes || {}).some(
+        (node) => node?.type === 'whatsappForm' && node?.data?.formId === formId
+      )
+    );
+  };
+
+  const toggleFormStatus = (formId) => {
+    setForms((prev) =>
+      prev.map((f) =>
+        f.id === formId
+          ? { ...f, status: f.status === 'inactive' ? 'active' : 'inactive', updatedAt: Date.now() }
+          : f
+      )
+    );
   };
 
   const value = {
@@ -318,6 +384,9 @@ export function BotProvider({ children }) {
     updateForm,
     deleteForm,
     duplicateForm,
+    isFormInUse,
+    toggleFormStatus,
+    stateHydrated,
   };
 
   return <BotContext.Provider value={value}>{children}</BotContext.Provider>;

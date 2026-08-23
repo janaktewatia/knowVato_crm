@@ -109,7 +109,14 @@ export const templatesApi = {
   list: (params) => http.get("/templates" + qs(params)),
   create: (b) => http.post("/templates", b),
   createMeta: (b) => http.post("/templates/create-meta", b),
-  syncMeta: () => http.post("/templates/sync-meta"),
+  editMeta: (id, b) => http.patch(`/templates/${id}/meta`, b),
+  uploadTestMedia: (file) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return http.postForm("/templates/test-media/upload", fd);
+  },
+  metaSyncCandidates: () => http.get("/templates/meta-sync-candidates"),
+  syncMeta: (names) => http.post("/templates/sync-meta", { names }),
   deleteMeta: (name) => http.del(`/templates/${encodeURIComponent(name)}/meta`),
   update: (id, b) => http.patch(`/templates/${id}`, b),
   remove: (id) => http.del(`/templates/${id}`),
@@ -198,6 +205,24 @@ export const workflowsApi = {
 export const workflowConfigApi = {
   get: (configKey) => http.get(`/workflow-config/${configKey || "default"}`),
   save: (configKey, data) => http.post(`/workflow-config/${configKey}`, data),
+};
+
+export const flowStudioApi = {
+  getState: () => http.get("/flowchat/state"),
+  saveState: (payload) => http.put("/flowchat/state", payload),
+};
+
+export const flowMediaApi = {
+  list: () => http.get("/flowchat/media"),
+  create: ({ name, type, file }) => {
+    const fd = new FormData();
+    fd.append("name", name);
+    fd.append("type", type);
+    fd.append("file", file);
+    return http.postForm("/flowchat/media", fd);
+  },
+  update: (id, body) => http.patch(`/flowchat/media/${id}`, body),
+  remove: (id) => http.del(`/flowchat/media/${id}`),
 };
 
 export const registrationsApi = {

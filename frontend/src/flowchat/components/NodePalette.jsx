@@ -51,7 +51,7 @@ export default function NodePalette({ readOnly = false }) {
       <hr className="my-3" />
       <div className="text-muted" style={{ fontSize: 11 }}>
         <i className="bi bi-lightbulb text-warning me-1"></i>
-        <strong>Tip:</strong> Click the right port dot of a block, then click another block's left port to connect.
+        <strong>Tip:</strong> Drag from a right port to a left port to connect. Right-click canvas to add nodes quickly.
       </div>
     </div>
   );

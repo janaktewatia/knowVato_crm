@@ -2440,6 +2440,13 @@ function WhatsAppTemplatesSetup() {
   const [activeTemplate, setActiveTemplate] = useState(null);
   const [syncing, setSyncing] = useState(false);
 
+  useEffect(() => {
+    const id = setInterval(() => {
+      list.reload();
+    }, 15000);
+    return () => clearInterval(id);
+  }, [list.reload]);
+
   const getMode = () => {
     const params = new URLSearchParams(location.search);
     return params.get("mode") || "list";

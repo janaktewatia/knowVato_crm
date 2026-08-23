@@ -37,7 +37,7 @@ export default function Contacts() {
         actions={can("contacts", "create") && <button className="btn btn-wa btn-sm" onClick={() => setEditing({})}><i className="bi bi-plus-lg me-1"></i>Add Contact</button>} />
       <FilterBar>
         <Field label="Search" style={{ minWidth: 260 }}>
-          <div className="input-group input-group-sm"><span className="input-group-text"><i className="bi bi-search"></i></span>
+          <div className="input-group input-group-sm search-input-group"><span className="input-group-text"><i className="bi bi-search"></i></span>
             <input className="form-control" placeholder="Search contacts…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
         </Field>
       </FilterBar>

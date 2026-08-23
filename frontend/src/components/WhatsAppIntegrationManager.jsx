@@ -29,6 +29,13 @@ const VENDORS = [
   { id: "wati", name: "WATI" }
 ];
 
+const looksMaskedSecret = (value) => {
+  if (typeof value !== "string") return false;
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return trimmed.includes("•") || /^\*{4,}/.test(trimmed) || trimmed.toLowerCase().includes("unchanged");
+};
+
 const emptyForm = () => ({
   id: crypto.randomUUID(),
   provider: "meta",
@@ -63,7 +70,7 @@ export default function WhatsAppIntegrationManager({ showHeader = true, backLink
           id: acc._id || acc.id,
           provider: acc.vendor === "meta" ? "meta" : "vendor",
           vendor: acc.vendor && acc.vendor !== "meta" ? acc.vendor : "pinnacle",
-          apiKey: acc.apiKey || acc.accessToken || "",
+          apiKey: "",
           phoneId: acc.phoneNumberId || "",
           wabaId: acc.wabaId || "",
           phoneNumber: acc.senderNumber || acc.phoneNumber || "",
@@ -110,8 +117,14 @@ export default function WhatsAppIntegrationManager({ showHeader = true, backLink
   };
 
   const onSave = async () => {
-    if (!form.apiKey || !form.phoneId || !form.phoneNumber) {
-      toast.error("Please fill required fields (API Key / Access Token, Phone Number ID, Phone Number)");
+    const hasUsableApiKey = Boolean(form.apiKey && !looksMaskedSecret(form.apiKey) && form.apiKey.trim());
+
+    if (!form.phoneId || !form.phoneNumber) {
+      toast.error("Please fill required fields (Phone Number ID, Phone Number)");
+      return;
+    }
+    if (!form.backendId && !hasUsableApiKey) {
+      toast.error("Please enter a valid API Key / Access Token for new integration");
       return;
     }
     if (form.provider === "vendor" && !form.vendor) {
@@ -142,10 +155,12 @@ export default function WhatsAppIntegrationManager({ showHeader = true, backLink
         senderNumber: form.phoneNumber,
         phoneNumberId: form.phoneId,
         wabaId: form.wabaId,
-        apiKey: form.apiKey,
-        accessToken: form.apiKey,
         health: form.status === "connected" ? "ok" : form.status === "disconnected" ? "error" : "unknown"
       };
+      if (hasUsableApiKey) {
+        payload.apiKey = form.apiKey.trim();
+        payload.accessToken = form.apiKey.trim();
+      }
 
       if (form.backendId) {
         await waAccountsApi.update(form.backendId, payload);
@@ -154,9 +169,13 @@ export default function WhatsAppIntegrationManager({ showHeader = true, backLink
         }
       } else {
         const created = await waAccountsApi.create(payload);
-        if (created && created._id) {
-          updatedItem.backendId = created._id;
+        const createdId = created?._id || created?.data?._id;
+        if (createdId) {
+          updatedItem.backendId = createdId;
           waStore.upsert(updatedItem);
+          if (form.active) {
+            await waAccountsApi.activate(createdId);
+          }
         }
       }
     } catch (err) {
@@ -169,7 +188,8 @@ export default function WhatsAppIntegrationManager({ showHeader = true, backLink
   };
 
   const onTest = async () => {
-    if (!form.apiKey || !form.phoneId) {
+    const hasUsableApiKey = Boolean(form.apiKey && !looksMaskedSecret(form.apiKey) && form.apiKey.trim());
+    if ((!form.backendId && !hasUsableApiKey) || !form.phoneId) {
       toast.error("Please enter API Key / Token and Phone Number ID first");
       return;
     }
@@ -177,7 +197,7 @@ export default function WhatsAppIntegrationManager({ showHeader = true, backLink
     await new Promise((r) => setTimeout(r, 1000));
     
     // Validate key structure (min 8 chars)
-    const isLive = form.apiKey.trim().length >= 8 && form.phoneId.trim().length >= 5;
+    const isLive = (hasUsableApiKey || Boolean(form.backendId)) && form.phoneId.trim().length >= 5;
     
     const newStatus = isLive ? "connected" : "disconnected";
     setForm((f) => ({ ...f, status: newStatus }));
@@ -260,8 +280,8 @@ export default function WhatsAppIntegrationManager({ showHeader = true, backLink
               <tr className="table-light">
                 <th style={{ fontSize: "12px", fontWeight: 600 }}>Provider / Vendor</th>
                 <th style={{ fontSize: "12px", fontWeight: 600 }}>Phone Number</th>
-                <th style={{ fontSize: "12px", fontWeight: 600 }}>Status</th>
-                <th style={{ fontSize: "12px", fontWeight: 600 }}>Active</th>
+                <th style={{ fontSize: "12px", fontWeight: 600 }}>Phone ID</th>
+                <th style={{ fontSize: "12px", fontWeight: 600 }}>Status / Active</th>
                 <th style={{ fontSize: "12px", fontWeight: 600 }}>Created</th>
                 <th className="text-end" style={{ fontSize: "12px", fontWeight: 600 }}>Actions</th>
               </tr>
@@ -305,30 +325,30 @@ export default function WhatsAppIntegrationManager({ showHeader = true, backLink
                       {i.phoneNumber || "—"}
                     </td>
                     <td className="py-2.5">
-                      {i.status === "connected" ? (
-                        <span style={{ fontSize: "12px", fontWeight: 500, color: "#16a34a" }} className="d-inline-flex align-items-center gap-1">
-                          <CheckCircle2 size={13} /> Live & Connected
-                        </span>
-                      ) : i.status === "disconnected" ? (
-                        <span style={{ fontSize: "12px", fontWeight: 500, color: "#dc2626" }} className="d-inline-flex align-items-center gap-1">
-                          <XCircle size={13} /> Connection Failed
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: "12px", fontWeight: 500, color: "#6b7280" }}>
-                          Untested
-                        </span>
-                      )}
+                      <span className="font-monospace text-secondary" style={{ fontSize: "11.5px" }}>
+                        {i.phoneId || "—"}
+                      </span>
                     </td>
                     <td className="py-2.5">
-                      <div className="form-check form-switch mb-0">
-                        <input
-                          className="form-check-input cursor-pointer"
-                          type="checkbox"
-                          role="switch"
-                          checked={Boolean(i.active)}
-                          onChange={() => toggleActive(i)}
-                          style={{ width: "2.2em", height: "1.1em" }}
-                        />
+                      <div className="d-flex flex-wrap gap-1.5">
+                        <span
+                          className={`badge rounded-pill ${
+                            i.status === "connected"
+                              ? "text-bg-success"
+                              : i.status === "disconnected"
+                              ? "text-bg-danger"
+                              : "text-bg-secondary"
+                          }`}
+                          style={{ fontSize: "11px", fontWeight: 500 }}
+                        >
+                          Meta: {i.status === "connected" ? "Live" : i.status === "disconnected" ? "Failed" : "Untested"}
+                        </span>
+                        <span
+                          className={`badge rounded-pill ${Boolean(i.active) ? "text-bg-primary" : "text-bg-light text-dark"}`}
+                          style={{ fontSize: "11px", fontWeight: 500 }}
+                        >
+                          CRM: {Boolean(i.active) ? "ON" : "OFF"}
+                        </span>
                       </div>
                     </td>
                     <td className="py-2.5 text-secondary" style={{ fontSize: "11.5px" }}>
@@ -444,7 +464,6 @@ export default function WhatsAppIntegrationManager({ showHeader = true, backLink
                           style={{ fontSize: "12px" }}
                           value={form.apiKey}
                           onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
-                          placeholder="EAAG... or Pinnacle API Key"
                         />
                       </div>
                     </div>
@@ -457,7 +476,6 @@ export default function WhatsAppIntegrationManager({ showHeader = true, backLink
                         style={{ fontSize: "12px" }}
                         value={form.phoneId}
                         onChange={(e) => setForm({ ...form, phoneId: e.target.value })}
-                        placeholder="106540123456789"
                       />
                     </div>
 
@@ -469,7 +487,6 @@ export default function WhatsAppIntegrationManager({ showHeader = true, backLink
                         style={{ fontSize: "12px" }}
                         value={form.wabaId}
                         onChange={(e) => setForm({ ...form, wabaId: e.target.value })}
-                        placeholder="123456789012345"
                       />
                     </div>
 
@@ -483,7 +500,6 @@ export default function WhatsAppIntegrationManager({ showHeader = true, backLink
                           style={{ fontSize: "12px" }}
                           value={form.phoneNumber}
                           onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
-                          placeholder="+91 98765 43210"
                         />
                       </div>
                     </div>

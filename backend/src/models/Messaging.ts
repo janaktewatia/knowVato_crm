@@ -11,6 +11,7 @@ export interface ITemplate extends Document {
   status: "Approved" | "Pending" | "Rejected" | "Draft";
   body: string;
   metaId?: string;
+  rejectionReason?: string;
   components?: any;
 }
 const templateSchema = new Schema<ITemplate>(
@@ -24,6 +25,7 @@ const templateSchema = new Schema<ITemplate>(
     status: { type: String, enum: ["Approved", "Pending", "Rejected", "Draft"], default: "Draft" },
     body: { type: String, default: "" },
     metaId: String,
+    rejectionReason: String,
     components: Schema.Types.Mixed,
   },
   { timestamps: true }

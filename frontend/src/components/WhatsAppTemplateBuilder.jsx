@@ -16,36 +16,134 @@ const LANGUAGES = [
   { code: "fr", name: "French (fr)" },
 ];
 
+const CATEGORY_TO_LOCAL = {
+  UTILITY: "Utility",
+  MARKETING: "Marketing",
+  AUTHENTICATION: "Authentication",
+};
+
+const LOCAL_TO_META = {
+  UTILITY: "UTILITY",
+  MARKETING: "MARKETING",
+  AUTHENTICATION: "AUTHENTICATION",
+};
+
+const META_MEDIA_LIMITS = {
+  IMAGE: { maxBytes: 5 * 1024 * 1024, hint: "Meta standard: JPG/PNG up to 5 MB" },
+  VIDEO: { maxBytes: 16 * 1024 * 1024, hint: "Meta standard: MP4 up to 16 MB" },
+  DOCUMENT: { maxBytes: 100 * 1024 * 1024, hint: "Meta standard: PDF up to 100 MB" },
+};
+
+const MEDIA_ACCEPT = {
+  IMAGE: "image/jpeg,image/png,image/webp",
+  VIDEO: "video/mp4",
+  DOCUMENT: "application/pdf",
+};
+
+function parseTemplateComponents(template) {
+  const components = template?.components || [];
+  const header = components.find((c) => c.type === "HEADER");
+  const body = components.find((c) => c.type === "BODY");
+  const footer = components.find((c) => c.type === "FOOTER");
+  const buttonBlock = components.find((c) => c.type === "BUTTONS");
+  const headerExample = header?.example?.header_handle?.[0] || "";
+
+  const buttons = buttonBlock?.buttons?.map((b) => {
+    if (b.type === "QUICK_REPLY") return { type: "QUICK_REPLY", text: b.text || "Reply" };
+    if (b.type === "URL") return { type: "URL", text: b.text || "Open Link", url: b.url || "", urlType: b.url?.includes("{{") ? "dynamic" : "static" };
+    if (b.type === "PHONE_NUMBER") return { type: "PHONE_NUMBER", text: b.text || "Call", phoneNumber: b.phone_number || b.phoneNumber || "" };
+    return { type: "QUICK_REPLY", text: b.text || "Reply" };
+  }) || [];
+
+  return {
+    headerType: header?.format || template?.headerType || "NONE",
+    headerText: header?.text || template?.headerText || "",
+    headerMediaUrl: headerExample || template?.headerMediaUrl || "",
+    body: body?.text || template?.body || "",
+    footer: footer?.text || template?.footer || "",
+    buttons,
+  };
+}
+
+function stableComponentsWithoutMedia(components = []) {
+  return (components || []).map((c) => {
+    if (c?.type !== "HEADER") return c;
+    const next = { ...c };
+    if (next.example) {
+      next.example = { ...next.example, header_handle: [] };
+    }
+    return next;
+  });
+}
+
 export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onSaved }) {
   const toast = useToast();
+  const editHydration = initialTemplate ? parseTemplateComponents(initialTemplate) : null;
+  const isEditMode = Boolean(initialTemplate?._id);
   const [submitting, setSubmitting] = useState(false);
   const [testModalOpen, setTestModalOpen] = useState(false);
   const [testPhone, setTestPhone] = useState("+919999900001");
   const [sendingTest, setSendingTest] = useState(false);
+  const [buttonMenuOpen, setButtonMenuOpen] = useState(false);
+  const [headerMediaMode, setHeaderMediaMode] = useState(editHydration?.headerMediaUrl ? "url" : "upload");
+  const [headerUploadName, setHeaderUploadName] = useState("");
+  const [uploadingHeaderMedia, setUploadingHeaderMedia] = useState(false);
+  const [headerLocalPreviewUrl, setHeaderLocalPreviewUrl] = useState("");
+
+  const isMetaTemplateEdit = Boolean(initialTemplate?._id && initialTemplate?.metaId);
+  const metaStatus = String(initialTemplate?.status || "").trim().toUpperCase();
+  const canEditMetaByStatus = ["APPROVED", "REJECTED", "PAUSED"].includes(metaStatus);
+  const lockByMetaStatus = isMetaTemplateEdit && !canEditMetaByStatus;
+  const canEditContent = !isMetaTemplateEdit || canEditMetaByStatus;
+  const canEditNameLanguage = !isEditMode;
+  const canEditCategory = !isEditMode ? true : (isMetaTemplateEdit ? metaStatus !== "APPROVED" : false);
+
+  const disabledFieldStyle = {
+    backgroundColor: "#eef2f7",
+    color: "#64748b",
+    borderColor: "#d7dee8",
+    cursor: "not-allowed",
+  };
 
   const [form, setForm] = useState(() => ({
     name: initialTemplate?.name || "",
     category: initialTemplate?.category?.toUpperCase() || "UTILITY",
     language: initialTemplate?.language || "en",
-    headerType: initialTemplate?.headerType || "NONE",
-    headerText: initialTemplate?.headerText || "",
-    headerMediaUrl: initialTemplate?.headerMediaUrl || "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&auto=format&fit=crop&q=80",
-    body: initialTemplate?.body || "Dear {{1}},\n\nThank you for your inquiry regarding {{2}}. Your fee of ₹{{3}} is due on {{4}}.\n\nPlease feel free to contact us if you have any questions.",
-    footer: initialTemplate?.footer || "Greenwood International School",
-    buttons: initialTemplate?.buttons || [
-      { type: "QUICK_REPLY", text: "Confirm Visit" },
-      { type: "URL", text: "Pay Online", url: "https://greenwood.edu/pay", urlType: "static" },
-      { type: "PHONE_NUMBER", text: "Call Helpline", phoneNumber: "+919999900001" },
-    ],
-    samples: initialTemplate?.samples || {
-      "1": "Priya Sharma",
-      "2": "Class XI Science",
-      "3": "25,000",
-      "4": "15th August",
-    },
+    headerType: editHydration?.headerType || initialTemplate?.headerType || "NONE",
+    headerText: editHydration?.headerText || initialTemplate?.headerText || "",
+    headerMediaUrl: editHydration?.headerMediaUrl || initialTemplate?.headerMediaUrl || "",
+    body: editHydration?.body || initialTemplate?.body || "",
+    footer: editHydration?.footer || initialTemplate?.footer || "",
+    buttons: editHydration?.buttons?.length ? editHydration.buttons : initialTemplate?.buttons || [],
+    samples: initialTemplate?.samples || {},
   }));
 
   const updateForm = (key, val) => setForm((prev) => ({ ...prev, [key]: val }));
+
+  async function handleHeaderMediaUpload(file) {
+    if (!file) return;
+    const headerType = form.headerType;
+    const rule = META_MEDIA_LIMITS[headerType];
+    if (rule && file.size > rule.maxBytes) {
+      toast(`${headerType} file is too large. ${rule.hint}`, "error");
+      return;
+    }
+    setUploadingHeaderMedia(true);
+    try {
+      const localPreview = URL.createObjectURL(file);
+      setHeaderLocalPreviewUrl(localPreview);
+      const res = await templatesApi.uploadTestMedia(file);
+      const mediaId = res?.data?.id || res?.id;
+      if (!mediaId) throw new Error("Meta did not return media id");
+      setHeaderUploadName(file.name);
+      updateForm("headerMediaUrl", String(mediaId));
+      toast("Media uploaded to Meta. Media ID saved for template header.");
+    } catch (e) {
+      toast(e.message || "Failed to upload media to Meta", "error");
+    } finally {
+      setUploadingHeaderMedia(false);
+    }
+  }
 
   // Extract all {{1}}, {{2}} variables from text
   const extractedVariables = useMemo(() => {
@@ -68,13 +166,14 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
   }
 
   function addButton(type) {
+    setButtonMenuOpen(false);
     if (form.buttons.length >= 3) {
       toast("Max 3 buttons allowed", "error");
       return;
     }
 
     const newBtn =
-      type === "QUICK_REPLY"
+      type === "CUSTOM"
         ? { type: "QUICK_REPLY", text: "Talk to Advisor" }
         : type === "URL"
         ? { type: "URL", text: "Visit Portal", url: "https://greenwood.edu", urlType: "static", urlVariable: "1" }
@@ -95,6 +194,76 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
     });
   }
 
+  function buildComponentsPayload() {
+    const components = [];
+
+    if (form.headerType === "TEXT" && form.headerText) {
+      components.push({ type: "HEADER", format: "TEXT", text: form.headerText });
+    } else if (["IMAGE", "VIDEO", "DOCUMENT"].includes(form.headerType)) {
+      components.push({
+        type: "HEADER",
+        format: form.headerType,
+        example: { header_handle: form.headerMediaUrl ? [form.headerMediaUrl] : [] },
+      });
+    }
+
+    components.push({ type: "BODY", text: form.body || "" });
+
+    if (form.footer) {
+      components.push({ type: "FOOTER", text: form.footer });
+    }
+
+    if (form.buttons?.length) {
+      const formattedButtons = form.buttons.map((b) => {
+        if (b.type === "QUICK_REPLY") return { type: "QUICK_REPLY", text: b.text };
+        if (b.type === "URL") return { type: "URL", text: b.text, url: b.url };
+        if (b.type === "PHONE_NUMBER") return { type: "PHONE_NUMBER", text: b.text, phone_number: b.phoneNumber };
+        return { type: "QUICK_REPLY", text: b.text };
+      });
+      components.push({ type: "BUTTONS", buttons: formattedButtons });
+    }
+
+    return components;
+  }
+
+  async function handleSaveDraft() {
+    const formattedName = form.name.toLowerCase().trim().replace(/[^a-z0-9_]/g, "_");
+    if (!formattedName) {
+      toast("Please enter a valid template name", "error");
+      return;
+    }
+    if (!form.body.trim()) {
+      toast("Body content is required", "error");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        name: formattedName,
+        channel: "whatsapp",
+        category: CATEGORY_TO_LOCAL[form.category] || "Utility",
+        language: form.language,
+        status: "Draft",
+        body: form.body,
+        components: buildComponentsPayload(),
+      };
+
+      if (initialTemplate?._id) {
+        await templatesApi.update(initialTemplate._id, payload);
+      } else {
+        await templatesApi.create(payload);
+      }
+
+      toast(`Template '${formattedName}' saved as Draft`);
+      if (onSaved) onSaved();
+    } catch (e) {
+      toast(e.message || "Failed to save draft", "error");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function handleSubmitMeta() {
     const formattedName = form.name.toLowerCase().trim().replace(/[^a-z0-9_]/g, "_");
     if (!formattedName) {
@@ -108,9 +277,55 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
 
     setSubmitting(true);
     try {
+      const payload = { ...form, name: formattedName };
+      const mediaValidationError = validateHeaderMediaValue(form.headerType, form.headerMediaUrl);
+      if (mediaValidationError) {
+        toast(mediaValidationError, "error");
+        return;
+      }
+
+      const nextComponents = buildComponentsPayload();
+      const prevComponents = Array.isArray(initialTemplate?.components) ? initialTemplate.components : [];
+      const onlyMediaChanged = Boolean(initialTemplate?._id) &&
+        JSON.stringify(stableComponentsWithoutMedia(prevComponents)) === JSON.stringify(stableComponentsWithoutMedia(nextComponents)) &&
+        JSON.stringify(stableComponentsWithoutMedia(nextComponents)) !== "[]";
+
+      if (lockByMetaStatus) {
+        toast(`Meta validation: template with status '${initialTemplate?.status}' is not editable.`, "error");
+        return;
+      }
+
+      if (onlyMediaChanged) {
+        await templatesApi.update(initialTemplate._id, {
+          name: formattedName,
+          channel: "whatsapp",
+          category: CATEGORY_TO_LOCAL[form.category] || "Utility",
+          language: form.language,
+          status: initialTemplate.status || "Approved",
+          body: form.body,
+          components: nextComponents,
+        });
+        toast("Media sample updated in CRM. Meta re-approval skipped (template content unchanged).");
+        if (onSaved) onSaved();
+        return;
+      }
+
+      if (isMetaTemplateEdit) {
+        const initialMetaCategory = LOCAL_TO_META[String(initialTemplate?.category || "").toUpperCase()] || String(initialTemplate?.category || "").toUpperCase();
+        const editPayload = { components: nextComponents };
+
+        if (canEditCategory && form.category !== initialMetaCategory) {
+          editPayload.category = form.category;
+        }
+
+        await templatesApi.editMeta(initialTemplate._id, editPayload);
+        toast(`Template '${formattedName}' updated on Meta and CRM.`);
+        if (onSaved) onSaved();
+        return;
+      }
+
       await templatesApi.createMeta({
-        ...form,
-        name: formattedName,
+        ...payload,
       });
       toast(`Template '${formattedName}' created successfully! ✓`);
       if (onSaved) onSaved();
@@ -154,7 +369,7 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
           <h5 className="fw-bold mb-1" style={{ color: "#0f172a" }}>
             {initialTemplate ? "Edit WhatsApp Template" : "Create WhatsApp Template"}
           </h5>
-          <p className="text-muted small mb-0">Design and submit your Meta WhatsApp message template.</p>
+          <p className="text-muted small mb-0">Templates created here are submitted to Meta and status is tracked in CRM.</p>
         </div>
         <div className="d-flex gap-2">
           {onCancel && (
@@ -165,12 +380,24 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
           <button className="btn btn-outline-wa btn-sm px-3" onClick={() => setTestModalOpen(true)}>
             <i className="bi bi-send me-1"></i> Send Test
           </button>
-          <button className="btn btn-wa btn-sm px-4 fw-semibold" disabled={submitting || !form.name || !form.body} onClick={handleSubmitMeta}>
+          <button className="btn btn-wa btn-sm px-4 fw-semibold" disabled={submitting || !form.name || !form.body || lockByMetaStatus} onClick={handleSubmitMeta}>
             {submitting ? <span className="spinner-border spinner-border-sm me-2" /> : <i className="bi bi-check-circle me-1"></i>}
-            Save Template
+            {initialTemplate ? "Update on CRM + Meta" : "Save to CRM + Meta"}
           </button>
         </div>
       </div>
+
+      {isMetaTemplateEdit && (
+        <div className={`alert ${lockByMetaStatus ? "alert-warning" : "alert-info"} py-2 px-3 mb-3 small`}>
+          Meta edit rules: only approved/rejected/paused templates are editable. Name and language are locked. Category is locked for approved templates.
+        </div>
+      )}
+
+      {!isMetaTemplateEdit && isEditMode && (
+        <div className="alert alert-secondary py-2 px-3 mb-3 small">
+          Edit mode: Template name, category, and language are locked.
+        </div>
+      )}
 
       {/* Optimized Main Grid: Expanded Left Form (col-lg-8) & Sleek Right Preview (col-lg-4) */}
       <div className="row g-4">
@@ -186,6 +413,8 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
                   className="form-control form-control-sm font-monospace"
                   value={form.name}
                   onChange={(e) => updateForm("name", e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))}
+                  disabled={!canEditNameLanguage || submitting}
+                  style={!canEditNameLanguage ? disabledFieldStyle : undefined}
                   placeholder="Enter template name"
                 />
                 <div className="form-text" style={{ fontSize: "11px", marginTop: "4px" }}>
@@ -197,7 +426,7 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
               <div className="row g-3" style={{ gap: "8px" }}>
                 <div className="col-md-6" style={{ maxWidth: "48%", flex: "0 0 48%" }}>
                   <label className="form-label small fw-semibold text-secondary mb-1">Category</label>
-                  <select className="form-select form-select-sm" value={form.category} onChange={(e) => updateForm("category", e.target.value)}>
+                  <select className="form-select form-select-sm" value={form.category} onChange={(e) => updateForm("category", e.target.value)} disabled={!canEditCategory || submitting} style={!canEditCategory ? disabledFieldStyle : undefined}>
                     {CATEGORIES.map((c) => (
                       <option key={c.value} value={c.value}>{c.label}</option>
                     ))}
@@ -205,7 +434,7 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
                 </div>
                 <div className="col-md-6" style={{ maxWidth: "48%", flex: "0 0 48%" }}>
                   <label className="form-label small fw-semibold text-secondary mb-1">Language</label>
-                  <select className="form-select form-select-sm" value={form.language} onChange={(e) => updateForm("language", e.target.value)}>
+                  <select className="form-select form-select-sm" value={form.language} onChange={(e) => updateForm("language", e.target.value)} disabled={!canEditNameLanguage || submitting} style={!canEditNameLanguage ? disabledFieldStyle : undefined}>
                     {LANGUAGES.map((l) => (
                       <option key={l.code} value={l.code}>{l.name}</option>
                     ))}
@@ -219,7 +448,7 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
               <label className="form-label small fw-semibold text-secondary mb-2">Header (Optional)</label>
               <div className="row g-3" style={{ gap: "8px" }}>
                 <div className="col-md-4" style={{ maxWidth: "28%", flex: "0 0 28%" }} >
-                  <select className="form-select form-select-sm" value={form.headerType} onChange={(e) => updateForm("headerType", e.target.value)}>
+                  <select className="form-select form-select-sm" value={form.headerType} onChange={(e) => updateForm("headerType", e.target.value)} disabled={!canEditContent || submitting}>
                     <option value="NONE">None</option>
                     <option value="TEXT">Text Header</option>
                     <option value="IMAGE">Image</option>
@@ -234,18 +463,63 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
                       maxLength={60}
                       value={form.headerText}
                       onChange={(e) => updateForm("headerText", e.target.value)}
+                      disabled={!canEditContent || submitting}
                       placeholder="Header text..."
                     />
                   </div>
                 )}
                 {["IMAGE", "VIDEO", "DOCUMENT"].includes(form.headerType) && (
                   <div className="col-md-8">
-                    <input
-                      className="form-control form-control-sm"
-                      value={form.headerMediaUrl}
-                      onChange={(e) => updateForm("headerMediaUrl", e.target.value)}
-                      placeholder="Media URL (https://...)"
-                    />
+                    <div className="d-flex gap-2 mb-2">
+                      <button
+                        type="button"
+                        className={`btn btn-sm ${headerMediaMode === "url" ? "btn-dark" : "btn-outline-secondary"}`}
+                        onClick={() => setHeaderMediaMode("url")}
+                        disabled={!canEditContent || submitting || uploadingHeaderMedia}
+                      >
+                        URL
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn btn-sm ${headerMediaMode === "upload" ? "btn-dark" : "btn-outline-secondary"}`}
+                        onClick={() => setHeaderMediaMode("upload")}
+                        disabled={!canEditContent || submitting || uploadingHeaderMedia}
+                      >
+                        Upload
+                      </button>
+                    </div>
+
+                    {headerMediaMode === "url" ? (
+                      <input
+                        className="form-control form-control-sm"
+                        value={form.headerMediaUrl}
+                        onChange={(e) => updateForm("headerMediaUrl", e.target.value)}
+                        disabled={!canEditContent || submitting || uploadingHeaderMedia}
+                        placeholder="Public media URL or Meta media ID"
+                      />
+                    ) : (
+                      <>
+                        <input
+                          type="file"
+                          className="form-control form-control-sm"
+                          accept={MEDIA_ACCEPT[form.headerType] || "*/*"}
+                          onChange={(e) => handleHeaderMediaUpload(e.target.files?.[0])}
+                          disabled={!canEditContent || submitting || uploadingHeaderMedia}
+                        />
+                        {headerUploadName && (
+                          <div className="small text-muted mt-1">Selected: {headerUploadName}</div>
+                        )}
+                        {uploadingHeaderMedia && (
+                          <div className="small text-muted mt-1">
+                            <span className="spinner-border spinner-border-sm me-1" />Uploading to Meta...
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    <div className="small text-muted mt-2">
+                      {META_MEDIA_LIMITS[form.headerType]?.hint} Use public URL or Meta media ID.
+                    </div>
                   </div>
                 )}
               </div>
@@ -263,6 +537,7 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
                       className="btn btn-xs btn-outline-primary py-0 px-2"
                       style={{ fontSize: "11px" }}
                       onClick={() => insertVariable(num)}
+                      disabled={!canEditContent || submitting}
                     >
                       + {`{{${num}}}`}
                     </button>
@@ -276,6 +551,7 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
                 maxLength={1024}
                 value={form.body}
                 onChange={(e) => updateForm("body", e.target.value)}
+                disabled={!canEditContent || submitting}
                 placeholder="Write your message here. Use {{1}}, {{2}}, etc. for dynamic variables."
                 style={{ fontSize: "13.5px", lineHeight: "1.5" }}
               />
@@ -311,6 +587,7 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
                 maxLength={60}
                 value={form.footer}
                 onChange={(e) => updateForm("footer", e.target.value)}
+                disabled={!canEditContent || submitting}
                 placeholder="Footer text..."
               />
             </div>
@@ -319,16 +596,31 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
             <div className="p-4 border rounded-3 bg-white">
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <label className="form-label small fw-semibold text-secondary mb-0">Buttons</label>
-                <div className="btn-group btn-group-sm" style={{ gap: "8px" }}>
-                  <button type="button" className="btn btn-outline-secondary" onClick={() => addButton("QUICK_REPLY")}>
-                    + Quick Reply
+                <div className="position-relative">
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary btn-sm dropdown-toggle"
+                    onClick={() => setButtonMenuOpen((open) => !open)}
+                    disabled={!canEditContent || submitting}
+                  >
+                    + Add button
                   </button>
-                  <button type="button" className="btn btn-outline-secondary" onClick={() => addButton("URL")}>
-                    + URL
-                  </button>
-                  <button type="button" className="btn btn-outline-secondary" onClick={() => addButton("PHONE_NUMBER")}>
-                    + Call
-                  </button>
+                  {buttonMenuOpen && (
+                    <div
+                      className="dropdown-menu show shadow-sm"
+                      style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 240, zIndex: 20 }}
+                    >
+                      <button type="button" className="dropdown-item d-flex align-items-center gap-2" onClick={() => addButton("CUSTOM")}>
+                        <i className="bi bi-reply"></i> Custom
+                      </button>
+                      <button type="button" className="dropdown-item d-flex align-items-center gap-2" onClick={() => addButton("URL")}>
+                        <i className="bi bi-box-arrow-up-right"></i> Visit website
+                      </button>
+                      <button type="button" className="dropdown-item d-flex align-items-center gap-2" onClick={() => addButton("PHONE_NUMBER")}>
+                        <i className="bi bi-telephone"></i> Call phone number
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -340,6 +632,7 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
                       className="form-control form-control-sm"
                       value={btn.text}
                       onChange={(e) => updateButtonField(idx, "text", e.target.value)}
+                      disabled={!canEditContent || submitting}
                       placeholder="Button Label"
                     />
                     {btn.type === "URL" && (
@@ -347,6 +640,7 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
                         className="form-select form-select-sm"
                         value={btn.urlType || "static"}
                         onChange={(e) => updateButtonField(idx, "urlType", e.target.value)}
+                        disabled={!canEditContent || submitting}
                       
                       >
                         <option value="static">Static URL</option>
@@ -358,10 +652,11 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
                         className="form-control form-control-sm"
                         value={btn.phoneNumber || ""}
                         onChange={(e) => updateButtonField(idx, "phoneNumber", e.target.value)}
+                        disabled={!canEditContent || submitting}
                         placeholder="+91..."
                       />
                     )}
-                    <button type="button" className="btn btn-sm btn-outline-danger border-0" onClick={() => removeButton(idx)}>
+                    <button type="button" className="btn btn-sm btn-outline-danger border-0" onClick={() => removeButton(idx)} disabled={!canEditContent || submitting}>
                       <i className="bi bi-x-lg"></i>
                     </button>
                   </div>
@@ -372,6 +667,7 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
                           className="form-control form-control-sm"
                           value={btn.url || ""}
                           onChange={(e) => updateButtonField(idx, "url", e.target.value)}
+                          disabled={!canEditContent || submitting}
                           placeholder="Enter URL (https://...)"
                           style={{ width: "94%" }}
                         />
@@ -382,6 +678,7 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
                             className="form-select form-select-sm"
                             value={btn.urlVariable || "1"}
                             onChange={(e) => updateButtonField(idx, "urlVariable", e.target.value)}
+                            disabled={!canEditContent || submitting}
                             style={{ maxWidth: "120px" }}
                           >
                             {extractedVariables.map((v) => (
@@ -402,14 +699,6 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
         {/* Right Column: Clean White Card Preview (No Dotted Shaded Background) */}
         <div className="col-lg-4">
           <div className="sticky-top" style={{ top: "80px" }}>
-            <div className="d-flex align-items-center justify-content-between m-3">
-              <span className="fw-semibold text-secondary small">Live Message Preview</span>
-              <span className="badge bg-emerald-100 text-emerald-800 border-0" style={{ background: "#dcfce7", color: "#166534" }}>
-                WhatsApp Card
-              </span>
-            </div>
-
-
             <div
               style={{
                 background: "#ffffff",
@@ -443,28 +732,47 @@ export default function WhatsAppTemplateBuilder({ initialTemplate, onCancel, onS
                 {["IMAGE", "VIDEO", "DOCUMENT"].includes(form.headerType) && (
                   <div style={{ width: "100%", background: "#f8fafc" }}>
                     {form.headerType === "IMAGE" && (
-                      <img
-                        src={form.headerMediaUrl}
-                        alt="Header preview"
-                        style={{ width: "100%", height: "160px", objectFit: "cover" }}
-                        onError={(e) => {
-                          e.currentTarget.src = "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&auto=format&fit=crop&q=80";
-                        }}
-                      />
+                      (headerLocalPreviewUrl || (form.headerMediaUrl && isHttpUrl(form.headerMediaUrl) ? form.headerMediaUrl : "")) ? (
+                        <img
+                          src={headerLocalPreviewUrl || form.headerMediaUrl}
+                          alt="Header preview"
+                          style={{ width: "100%", height: "160px", objectFit: "cover" }}
+                        />
+                      ) : form.headerMediaUrl ? (
+                        <div style={{ padding: "14px", background: "#ecfeff", borderBottom: "1px solid #bae6fd", color: "#0c4a6e" }}>
+                          Meta media ID selected (preview unavailable)
+                        </div>
+                      ) : (
+                        <div style={{ padding: "14px", color: "#92400e", background: "#fef3c7", borderBottom: "1px solid #fde68a" }}>
+                          No image attached
+                        </div>
+                      )
                     )}
                     {form.headerType === "VIDEO" && (
-                      <div style={{ height: "140px", background: "#0f172a", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
-                        <i className="bi bi-play-circle-fill" style={{ fontSize: "36px" }}></i>
-                      </div>
+                      form.headerMediaUrl ? (
+                        <div style={{ height: "140px", background: "#0f172a", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
+                          <i className="bi bi-play-circle-fill" style={{ fontSize: "36px" }}></i>
+                        </div>
+                      ) : (
+                        <div style={{ padding: "14px", color: "#92400e", background: "#fef3c7", borderBottom: "1px solid #fde68a" }}>
+                          No video attached
+                        </div>
+                      )
                     )}
                     {form.headerType === "DOCUMENT" && (
-                      <div style={{ padding: "14px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: "10px" }}>
-                        <i className="bi bi-file-earmark-pdf-fill text-danger" style={{ fontSize: "28px" }}></i>
-                        <div>
-                          <div style={{ fontSize: "13px", fontWeight: "600", color: "#0f172a" }}>Attachment.pdf</div>
-                          <div style={{ fontSize: "11px", color: "#64748b" }}>PDF Document</div>
+                      form.headerMediaUrl ? (
+                        <div style={{ padding: "14px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: "10px" }}>
+                          <i className="bi bi-file-earmark-pdf-fill text-danger" style={{ fontSize: "28px" }}></i>
+                          <div>
+                            <div style={{ fontSize: "13px", fontWeight: "600", color: "#0f172a" }}>Document attached</div>
+                            <div style={{ fontSize: "11px", color: "#64748b" }}>PDF Document</div>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div style={{ padding: "14px", color: "#92400e", background: "#fef3c7", borderBottom: "1px solid #fde68a" }}>
+                          No document attached
+                        </div>
+                      )
                     )}
                   </div>
                 )}
@@ -561,4 +869,33 @@ function renderPreviewBody(text, samples = {}) {
   return text.replace(/\{\{(\d+)\}\}/g, (_, num) => {
     return samples[num] !== undefined && samples[num] !== "" ? samples[num] : `[Sample ${num}]`;
   });
+}
+
+function isHttpUrl(value) {
+  try {
+    const u = new URL(String(value || "").trim());
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function looksLikeMetaMediaId(value) {
+  const v = String(value || "").trim();
+  return /^\d{8,}$/.test(v);
+}
+
+function validateHeaderMediaValue(headerType, value) {
+  if (!["IMAGE", "VIDEO", "DOCUMENT"].includes(headerType)) return "";
+  const v = String(value || "").trim();
+  if (!v) return `Meta validation: ${headerType} header requires media URL or Meta media ID.`;
+  if (v.startsWith("blob:")) return "Meta validation: local blob URL is not valid. Upload file to Meta or provide public URL.";
+
+  if (looksLikeMetaMediaId(v)) return "";
+  if (!isHttpUrl(v)) return "Meta validation: media must be a public URL or a numeric Meta media ID.";
+
+  if (headerType === "DOCUMENT" && !/\.pdf($|\?)/i.test(v)) {
+    return "Meta validation: document header URL should point to a PDF file.";
+  }
+  return "";
 }

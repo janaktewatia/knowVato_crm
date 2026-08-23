@@ -10,6 +10,8 @@ import * as trackC from "../controllers/serviceTrackController";
 import * as fuC from "../controllers/followUpController";
 import * as msgC from "../controllers/messagingController";
 import * as fbC from "../controllers/facebookController";
+import * as flowStudioC from "../controllers/flowStudioController";
+import * as flowMediaC from "../controllers/flowMediaController";
 import multer from "multer";
 import path from "path";
 import os from "os";
@@ -310,6 +312,12 @@ r.get(
 r.use(authenticate);
 r.get("/auth/me", authC.me);
 r.get("/system/status", msgC.status);
+r.get("/flowchat/state", require_("workflows", "view"), flowStudioC.getFlowStudioState);
+r.put("/flowchat/state", require_("workflows", "edit"), flowStudioC.saveFlowStudioState);
+r.get("/flowchat/media", require_("workflows", "view"), flowMediaC.listFlowMedia);
+r.post("/flowchat/media", require_("workflows", "create"), upload.single("file"), flowMediaC.createFlowMedia);
+r.patch("/flowchat/media/:id", require_("workflows", "edit"), flowMediaC.updateFlowMedia);
+r.delete("/flowchat/media/:id", require_("workflows", "del"), flowMediaC.deleteFlowMedia);
 
 /* ---- Leads ---- */
 const leadCrud = crud(Lead, { module: "leads", searchFields: ["name", "phone", "course"], populate: "status source subStatus" });
@@ -489,6 +497,9 @@ const tplCrud = crud(Template, { module: "blast", searchFields: ["name"] });
 r.get("/templates", require_("blast", "view"), tplCrud.list);
 r.post("/templates", require_("blast", "create"), tplCrud.create);
 r.post("/templates/create-meta", require_("blast", "create"), msgC.createMetaTemplate);
+r.post("/templates/test-media/upload", require_("blast", "edit"), upload.single("file"), msgC.uploadMetaTestMedia);
+r.patch("/templates/:id/meta", require_("blast", "edit"), msgC.editMetaTemplate);
+r.get("/templates/meta-sync-candidates", require_("blast", "view"), msgC.listMetaSyncCandidates);
 r.post("/templates/sync-meta", require_("blast", "edit"), msgC.syncMetaTemplates);
 r.delete("/templates/:name/meta", require_("blast", "del"), msgC.deleteMetaTemplate);
 r.patch("/templates/:id", require_("blast", "edit"), tplCrud.update);

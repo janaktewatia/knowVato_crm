@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useBots } from '../context/BotContext.jsx';
 import { NODE_TYPES } from '../data/nodeTypes';
 import { uid } from '../utils/id';
+import { flowMediaApi, templatesApi } from '../../api';
+import { useApi } from '../../hooks/useApi';
+import { useToast } from '../../context/ToastContext';
 
 export default function NodeConfigPanel({
   bot,
@@ -12,7 +15,20 @@ export default function NodeConfigPanel({
   readOnly = false,
 }) {
   const { bots = [], forms = [], updateNodeData, deleteNode, setConnection } = useBots() || {};
+  const toast = useToast();
   const node = selectedNodeId && bot?.nodes ? bot.nodes[selectedNodeId] : null;
+  const [keywordsInput, setKeywordsInput] = useState('');
+  const [uploadingNodeMedia, setUploadingNodeMedia] = useState(false);
+  const waTemplates = useApi(() => templatesApi.list({ perPage: 300, channel: 'whatsapp' }), []);
+  const flowMedia = useApi(() => flowMediaApi.list(), []);
+
+  useEffect(() => {
+    if (!node || node.type !== 'start') {
+      setKeywordsInput('');
+      return;
+    }
+    setKeywordsInput((node.data?.keywords || []).join(', '));
+  }, [node?.id, node?.type]);
 
   if (!node) {
     return (
@@ -29,7 +45,55 @@ export default function NodeConfigPanel({
 
   const def = NODE_TYPES[node.type] || { label: 'Node', color: '#64748b', icon: 'bi-box', description: '' };
   const patch = (data) => !readOnly && updateNodeData(bot.id, node.id, data);
+  const commitKeywords = () => {
+    const parsed = String(keywordsInput || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    patch({ keywords: parsed });
+  };
   const otherNodes = Object.values(bot?.nodes || {}).filter((n) => n && n.id !== node.id);
+  const templateOptions = (waTemplates.data || [])
+    .filter((t) => (t.channel || 'whatsapp') === 'whatsapp')
+    .map((t) => ({
+      id: t._id,
+      name: t.name,
+      language: t.language || 'en',
+      status: t.status || 'Draft',
+      body: t.body || t.components?.find?.((c) => c?.type === 'BODY')?.text || '',
+    }))
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+
+  const mediaOptions = (Array.isArray(flowMedia.data) ? flowMedia.data : [])
+    .filter((m) => (node?.data?.mediaType ? m.type === node.data.mediaType : true))
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+
+  const handleMediaUpload = async (file) => {
+    if (!file || !node || node.type !== 'mediaMessage') return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast('Media file must be 5 MB or smaller', 'error');
+      return;
+    }
+
+    setUploadingNodeMedia(true);
+    try {
+      const guessedName = String(file.name || 'media').replace(/\.[^.]+$/, '');
+      const res = await flowMediaApi.create({
+        name: guessedName,
+        type: node.data?.mediaType || 'image',
+        file,
+      });
+      const asset = res?.data?.asset || res?.asset;
+      if (!asset?.url) throw new Error('Media URL not returned');
+      patch({ mediaUrl: asset.url, filename: node.data?.filename || asset.fileName || '' });
+      flowMedia.reload();
+      toast('Media uploaded and linked to this node');
+    } catch (err) {
+      toast(err.message || 'Failed to upload media', 'error');
+    } finally {
+      setUploadingNodeMedia(false);
+    }
+  };
 
   // Compute outputs dynamically
   let outputs = [];
@@ -89,8 +153,15 @@ export default function NodeConfigPanel({
             <input
               className="form-control mb-1"
               placeholder="hi, hello, start, enquiry"
-              value={(node.data?.keywords || []).join(', ')}
-              onChange={(e) => patch({ keywords: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+              value={keywordsInput}
+              onChange={(e) => setKeywordsInput(e.target.value)}
+              onBlur={commitKeywords}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  commitKeywords();
+                }
+              }}
             />
             <HelpText>Type comma-separated keywords. Leave empty to trigger on ANY message.</HelpText>
           </>
@@ -109,6 +180,238 @@ export default function NodeConfigPanel({
             <HelpText>
               Insert saved variables using <code className="inline-var">{'{{variable_name}}'}</code> or <code className="inline-var">{'{{api_response.title}}'}</code>.
             </HelpText>
+          </>
+        )}
+
+        {/* TEMPLATE MESSAGE BLOCK */}
+        {node.type === 'templateMessage' && (
+          <>
+            <Label>Template Name</Label>
+            <select
+              className="form-select mb-2"
+              value={node.data?.templateName || ''}
+              onChange={(e) => {
+                const selectedName = e.target.value;
+                const tpl = templateOptions.find((t) => t.name === selectedName);
+                patch({
+                  templateName: selectedName,
+                  languageCode: tpl?.language || node.data?.languageCode || 'en',
+                  previewText: tpl?.body || node.data?.previewText || '',
+                });
+              }}
+            >
+              <option value="">— Select WhatsApp Manager Template —</option>
+              {templateOptions.map((tpl) => (
+                <option key={`${tpl.name}:${tpl.language}:${tpl.id}`} value={tpl.name}>
+                  {tpl.name} ({tpl.language}) • {tpl.status}
+                </option>
+              ))}
+            </select>
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <HelpText>
+                Dropdown shows templates available in WhatsApp manager/CRM sync.
+              </HelpText>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary rounded-pill"
+                onClick={() => waTemplates.reload()}
+              >
+                <i className={`bi ${waTemplates.loading ? 'bi-arrow-repeat spin' : 'bi-arrow-repeat'} me-1`}></i>
+                Refresh
+              </button>
+            </div>
+            {waTemplates.error && (
+              <div className="alert alert-warning py-2 px-3 small mb-3">
+                Could not load templates. Please check integration and try refresh.
+              </div>
+            )}
+
+            <Label>Language Code</Label>
+            <input
+              className="form-control mb-3"
+              value={node.data?.languageCode || 'en'}
+              onChange={(e) => patch({ languageCode: e.target.value })}
+              placeholder="en"
+            />
+
+            <Label>Template Params (comma-separated)</Label>
+            <input
+              className="form-control mb-1"
+              value={node.data?.paramsCsv || ''}
+              onChange={(e) => patch({ paramsCsv: e.target.value })}
+              placeholder="{{name}}, {{order_id}}"
+            />
+            <HelpText>Use plain values or variables. They will be sent in order as template body params.</HelpText>
+
+            <Label>Preview Text (optional)</Label>
+            <textarea
+              className="form-control"
+              rows={3}
+              value={node.data?.previewText || ''}
+              onChange={(e) => patch({ previewText: e.target.value })}
+            />
+          </>
+        )}
+
+        {/* MEDIA MESSAGE BLOCK */}
+        {node.type === 'mediaMessage' && (
+          <>
+            <Label>Media Type</Label>
+            <select
+              className="form-select mb-3"
+              value={node.data?.mediaType || 'image'}
+              onChange={(e) => patch({ mediaType: e.target.value, mediaUrl: '' })}
+            >
+              <option value="image">Image</option>
+              <option value="video">Video</option>
+              <option value="document">Document</option>
+              <option value="audio">Audio</option>
+            </select>
+
+            <Label>Select from Manage Media</Label>
+            <select
+              className="form-select mb-2"
+              value={node.data?.mediaUrl || ''}
+              onChange={(e) => patch({ mediaUrl: e.target.value })}
+            >
+              <option value="">— Select uploaded media URL —</option>
+              {mediaOptions.map((m) => (
+                <option key={m._id} value={m.url}>{m.name} ({m.type})</option>
+              ))}
+            </select>
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <HelpText>Use reusable URLs from Manage Media to avoid re-upload.</HelpText>
+              <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => flowMedia.reload()}>
+                <i className={`bi ${flowMedia.loading ? 'bi-arrow-repeat spin' : 'bi-arrow-repeat'} me-1`}></i>
+                Refresh
+              </button>
+            </div>
+
+            <Label>Upload New Media</Label>
+            <input
+              type="file"
+              className="form-control mb-2"
+              accept={
+                (node.data?.mediaType || 'image') === 'image'
+                  ? 'image/*'
+                  : (node.data?.mediaType || 'image') === 'video'
+                    ? 'video/*'
+                    : (node.data?.mediaType || 'image') === 'document'
+                      ? 'application/pdf'
+                      : 'audio/*'
+              }
+              onChange={(e) => handleMediaUpload(e.target.files?.[0])}
+              disabled={uploadingNodeMedia}
+            />
+            {uploadingNodeMedia && (
+              <div className="small text-muted mb-3">
+                <span className="spinner-border spinner-border-sm me-1" />Uploading...
+              </div>
+            )}
+
+            <Label>Media URL</Label>
+            <input
+              className="form-control mb-3"
+              value={node.data?.mediaUrl || ''}
+              onChange={(e) => patch({ mediaUrl: e.target.value })}
+            />
+
+            <Label>Caption</Label>
+            <textarea
+              className="form-control mb-3"
+              rows={2}
+              value={node.data?.caption || ''}
+              onChange={(e) => patch({ caption: e.target.value })}
+            />
+
+            <Label>Filename (documents only)</Label>
+            <input
+              className="form-control"
+              value={node.data?.filename || ''}
+              onChange={(e) => patch({ filename: e.target.value })}
+              placeholder="brochure.pdf"
+            />
+          </>
+        )}
+
+        {/* LIST MESSAGE BLOCK */}
+        {node.type === 'listMessage' && (
+          <>
+            <Label>Message Text</Label>
+            <textarea
+              className="form-control mb-3"
+              rows={3}
+              value={node.data?.text || ''}
+              onChange={(e) => patch({ text: e.target.value })}
+            />
+
+            <Label>Button Title</Label>
+            <input
+              className="form-control mb-3"
+              value={node.data?.buttonTitle || 'View options'}
+              onChange={(e) => patch({ buttonTitle: e.target.value })}
+            />
+
+            <Label>List Options</Label>
+            {(node.data?.buttons || []).map((btn, i) => (
+              <div className="input-group mb-2" key={btn.id || i}>
+                <input
+                  className="form-control"
+                  value={btn.label || ''}
+                  onChange={(e) => {
+                    const buttons = [...(node.data.buttons || [])];
+                    buttons[i] = { ...btn, label: e.target.value };
+                    patch({ buttons });
+                  }}
+                />
+                <button
+                  className="btn btn-outline-danger"
+                  disabled={(node.data.buttons || []).length <= 1}
+                  onClick={() => patch({ buttons: (node.data.buttons || []).filter((b) => b.id !== btn.id) })}
+                >
+                  <i className="bi bi-x"></i>
+                </button>
+              </div>
+            ))}
+            <button
+              className="btn btn-sm btn-outline-primary rounded-pill mt-1 mb-2"
+              onClick={() => patch({ buttons: [...(node.data?.buttons || []), { id: uid('opt'), label: 'New Option' }] })}
+            >
+              <i className="bi bi-plus-lg me-1"></i> Add Option
+            </button>
+          </>
+        )}
+
+        {/* LOCATION MESSAGE BLOCK */}
+        {node.type === 'locationMessage' && (
+          <>
+            <Label>Latitude</Label>
+            <input
+              className="form-control mb-3"
+              value={node.data?.latitude || ''}
+              onChange={(e) => patch({ latitude: e.target.value })}
+              placeholder="28.6139"
+            />
+            <Label>Longitude</Label>
+            <input
+              className="form-control mb-3"
+              value={node.data?.longitude || ''}
+              onChange={(e) => patch({ longitude: e.target.value })}
+              placeholder="77.2090"
+            />
+            <Label>Place Name (optional)</Label>
+            <input
+              className="form-control mb-3"
+              value={node.data?.name || ''}
+              onChange={(e) => patch({ name: e.target.value })}
+            />
+            <Label>Address (optional)</Label>
+            <textarea
+              className="form-control"
+              rows={2}
+              value={node.data?.address || ''}
+              onChange={(e) => patch({ address: e.target.value })}
+            />
           </>
         )}
 

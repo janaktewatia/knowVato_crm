@@ -249,7 +249,7 @@ export default function BreadcrumbNav() {
         return (
           <div key={idx} className="d-inline-flex align-items-center gap-1.5 min-w-0 text-truncate">
             {idx > 0 && (
-              <i className="bi bi-chevron-right text-muted opacity-50" style={{ fontSize: "10px" }} />
+              <i className="bi bi-chevron-double-right text-muted opacity-50" style={{ fontSize: "10px" }} />
             )}
             {crumb.to && !isLast ? (
               <Link

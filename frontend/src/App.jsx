@@ -13,6 +13,7 @@ import Conversations from "./pages/Conversations";
 import Campaigns from "./pages/Campaigns";
 import Templates from "./pages/Templates";
 import ChatbotRules from "./pages/ChatbotRules";
+import MediaManager from "./flowchat/pages/MediaManager";
 import Setup from "./pages/Setup";
 import PublicEnquiryForm from "./pages/PublicEnquiryForm";
 import PublicLandingPage from "./pages/PublicLandingPage";
@@ -130,6 +131,7 @@ export default function App() {
         <Route path="campaigns" element={<Campaigns />} />
         <Route path="history" element={<MessageHistory />} />
         <Route path="templates" element={<Templates />} />
+        <Route path="media" element={<MediaManager />} />
         <Route path="chatbot" element={<ChatbotRules />} />
         <Route path="setup" element={<Setup />} />
         <Route path="setup/enquiry-forms" element={<EnquiryForms />} />

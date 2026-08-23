@@ -47,9 +47,42 @@ async function request(method, path, body) {
   return json;
 }
 
+async function requestForm(method, path, formData) {
+  const activeToken = getToken();
+  const headers = {};
+  if (activeToken) headers.Authorization = `Bearer ${activeToken}`;
+
+  const res = await fetch(`${BASE}/api${path}`, {
+    method,
+    headers,
+    body: formData,
+  });
+
+  let json = null;
+  try {
+    json = await res.json();
+  } catch {
+    /* non-JSON response */
+  }
+
+  if (!res.ok) {
+    if (res.status === 401) setToken(null);
+    const message = json?.error || `${res.status} ${res.statusText}`;
+    const err = new Error(message);
+    err.status = res.status;
+    err.details = json?.details;
+    throw err;
+  }
+
+  if (json && Object.prototype.hasOwnProperty.call(json, "data")) return json;
+  return json;
+}
+
 export const http = {
   get: (p) => request("GET", p),
   post: (p, b) => request("POST", p, b),
+  postForm: (p, fd) => requestForm("POST", p, fd),
+  put: (p, b) => request("PUT", p, b),
   patch: (p, b) => request("PATCH", p, b),
   del: (p) => request("DELETE", p),
 };

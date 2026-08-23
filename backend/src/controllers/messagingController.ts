@@ -13,7 +13,10 @@ import {
   sendInteractiveButtons,
   sendInteractiveList,
   createMetaTemplate as createMetaTemplateService,
+  editMetaTemplateById as editMetaTemplateByIdService,
   fetchMetaTemplates as fetchMetaTemplatesService,
+  getMetaTemplateById as getMetaTemplateByIdService,
+  uploadMetaMedia as uploadMetaMediaService,
   deleteMetaTemplate as deleteMetaTemplateService,
   getPhoneProfile as getPhoneProfileService,
   updateBusinessProfile as updateBusinessProfileService,
@@ -27,6 +30,29 @@ import { config } from "../config";
 import { WhatsAppAccount } from "../models/WhatsAppAccount";
 import { sendEmail, renderTemplate } from "../services/email";
 import { convertToLead } from "../services/leadService";
+import fs from "fs/promises";
+function toLocalTemplateStatus(metaStatus: any): "Approved" | "Pending" | "Rejected" {
+  const normalized = String(metaStatus || "").trim().toUpperCase();
+  if (normalized === "APPROVED" || normalized === "ACTIVE") return "Approved";
+  if (normalized === "REJECTED" || normalized.includes("REJECT")) return "Rejected";
+  return "Pending";
+}
+
+function extractMetaRejectionReason(metaObj: any): string | undefined {
+  const candidates = [
+    metaObj?.rejected_reason,
+    metaObj?.rejection_reason,
+    metaObj?.rejectionReason,
+    metaObj?.reason,
+    metaObj?.status_reason,
+    metaObj?.rejection_details?.reason,
+    metaObj?.rejection_details?.description,
+  ];
+  for (const c of candidates) {
+    if (typeof c === "string" && c.trim()) return c.trim();
+  }
+  return undefined;
+}
 
 /* ───────── Shared send (called by OTHER modules via the platform SDK) ───────── */
 export const sharedSend = asyncHandler(async (req: Request, res: Response) => {
@@ -35,6 +61,8 @@ export const sharedSend = asyncHandler(async (req: Request, res: Response) => {
     to,
     template,
     params = [],
+    templateComponents,
+    languageCode,
     text,
     subject,
     type,
@@ -105,7 +133,8 @@ export const sharedSend = asyncHandler(async (req: Request, res: Response) => {
     result = await sendInteractiveList(req.tenantId!, to, text || "Select from menu:", buttonTitle || "Options", sections, header, footer);
   } else if (template) {
     msgType = "template";
-    result = await sendTemplate(req.tenantId!, to, template, "en", params);
+    const preparedComponents = Array.isArray(templateComponents) && templateComponents.length ? templateComponents : params;
+    result = await sendTemplate(req.tenantId!, to, template, languageCode || "en", preparedComponents);
   } else if (text) {
     msgType = "text";
     result = await sendText(req.tenantId!, to, text);
@@ -180,6 +209,8 @@ export const createMetaTemplate = asyncHandler(async (req: Request, res: Respons
   };
 
   const metaRes = await createMetaTemplateService(req.tenantId!, metaPayload);
+  const localStatus = toLocalTemplateStatus(metaRes.status);
+  const rejectionReason = localStatus === "Rejected" ? extractMetaRejectionReason(metaRes) : undefined;
 
   // Save/update locally
   const tpl = await Template.findOneAndUpdate(
@@ -191,9 +222,10 @@ export const createMetaTemplate = asyncHandler(async (req: Request, res: Respons
         channel: "whatsapp",
         category: category as any,
         language,
-        status: metaRes.status === "APPROVED" ? "Approved" : "Pending",
+        status: localStatus,
         body,
         metaId: metaRes.id,
+        rejectionReason,
         components,
       },
     },
@@ -204,12 +236,110 @@ export const createMetaTemplate = asyncHandler(async (req: Request, res: Respons
   ok(res, { template: tpl, metaResponse: metaRes }, 201);
 });
 
+export const uploadMetaTestMedia = asyncHandler(async (req: any, res: Response) => {
+  if (!req.file) throw new ApiError(400, "Media file is required");
+  const filePath = req.file.path;
+  const mimeType = req.file.mimetype || "application/octet-stream";
+  const originalName = req.file.originalname || "upload";
+
+  try {
+    const metaRes = await uploadMetaMediaService(req.tenantId!, filePath, mimeType, originalName);
+    if (!metaRes?.id) {
+      throw new ApiError(500, "Meta did not return media id");
+    }
+    ok(res, { id: metaRes.id, mimeType, fileName: originalName });
+  } finally {
+    try {
+      await fs.unlink(filePath);
+    } catch {
+      // ignore cleanup errors
+    }
+  }
+});
+
+export const editMetaTemplate = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { category, components, time_to_live_seconds } = req.body || {};
+
+  const tpl = await Template.findOne({ _id: id, tenant: req.tenantId, channel: "whatsapp" });
+  if (!tpl) throw new ApiError(404, "Template not found");
+  if (!tpl.metaId) throw new ApiError(400, "Meta template ID not found for this template");
+
+  const metaTemplate = await getMetaTemplateByIdService(req.tenantId!, String(tpl.metaId));
+  const metaStatus = String(metaTemplate?.status || "").trim().toUpperCase();
+  const editableStatuses = new Set(["APPROVED", "REJECTED", "PAUSED"]);
+
+  if (!editableStatuses.has(metaStatus)) {
+    throw new ApiError(400, `Template with status '${metaTemplate?.status || "UNKNOWN"}' cannot be edited on Meta`);
+  }
+
+  const payload: any = {};
+  const incomingCategory = category ? String(category).toUpperCase() : undefined;
+
+  if (incomingCategory && incomingCategory !== String(metaTemplate?.category || "").toUpperCase()) {
+    if (metaStatus === "APPROVED") {
+      throw new ApiError(400, "Meta does not allow category changes for approved templates");
+    }
+    payload.category = incomingCategory;
+  }
+
+  if (Array.isArray(components)) {
+    if (!components.length) throw new ApiError(400, "Components cannot be empty");
+    payload.components = components;
+  }
+
+  if (typeof time_to_live_seconds === "number" && Number.isFinite(time_to_live_seconds) && time_to_live_seconds > 0) {
+    payload.time_to_live_seconds = time_to_live_seconds;
+  }
+
+  if (!Object.keys(payload).length) {
+    throw new ApiError(400, "Nothing to update. Send category, components, or time_to_live_seconds");
+  }
+
+  const metaRes = await editMetaTemplateByIdService(req.tenantId!, String(tpl.metaId), payload);
+
+  const bodyComp = Array.isArray(payload.components)
+    ? payload.components.find((c: any) => c.type === "BODY")
+    : tpl.components?.find?.((c: any) => c.type === "BODY");
+
+  if (payload.category === "MARKETING") tpl.category = "Marketing" as any;
+  if (payload.category === "AUTHENTICATION") tpl.category = "Authentication" as any;
+  if (payload.category === "UTILITY") tpl.category = "Utility" as any;
+  if (Array.isArray(payload.components)) {
+    tpl.components = payload.components;
+  }
+  if (bodyComp?.text) {
+    tpl.body = bodyComp.text;
+  }
+
+  // Any non-media structural edit is re-reviewed by Meta.
+  tpl.status = "Pending";
+  tpl.rejectionReason = undefined;
+  await tpl.save();
+
+  await audit({ tenant: req.tenantId, user: req.auth?.name, action: "UPDATE", module: "Templates", entity: `Meta Template: ${tpl.name}` });
+  ok(res, { template: tpl, metaResponse: metaRes, editableStatus: metaTemplate?.status });
+});
+
 export const syncMetaTemplates = asyncHandler(async (req: Request, res: Response) => {
+  const requestedNames = Array.isArray(req.body?.names)
+    ? req.body.names.map((name: any) => String(name).trim()).filter(Boolean)
+    : [];
   const metaTemplates = await fetchMetaTemplatesService(req.tenantId!);
+  const localMetaNames = new Set(
+    (await Template.find({ tenant: req.tenantId, channel: "whatsapp", metaId: { $exists: true, $ne: null } }).distinct("name"))
+      .map((name) => String(name))
+  );
+  const approvedMetaTemplates = metaTemplates.filter((mt) => toLocalTemplateStatus(mt.status) === "Approved");
+  const selectedMetaTemplates = requestedNames.length
+    ? approvedMetaTemplates.filter((mt) => requestedNames.includes(mt.name))
+    : approvedMetaTemplates.filter((mt) => !localMetaNames.has(mt.name));
   const synced: any[] = [];
 
-  for (const mt of metaTemplates) {
+  for (const mt of selectedMetaTemplates) {
     const bodyComp = mt.components?.find((c: any) => c.type === "BODY");
+    const localStatus = toLocalTemplateStatus(mt.status);
+    const rejectionReason = localStatus === "Rejected" ? extractMetaRejectionReason(mt) : undefined;
     const tpl = await Template.findOneAndUpdate(
       { tenant: req.tenantId, name: mt.name },
       {
@@ -219,9 +349,10 @@ export const syncMetaTemplates = asyncHandler(async (req: Request, res: Response
           channel: "whatsapp",
           category: mt.category === "MARKETING" ? "Marketing" : "Utility",
           language: mt.language || "en",
-          status: mt.status === "APPROVED" ? "Approved" : mt.status === "REJECTED" ? "Rejected" : "Pending",
+          status: localStatus,
           body: bodyComp?.text || "",
           metaId: mt.id,
+          rejectionReason,
           components: mt.components,
         },
       },
@@ -231,6 +362,28 @@ export const syncMetaTemplates = asyncHandler(async (req: Request, res: Response
   }
 
   ok(res, { count: synced.length, templates: synced });
+});
+
+export const listMetaSyncCandidates = asyncHandler(async (req: Request, res: Response) => {
+  const metaTemplates = await fetchMetaTemplatesService(req.tenantId!);
+  const localMetaNames = new Set(
+    (await Template.find({ tenant: req.tenantId, channel: "whatsapp", metaId: { $exists: true, $ne: null } }).distinct("name"))
+      .map((name) => String(name))
+  );
+
+  const candidates = metaTemplates
+    .filter((mt) => toLocalTemplateStatus(mt.status) === "Approved")
+    .filter((mt) => !localMetaNames.has(mt.name))
+    .map((mt) => ({
+      name: mt.name,
+      category: mt.category,
+      language: mt.language || "en",
+      status: mt.status,
+      components: mt.components,
+      body: mt.components?.find((c: any) => c.type === "BODY")?.text || "",
+    }));
+
+  ok(res, { count: candidates.length, templates: candidates });
 });
 
 export const deleteMetaTemplate = asyncHandler(async (req: Request, res: Response) => {
@@ -461,7 +614,7 @@ export const webhookReceive = asyncHandler(async (req: Request, res: Response) =
       } else if (ev.kind === "template_status_update" && ev.templateName) {
         await Template.updateOne(
           { tenant: tenantId, name: ev.templateName },
-          { $set: { status: ev.templateStatus === "APPROVED" ? "Approved" : ev.templateStatus === "REJECTED" ? "Rejected" : "Pending" } }
+          { $set: { status: toLocalTemplateStatus(ev.templateStatus) } }
         );
       } else if (ev.kind === "message" && ev.from) {
         const now = ev.timestamp || new Date();
@@ -522,6 +675,32 @@ export const status = asyncHandler(async (req: Request, res: Response) => {
   ok(res, { activeVendor: await activeVendor(req.tenantId!) });
 });
 
+const sanitizeSecrets = (input: Record<string, any>) => {
+  const patch = { ...input };
+  const secretKeys = ["apiKey", "accessToken", "appSecret"];
+  for (const key of secretKeys) {
+    if (!(key in patch)) continue;
+    const raw = patch[key];
+    if (raw == null) {
+      delete patch[key];
+      continue;
+    }
+    if (typeof raw !== "string") continue;
+    const trimmed = raw.trim();
+    const isMasked =
+      !trimmed ||
+      trimmed.includes("•") ||
+      /^\*{4,}/.test(trimmed) ||
+      trimmed.toLowerCase().includes("unchanged");
+    if (isMasked) {
+      delete patch[key];
+    } else {
+      patch[key] = trimmed;
+    }
+  }
+  return patch;
+};
+
 /* ───────── WhatsApp account management ───────── */
 export const listAccounts = asyncHandler(async (req: Request, res: Response) => {
   const accounts = await WhatsAppAccount.find({ tenant: req.tenantId }).sort({ createdAt: 1 });
@@ -529,20 +708,25 @@ export const listAccounts = asyncHandler(async (req: Request, res: Response) => 
 });
 
 export const createAccount = asyncHandler(async (req: Request, res: Response) => {
-  const body = req.body || {};
+  const body = sanitizeSecrets(req.body || {});
   const isFirst = (await WhatsAppAccount.countDocuments({ tenant: req.tenantId })) === 0;
+  const shouldBeActive = isFirst || Boolean(body.active);
+  if (shouldBeActive) {
+    await WhatsAppAccount.updateMany({ tenant: req.tenantId }, { $set: { active: false } });
+  }
   const acc = await WhatsAppAccount.create({
     ...body,
     tenant: req.tenantId,
-    active: isFirst,
+    active: shouldBeActive,
   });
-  if (isFirst) invalidateProvider(String(req.tenantId));
+  if (shouldBeActive) invalidateProvider(String(req.tenantId));
   await audit({ tenant: req.tenantId, user: req.auth?.name, action: "CREATE", module: "Setup", entity: `WhatsApp account: ${acc.label} (${acc.vendor})` });
   ok(res, acc, 201);
 });
 
 export const updateAccount = asyncHandler(async (req: Request, res: Response) => {
-  const { active, tenant, ...patch } = req.body || {};
+  const { active, tenant, ...rawPatch } = req.body || {};
+  const patch = sanitizeSecrets(rawPatch);
   const acc = await WhatsAppAccount.findOneAndUpdate(
     { _id: req.params.id, tenant: req.tenantId },
     { $set: patch },

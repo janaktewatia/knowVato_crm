@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useRef, useState, useCallback } from 'react';
 import { useBots } from '../context/BotContext.jsx';
 import NodeCard, { getOutputs } from './NodeCard.jsx';
+import { NODE_TYPES, PALETTE_ORDER } from '../data/nodeTypes.js';
 
 function areLinesEqual(a, b) {
   if (!a || !b || a.length !== b.length) return false;
@@ -33,6 +34,8 @@ export default function FlowCanvas({
   const inPortRefs = useRef({});
   const [lines, setLines] = useState([]);
   const [zoom, setZoom] = useState(1);
+  const [dragWire, setDragWire] = useState(null); // { nodeId, outputKey, mouseX, mouseY }
+  const [contextMenu, setContextMenu] = useState(null); // { left, top, canvasX, canvasY }
   const dragState = useRef(null); // { nodeId, offsetX, offsetY }
 
   const nodes = Object.values(bot?.nodes || {});
@@ -143,6 +146,7 @@ export default function FlowCanvas({
   const onPortClick = (nodeId, outputKey) => {
     if (readOnly) return;
     setConnectingFrom({ nodeId, outputKey });
+    setDragWire(null);
   };
 
   const onBodyClickWhileConnecting = (targetNodeId) => {
@@ -150,6 +154,39 @@ export default function FlowCanvas({
     if (targetNodeId === connectingFrom.nodeId) return;
     setConnection(bot.id, connectingFrom.nodeId, connectingFrom.outputKey, targetNodeId);
     setConnectingFrom(null);
+    setDragWire(null);
+  };
+
+  const onOutPortMouseDown = (e, nodeId, outputKey) => {
+    if (readOnly) return;
+    setConnectingFrom({ nodeId, outputKey });
+    setDragWire({ nodeId, outputKey, mouseX: e.clientX, mouseY: e.clientY });
+
+    const move = (evt) => {
+      setDragWire((prev) => (prev ? { ...prev, mouseX: evt.clientX, mouseY: evt.clientY } : prev));
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      setDragWire(null);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  const onInPortMouseUp = (targetNodeId) => {
+    if (readOnly || !connectingFrom || !bot) return;
+    if (targetNodeId === connectingFrom.nodeId) return;
+    setConnection(bot.id, connectingFrom.nodeId, connectingFrom.outputKey, targetNodeId);
+    setConnectingFrom(null);
+    setDragWire(null);
+  };
+
+  const addNodeAt = (type, x, y) => {
+    if (readOnly || !bot) return;
+    const id = addNode(bot.id, type, { x, y });
+    setSelectedNodeId(id);
+    requestAnimationFrame(recomputeLines);
   };
 
   // ---- Drop new node from palette exactly at cursor drop location ----
@@ -167,9 +204,7 @@ export default function FlowCanvas({
     const rect = innerRef.current.getBoundingClientRect();
     const x = Math.max(20, Math.round((e.clientX - rect.left) / zoom - 130));
     const y = Math.max(20, Math.round((e.clientY - rect.top) / zoom - 22));
-    const id = addNode(bot.id, type, { x, y });
-    setSelectedNodeId(id);
-    requestAnimationFrame(recomputeLines);
+    addNodeAt(type, x, y);
   };
 
   const zoomIn = () => setZoom((z) => Math.min(1.8, Number((z + 0.1).toFixed(1))));
@@ -183,9 +218,24 @@ export default function FlowCanvas({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onWheel={handleWheel}
+      onContextMenu={(e) => {
+        if (readOnly || !innerRef.current) return;
+        e.preventDefault();
+        const wrapRect = wrapRef.current?.getBoundingClientRect();
+        const innerRect = innerRef.current.getBoundingClientRect();
+        const canvasX = Math.max(20, Math.round((e.clientX - innerRect.left) / zoom - 130));
+        const canvasY = Math.max(20, Math.round((e.clientY - innerRect.top) / zoom - 22));
+        setContextMenu({
+          left: Math.max(10, Math.round((e.clientX - (wrapRect?.left || 0)) - 10)),
+          top: Math.max(10, Math.round((e.clientY - (wrapRect?.top || 0)) - 10)),
+          canvasX,
+          canvasY,
+        });
+      }}
       onClick={() => {
         setSelectedNodeId(null);
         setConnectingFrom(null);
+        setContextMenu(null);
       }}
     >
       {connectingFrom && !readOnly && (
@@ -240,6 +290,27 @@ export default function FlowCanvas({
               </g>
             );
           })}
+          {dragWire && (() => {
+            const baseRect = innerRef.current?.getBoundingClientRect();
+            const fromEl = portRefs.current[`${dragWire.nodeId}:${dragWire.outputKey}`];
+            if (!baseRect || !fromEl) return null;
+            const fromRect = fromEl.getBoundingClientRect();
+            const x1 = (fromRect.left + fromRect.width / 2 - baseRect.left) / zoom;
+            const y1 = (fromRect.top + fromRect.height / 2 - baseRect.top) / zoom;
+            const x2 = (dragWire.mouseX - baseRect.left) / zoom;
+            const y2 = (dragWire.mouseY - baseRect.top) / zoom;
+            const dx = Math.max(50, Math.abs(x2 - x1) * 0.5);
+            const path = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+            return (
+              <path
+                d={path}
+                stroke="#f59e0b"
+                strokeWidth="2.5"
+                fill="none"
+                strokeDasharray="5 4"
+              />
+            );
+          })()}
         </svg>
 
         {nodes.map((node) => (
@@ -254,6 +325,8 @@ export default function FlowCanvas({
             onSelect={setSelectedNodeId}
             onMouseDownHeader={onMouseDownHeader}
             onPortClick={onPortClick}
+            onOutPortMouseDown={onOutPortMouseDown}
+            onInPortMouseUp={onInPortMouseUp}
             onBodyClickWhileConnecting={onBodyClickWhileConnecting}
             registerRef={() => {}}
             registerPortRef={registerPortRef}
@@ -261,6 +334,33 @@ export default function FlowCanvas({
           />
         ))}
       </div>
+
+      {contextMenu && !readOnly && (
+        <div
+          className="canvas-context-menu"
+          style={{ left: contextMenu.left, top: contextMenu.top }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="canvas-context-title">Add Node</div>
+          {PALETTE_ORDER.filter((t) => t !== 'start').map((type) => {
+            const def = NODE_TYPES[type];
+            if (!def) return null;
+            return (
+              <button
+                key={type}
+                className="canvas-context-item"
+                onClick={() => {
+                  addNodeAt(type, contextMenu.canvasX, contextMenu.canvasY);
+                  setContextMenu(null);
+                }}
+              >
+                <i className={`bi ${def.icon}`}></i>
+                <span>{def.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -1478,6 +1478,7 @@ input[type="range"]::-moz-range-thumb {
   min-width: 0;
 }
 .app-breadcrumb .breadcrumb-item + .breadcrumb-item::before {
+  content: "\00BB";
   flex-shrink: 0;
   padding-right: 4px;
   padding-left: 4px;

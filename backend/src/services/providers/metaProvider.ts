@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import fs from "fs/promises";
 import {
   WhatsAppProvider,
   SendResult,
@@ -17,7 +18,7 @@ export class MetaProvider implements WhatsAppProvider {
   readonly vendor = "meta" as const;
   private apiVersion: string;
   private token: string;
-  private phoneNumberId: string;
+  private phoneNumberIdValue: string;
   private defaultWabaId: string;
   private appSecret: string;
   private verifyTokenValue: string;
@@ -25,32 +26,59 @@ export class MetaProvider implements WhatsAppProvider {
   constructor(creds: ProviderCredentials) {
     this.apiVersion = creds.extra?.apiVersion || "v21.0";
     this.token = creds.accessToken || "";
-    this.phoneNumberId = creds.phoneNumberId || "";
+    this.phoneNumberIdValue = creds.phoneNumberId || "";
     this.defaultWabaId = creds.wabaId || creds.extra?.wabaId || "";
     this.appSecret = creds.appSecret || "";
     this.verifyTokenValue = creds.verifyToken || "";
   }
 
   get isLive() {
-    return !!this.token && !!this.phoneNumberId;
+    return !!this.token && !!this.phoneNumberIdValue;
   }
 
   get verifyToken() {
     return this.verifyTokenValue;
   }
 
+  // Expose IDs for higher-level service validation/routing.
+  get wabaId() {
+    return this.defaultWabaId;
+  }
+
+  get phoneNumberId() {
+    return this.phoneNumberIdValue;
+  }
+
+  private assertTokenIsHeaderSafe() {
+    if (!this.token) {
+      throw new Error("Meta access token is missing for the active account");
+    }
+    if (this.token.includes("•") || /[^\x00-\xFF]/.test(this.token)) {
+      throw new Error("Saved Meta access token is masked/corrupted. Re-enter token in WhatsApp Integration and save again.");
+    }
+  }
+
   private async get(path: string): Promise<any> {
+    this.assertTokenIsHeaderSafe();
     const url = `https://graph.facebook.com/${this.apiVersion}/${path}`;
     const res = await fetch(url, {
       method: "GET",
       headers: { Authorization: `Bearer ${this.token}` },
     });
     const json: any = await res.json();
-    if (!res.ok) throw new Error(`Meta API ${res.status}: ${JSON.stringify(json?.error || json)}`);
+    if (!res.ok) {
+      const err = json?.error || json || {};
+      const msg = String(err?.message || "");
+      if (err?.code === 100 && msg.includes("message_templates")) {
+        throw new Error("Meta rejected template fetch: saved WABA ID is invalid for template APIs. Please use WhatsApp Account ID (not Phone Number ID).");
+      }
+      throw new Error(`Meta API ${res.status}: ${JSON.stringify(err)}`);
+    }
     return json;
   }
 
   private async post(path: string, body: any): Promise<any> {
+    this.assertTokenIsHeaderSafe();
     const url = `https://graph.facebook.com/${this.apiVersion}/${path}`;
     const res = await fetch(url, {
       method: "POST",
@@ -58,18 +86,33 @@ export class MetaProvider implements WhatsAppProvider {
       body: JSON.stringify(body),
     });
     const json: any = await res.json();
-    if (!res.ok) throw new Error(`Meta API ${res.status}: ${JSON.stringify(json?.error || json)}`);
+    if (!res.ok) {
+      const err = json?.error || json || {};
+      const msg = String(err?.message || "");
+      if (err?.code === 100 && msg.includes("message_templates")) {
+        throw new Error("Meta rejected template request: saved WABA ID is invalid for template APIs. Please use WhatsApp Account ID (not Phone Number ID).");
+      }
+      throw new Error(`Meta API ${res.status}: ${JSON.stringify(err)}`);
+    }
     return json;
   }
 
   private async del(path: string): Promise<any> {
+    this.assertTokenIsHeaderSafe();
     const url = `https://graph.facebook.com/${this.apiVersion}/${path}`;
     const res = await fetch(url, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${this.token}` },
     });
     const json: any = await res.json();
-    if (!res.ok) throw new Error(`Meta API ${res.status}: ${JSON.stringify(json?.error || json)}`);
+    if (!res.ok) {
+      const err = json?.error || json || {};
+      const msg = String(err?.message || "");
+      if (err?.code === 100 && msg.includes("message_templates")) {
+        throw new Error("Meta rejected template delete: saved WABA ID is invalid for template APIs. Please use WhatsApp Account ID (not Phone Number ID).");
+      }
+      throw new Error(`Meta API ${res.status}: ${JSON.stringify(err)}`);
+    }
     return json;
   }
 
@@ -89,7 +132,7 @@ export class MetaProvider implements WhatsAppProvider {
         ...(components && components.length > 0 ? { components } : {}),
       },
     };
-    const json = await this.post(`${this.phoneNumberId}/messages`, payload);
+    const json = await this.post(`${this.phoneNumberIdValue}/messages`, payload);
     return { waMessageId: json.messages?.[0]?.id, simulated: false, raw: json };
   }
 
@@ -101,7 +144,7 @@ export class MetaProvider implements WhatsAppProvider {
       type: "text",
       text: { preview_url: previewUrl, body: text },
     };
-    const json = await this.post(`${this.phoneNumberId}/messages`, payload);
+    const json = await this.post(`${this.phoneNumberIdValue}/messages`, payload);
     return { waMessageId: json.messages?.[0]?.id, simulated: false, raw: json };
   }
 
@@ -127,7 +170,7 @@ export class MetaProvider implements WhatsAppProvider {
       [mediaType]: mediaPayload,
     };
 
-    const json = await this.post(`${this.phoneNumberId}/messages`, payload);
+    const json = await this.post(`${this.phoneNumberIdValue}/messages`, payload);
     return { waMessageId: json.messages?.[0]?.id, simulated: false, raw: json };
   }
 
@@ -149,7 +192,7 @@ export class MetaProvider implements WhatsAppProvider {
         address: address || "",
       },
     };
-    const json = await this.post(`${this.phoneNumberId}/messages`, payload);
+    const json = await this.post(`${this.phoneNumberIdValue}/messages`, payload);
     return { waMessageId: json.messages?.[0]?.id, simulated: false, raw: json };
   }
 
@@ -189,7 +232,7 @@ export class MetaProvider implements WhatsAppProvider {
       interactive: interactiveObj,
     };
 
-    const json = await this.post(`${this.phoneNumberId}/messages`, payload);
+    const json = await this.post(`${this.phoneNumberIdValue}/messages`, payload);
     return { waMessageId: json.messages?.[0]?.id, simulated: false, raw: json };
   }
 
@@ -231,7 +274,7 @@ export class MetaProvider implements WhatsAppProvider {
       interactive: interactiveObj,
     };
 
-    const json = await this.post(`${this.phoneNumberId}/messages`, payload);
+    const json = await this.post(`${this.phoneNumberIdValue}/messages`, payload);
     return { waMessageId: json.messages?.[0]?.id, simulated: false, raw: json };
   }
 
@@ -250,6 +293,42 @@ export class MetaProvider implements WhatsAppProvider {
     return json.data || [];
   }
 
+  async getMetaTemplateById(templateId: string): Promise<any> {
+    if (!templateId) throw new Error("Template ID is required to fetch Meta template");
+    return this.get(`${templateId}?fields=id,name,status,category,language,components,rejection_reason,rejected_reason`);
+  }
+
+  async editMetaTemplateById(templateId: string, payload: any): Promise<any> {
+    if (!templateId) throw new Error("Template ID is required to edit Meta template");
+    return this.post(templateId, payload);
+  }
+
+  async uploadMetaMedia(filePath: string, mimeType?: string, fileName?: string): Promise<any> {
+    if (!this.phoneNumberIdValue) throw new Error("Phone Number ID is required to upload media");
+    this.assertTokenIsHeaderSafe();
+
+    const bytes = await fs.readFile(filePath);
+    const contentType = mimeType || "application/octet-stream";
+    const blob = new Blob([bytes], { type: contentType });
+    const form = new FormData();
+    form.append("messaging_product", "whatsapp");
+    form.append("type", contentType);
+    form.append("file", blob, fileName || "upload");
+
+    const url = `https://graph.facebook.com/${this.apiVersion}/${this.phoneNumberIdValue}/media`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.token}` },
+      body: form,
+    });
+    const json: any = await res.json();
+    if (!res.ok) {
+      const err = json?.error || json || {};
+      throw new Error(`Meta API ${res.status}: ${JSON.stringify(err)}`);
+    }
+    return json;
+  }
+
   async deleteMetaTemplate(wabaId: string, templateName: string): Promise<any> {
     const targetWabaId = wabaId || this.defaultWabaId;
     if (!targetWabaId) throw new Error("WABA ID is required to delete Meta template");
@@ -259,15 +338,15 @@ export class MetaProvider implements WhatsAppProvider {
   /* --- Meta Profile Graph API --- */
 
   async getPhoneProfile(): Promise<any> {
-    if (!this.phoneNumberId) throw new Error("Phone Number ID is not configured");
+    if (!this.phoneNumberIdValue) throw new Error("Phone Number ID is not configured");
     return this.get(
-      `${this.phoneNumberId}?fields=display_phone_number,verified_name,code_verification_status,quality_rating,whatsapp_business_account`
+      `${this.phoneNumberIdValue}?fields=display_phone_number,verified_name,code_verification_status,quality_rating,whatsapp_business_account`
     );
   }
 
   async updateBusinessProfile(profileData: any): Promise<any> {
-    if (!this.phoneNumberId) throw new Error("Phone Number ID is not configured");
-    return this.post(`${this.phoneNumberId}/whatsapp_business_profile`, {
+    if (!this.phoneNumberIdValue) throw new Error("Phone Number ID is not configured");
+    return this.post(`${this.phoneNumberIdValue}/whatsapp_business_profile`, {
       messaging_product: "whatsapp",
       ...profileData,
     });

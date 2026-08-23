@@ -310,6 +310,53 @@ a { color: var(--accent); }
 }
 .form-control, .form-select, .input-group-text { border-radius: var(--radius-sm) !important; border-color: var(--border-2); }
 .form-control, .form-select { min-height: 36px; }
+
+/* ---------- global search icon placement (right side, inside input) ---------- */
+.input-group.search-input-group,
+.input-group:has(.bi-search) {
+  position: relative;
+}
+
+.input-group.search-input-group .form-control,
+.input-group:has(.bi-search) .form-control {
+  padding-right: 30px;
+}
+
+.input-group.search-input-group .input-group-text,
+.input-group:has(.bi-search) .input-group-text:has(.bi-search) {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: auto;
+  border: 0 !important;
+  background: transparent !important;
+  padding: 0;
+  z-index: 5;
+  pointer-events: none;
+  color: var(--muted);
+}
+
+/* ---------- icon-only actions (no border) ---------- */
+.icon-only-action {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 4px !important;
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  line-height: 1;
+}
+
+.icon-only-action i {
+  font-size: 16px;
+}
+
+.icon-only-action.text-primary:hover { color: #0d6efd !important; }
+.icon-only-action.text-secondary:hover { color: #495057 !important; }
+.icon-only-action.text-danger:hover { color: #dc3545 !important; }
+
 .btn-secondary { background: var(--surface-2); border-color: var(--border-2); color: var(--text-2); }
 .btn-secondary:hover { background: var(--border); color: var(--text); }
 .modal-content, .offcanvas { border-radius: var(--radius); }

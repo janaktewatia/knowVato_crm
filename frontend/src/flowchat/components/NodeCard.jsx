@@ -25,6 +25,14 @@ function previewText(node, bots, forms) {
       return `Triggers on: ${(node.data.keywords || []).join(', ') || 'any message'}`;
     case 'message':
       return node.data.text || '';
+    case 'templateMessage':
+      return `Template: ${node.data.templateName || 'not_set'} (${node.data.languageCode || 'en'})`;
+    case 'mediaMessage':
+      return `${(node.data.mediaType || 'image').toUpperCase()} • ${node.data.mediaUrl || 'media not set'}`;
+    case 'listMessage':
+      return node.data.text || '';
+    case 'locationMessage':
+      return `Lat: ${node.data.latitude || '-'}, Lng: ${node.data.longitude || '-'}`;
     case 'buttons':
       return node.data.text || '';
     case 'question':
@@ -63,6 +71,8 @@ export default function NodeCard({
   onSelect,
   onMouseDownHeader,
   onPortClick,
+  onOutPortMouseDown,
+  onInPortMouseUp,
   onBodyClickWhileConnecting,
   registerRef,
   registerPortRef,
@@ -98,6 +108,10 @@ export default function NodeCard({
             ref={(el) => registerInPortRef && registerInPortRef(node.id, el)}
             className="port-dot connected"
             title="Input connection (Left)"
+            onMouseUp={(e) => {
+              e.stopPropagation();
+              if (!readOnly) onInPortMouseUp && onInPortMouseUp(node.id);
+            }}
           ></div>
         </div>
       )}
@@ -124,6 +138,10 @@ export default function NodeCard({
               connectingFrom?.nodeId === node.id && connectingFrom?.outputKey === 'next' ? 'connecting-active' : ''
             }`}
             title={readOnly ? 'Locked in Published Mode' : 'Connect next step (Right)'}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  if (!readOnly) onOutPortMouseDown && onOutPortMouseDown(e, node.id, 'next');
+                }}
             onClick={(e) => {
               e.stopPropagation();
               if (!readOnly) onPortClick(node.id, 'next');
@@ -144,6 +162,10 @@ export default function NodeCard({
                   connectingFrom?.nodeId === node.id && connectingFrom?.outputKey === out.key ? 'connecting-active' : ''
                 }`}
                 title={readOnly ? 'Locked in Published Mode' : `Connect "${out.label || out.key}" to another block`}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  if (!readOnly) onOutPortMouseDown && onOutPortMouseDown(e, node.id, out.key);
+                }}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (!readOnly) onPortClick(node.id, out.key);
