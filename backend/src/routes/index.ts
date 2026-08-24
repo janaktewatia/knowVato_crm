@@ -12,6 +12,7 @@ import * as msgC from "../controllers/messagingController";
 import * as fbC from "../controllers/facebookController";
 import * as flowStudioC from "../controllers/flowStudioController";
 import * as flowMediaC from "../controllers/flowMediaController";
+import * as aiC from "../controllers/aiController";
 import multer from "multer";
 import path from "path";
 import os from "os";
@@ -541,6 +542,12 @@ r.get("/conversion/stats", require_("conversion", "view"), msgC.conversionStats)
 /* ---- Audit log ---- */
 const auditCrud = crud(AuditLog, { module: "reports", searchFields: ["entity", "user", "action"] });
 r.get("/audit", require_("reports", "view"), auditCrud.list);
+
+/* ---- AI Copilot & Integrations ---- */
+r.get("/ai/config", aiC.getAiConfig);
+r.post("/ai/config", require_("setup", "edit"), aiC.saveAiConfig);
+r.post("/ai/test-connection", require_("setup", "edit"), aiC.testAiConnection);
+r.post("/ai/execute", aiC.executeAiCommand);
 
 /* ---- Workflow config (metadata for UI) ---- */
 r.get("/workflow-config/default", (_req, res) => {

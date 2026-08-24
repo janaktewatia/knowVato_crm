@@ -23,12 +23,14 @@ import EmailIntegrationPage from "../pages/EmailIntegrationPage";
 import SmsIntegrationPage from "../pages/SmsIntegrationPage";
 import FacebookIntegrationPage from "../pages/FacebookIntegrationPage";
 import OtherIntegrationPage from "../pages/OtherIntegrationPage";
+import AIIntegrationPage from "../pages/AIIntegrationPage";
 
 // Import Configuration Submodule Pages
 import TemplatesWhatsapp from "./modules.templates-whatsapp";
 import TemplatesEmail from "./modules.templates-email";
 import TemplatesSms from "./modules.templates-sms";
 import IntegrationsWhatsapp from "./modules.integrations-whatsapp";
+import { Sparkles } from "lucide-react";
 
 const CONFIGURATION_CATEGORIES = [
   {
@@ -57,6 +59,7 @@ const CONFIGURATION_CATEGORIES = [
     icon: Puzzle,
     color: "#2563eb",
     items: [
+      { slug: "integrations-ai", label: "AI Integration" },
       { slug: "integrations-whatsapp", label: "WhatsApp Integration" },
       { slug: "integrations-email", label: "Email Integration" },
       { slug: "integrations-sms", label: "SMS Integration" },
@@ -91,6 +94,14 @@ function ConfigurationOverview({ onSelect }: { onSelect: (slug: string) => void 
       badge: "HTML & Text",
       color: "bg-purple-500/10 text-purple-600 border-purple-200",
       icon: MessageSquare,
+    },
+    {
+      title: "AI Integration & Copilot",
+      desc: "Connect Google Gemini or Anthropic Claude to automate operational CRM workflows and database tasks.",
+      slug: "integrations-ai",
+      badge: "Gemini & Claude",
+      color: "bg-emerald-500/10 text-emerald-600 border-emerald-200",
+      icon: Sparkles,
     },
     {
       title: "WhatsApp API Integration",
@@ -217,6 +228,8 @@ export default function ModulePage() {
         return <TemplatesEmail />;
       case "templates-sms":
         return <TemplatesSms />;
+      case "integrations-ai":
+        return <AIIntegrationPage />;
       case "integrations-whatsapp":
         return <IntegrationsWhatsapp />;
       case "integrations-email":

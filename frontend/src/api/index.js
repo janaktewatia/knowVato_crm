@@ -232,3 +232,11 @@ export const registrationsApi = {
   update: (id, b) => http.patch(`/registrations/${id}`, b),
   remove: (id) => http.del(`/registrations/${id}`),
 };
+
+export const aiApi = {
+  getConfig: () => http.get("/ai/config"),
+  saveConfig: (payload) => http.post("/ai/config", payload),
+  testConnection: (payload) => http.post("/ai/test-connection", payload),
+  executeCommand: (payload) => http.post("/ai/execute", payload),
+};
+

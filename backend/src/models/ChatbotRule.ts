@@ -10,6 +10,7 @@ export interface IChatbotRule extends Document {
     | "send_text"
     | "send_buttons"
     | "send_list"
+    | "send_media"
     | "send_template"
     | "update_status"
     | "assign_counsellor"
@@ -22,6 +23,10 @@ export interface IChatbotRule extends Document {
     buttons?: { id: string; title: string }[];
     listButtonText?: string;
     listSections?: { title: string; rows: { id: string; title: string; description?: string }[] }[];
+    mediaType?: "image" | "video" | "document" | "audio";
+    mediaUrl?: string;
+    caption?: string;
+    filename?: string;
     statusId?: string;
     subStatusId?: string;
     counsellorName?: string;
@@ -53,6 +58,7 @@ const chatbotRuleSchema = new Schema<IChatbotRule>(
         "send_text",
         "send_buttons",
         "send_list",
+        "send_media",
         "send_template",
         "update_status",
         "assign_counsellor",

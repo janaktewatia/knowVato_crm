@@ -80,6 +80,7 @@ const CATEGORIES = [
     title: "Integrations",
     color: "#0f172a",
     items: [
+      { id: "ai-integration", label: "AI Integration" },
       { id: "whatsapp-integration", label: "WhatsApp Integration" },
       { id: "facebook-integration", label: "Facebook Integration" },
       { id: "google-form", label: "Google Form" },
@@ -218,6 +219,7 @@ export default function Setup() {
           {selected === "workflows" && <WorkflowsTab />}
           {selected === "comm-templates" && <CommunicationTemplatesConfig />}
           {selected === "whatsapp-templates" && <WhatsAppTemplatesSetup />}
+          {selected === "ai-integration" && <AIIntegrationSetupCard />}
           {selected === "whatsapp-integration" && <WhatsAppIntegrationManager />}
           {(selected === "facebook" || selected === "facebook-integration") && <FacebookIntegrationManager />}
           {selected === "google-form" && <IntegrationPlaceholder title="Google Form" />}
@@ -2095,6 +2097,43 @@ function IntegrationPlaceholder({ title }) {
     <div className="card">
       <div className="card-header bg-white fw-semibold">{title}</div>
       <div className="card-body text-center text-muted py-5">{title} configuration coming soon...</div>
+    </div>
+  );
+}
+
+function AIIntegrationSetupCard() {
+  const navigate = useNavigate();
+  return (
+    <div className="card shadow-xs border-0">
+      <div className="card-body p-4">
+        <div className="d-flex align-items-center gap-3 mb-3">
+          <div className="p-2.5 rounded-3 bg-emerald-50 text-success border border-success-subtle">
+            <i className="bi bi-stars" style={{ fontSize: 24 }}></i>
+          </div>
+          <div>
+            <h5 className="fw-bold mb-1">AI Assistant & Copilot Integration</h5>
+            <p className="text-muted small mb-0">
+              Configure Google Gemini, Anthropic Claude, or OpenAI for automated operational tasks across CRM & Events.
+            </p>
+          </div>
+        </div>
+        <div className="p-3 rounded-3 bg-light border mb-4">
+          <div className="d-flex align-items-center justify-content-between">
+            <div>
+              <div className="fw-semibold small">Full AI Integration Hub</div>
+              <div className="text-muted" style={{ fontSize: 11.5 }}>
+                Manage API keys, select LLM models (Gemini / Claude), and toggle the floating AI Copilot button.
+              </div>
+            </div>
+            <button
+              className="btn btn-primary btn-sm rounded-pill px-3"
+              onClick={() => navigate("/modules/integrations-ai")}
+            >
+              Open AI Configuration ➔
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

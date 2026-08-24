@@ -152,9 +152,17 @@ export default function NodeConfigPanel({
             <Label>Trigger Keywords</Label>
             <input
               className="form-control mb-1"
-              placeholder="hi, hello, start, enquiry"
+              placeholder="hi, hello, start, enquiry, know more"
               value={keywordsInput}
-              onChange={(e) => setKeywordsInput(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setKeywordsInput(val);
+                const parsed = String(val || '')
+                  .split(',')
+                  .map((s) => s.trim())
+                  .filter(Boolean);
+                patch({ keywords: parsed });
+              }}
               onBlur={commitKeywords}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -163,7 +171,7 @@ export default function NodeConfigPanel({
                 }
               }}
             />
-            <HelpText>Type comma-separated keywords. Leave empty to trigger on ANY message.</HelpText>
+            <HelpText>Type comma-separated keywords (e.g. <code>know more, hi, enquiry</code>). Matching is case-insensitive.</HelpText>
           </>
         )}
 

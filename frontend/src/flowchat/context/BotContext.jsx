@@ -139,6 +139,19 @@ export function BotProvider({ children }) {
     localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(forms));
   }, [forms]);
 
+  const saveToBackendNow = async (latestClients, latestBots, latestForms) => {
+    try {
+      await flowStudioApi.saveState({
+        clients: latestClients || clients,
+        bots: latestBots || bots,
+        forms: latestForms || forms,
+        meta: {},
+      });
+    } catch (err) {
+      console.warn('Could not save FlowChat state to backend.', err);
+    }
+  };
+
   useEffect(() => {
     if (!stateHydrated) return;
     const timer = setTimeout(async () => {
@@ -147,19 +160,28 @@ export function BotProvider({ children }) {
       } catch (err) {
         console.warn('Could not save FlowChat state to backend. Local backup kept.', err);
       }
-    }, 500);
+    }, 400);
     return () => clearTimeout(timer);
   }, [clients, bots, forms, stateHydrated]);
 
   // ---------- Clients ----------
   const addClient = (name, industry) => {
     const client = { id: uid('client'), name, industry, createdAt: Date.now() };
-    setClients((prev) => [...prev, client]);
+    setClients((prev) => {
+      const next = [...prev, client];
+      saveToBackendNow(next, bots, forms);
+      return next;
+    });
     return client;
   };
 
   const deleteClient = (clientId) => {
-    setClients((prev) => prev.filter((c) => c.id !== clientId));
+    setClients((prev) => {
+      const nextClients = prev.filter((c) => c.id !== clientId);
+      const nextBots = bots.filter((b) => b.clientId !== clientId);
+      saveToBackendNow(nextClients, nextBots, forms);
+      return nextClients;
+    });
     setBots((prev) => prev.filter((b) => b.clientId !== clientId));
   };
 
@@ -170,7 +192,7 @@ export function BotProvider({ children }) {
       id: uid('bot'),
       clientId,
       name,
-      status: 'draft',
+      status: 'live',
       updatedAt: Date.now(),
       meta: { phoneNumberId: '', wabaId: '', accessToken: '', verifyToken: '' },
       startNodeId: startId,
@@ -184,7 +206,11 @@ export function BotProvider({ children }) {
         },
       },
     };
-    setBots((prev) => [...prev, bot]);
+    setBots((prev) => {
+      const next = [...prev, bot];
+      saveToBackendNow(clients, next, forms);
+      return next;
+    });
     return bot;
   };
 
@@ -198,13 +224,28 @@ export function BotProvider({ children }) {
       status: 'draft',
       updatedAt: Date.now(),
     };
-    setBots((prev) => [...prev, clone]);
+    setBots((prev) => {
+      const next = [...prev, clone];
+      saveToBackendNow(clients, next, forms);
+      return next;
+    });
   };
 
-  const deleteBot = (botId) => setBots((prev) => prev.filter((b) => b.id !== botId));
+  const deleteBot = (botId) => {
+    setBots((prev) => {
+      const next = prev.filter((b) => b.id !== botId);
+      saveToBackendNow(clients, next, forms);
+      return next;
+    });
+  };
 
-  const updateBotMeta = (botId, patch) =>
-    setBots((prev) => prev.map((b) => (b.id === botId ? { ...b, ...patch, updatedAt: Date.now() } : b)));
+  const updateBotMeta = (botId, patch) => {
+    setBots((prev) => {
+      const next = prev.map((b) => (b.id === botId ? { ...b, ...patch, updatedAt: Date.now() } : b));
+      saveToBackendNow(clients, next, forms);
+      return next;
+    });
+  };
 
   const updateBotSettings = (botId, meta) =>
     setBots((prev) =>
@@ -219,8 +260,8 @@ export function BotProvider({ children }) {
       x: Math.max(20, position?.x ?? 200),
       y: Math.max(20, position?.y ?? 150),
     };
-    setBots((prev) =>
-      prev.map((b) => {
+    setBots((prev) => {
+      const next = prev.map((b) => {
         if (b.id !== botId) return b;
         return {
           ...b,
@@ -236,38 +277,42 @@ export function BotProvider({ children }) {
             },
           },
         };
-      })
-    );
+      });
+      saveToBackendNow(clients, next, forms);
+      return next;
+    });
     return id;
   };
 
   const updateNodePosition = (botId, nodeId, position) =>
-    setBots((prev) =>
-      prev.map((b) => {
+    setBots((prev) => {
+      const safePos = {
+        x: Math.max(20, position?.x ?? 20),
+        y: Math.max(20, position?.y ?? 20),
+      };
+      return prev.map((b) => {
         if (b.id !== botId) return b;
-        const safePos = {
-          x: Math.max(20, position?.x ?? 20),
-          y: Math.max(20, position?.y ?? 20),
-        };
         return { ...b, nodes: { ...b.nodes, [nodeId]: { ...b.nodes[nodeId], position: safePos } } };
-      })
-    );
+      });
+    });
 
   const updateNodeData = (botId, nodeId, data) =>
-    setBots((prev) =>
-      prev.map((b) => {
+    setBots((prev) => {
+      const next = prev.map((b) => {
         if (b.id !== botId) return b;
         return {
           ...b,
           updatedAt: Date.now(),
           nodes: { ...b.nodes, [nodeId]: { ...b.nodes[nodeId], data: { ...b.nodes[nodeId].data, ...data } } },
         };
-      })
-    );
+      });
+      saveToBackendNow(clients, next, forms);
+      return next;
+    });
 
   const setConnection = (botId, nodeId, outputKey, targetId) =>
-    setBots((prev) =>
-      prev.map((b) => {
+    setBots((prev) => {
+      const next = prev.map((b) => {
         if (b.id !== botId) return b;
         const node = b.nodes[nodeId];
         return {
@@ -278,12 +323,14 @@ export function BotProvider({ children }) {
             [nodeId]: { ...node, connections: { ...node.connections, [outputKey]: targetId || null } },
           },
         };
-      })
-    );
+      });
+      saveToBackendNow(clients, next, forms);
+      return next;
+    });
 
   const deleteNode = (botId, nodeId) =>
-    setBots((prev) =>
-      prev.map((b) => {
+    setBots((prev) => {
+      const next = prev.map((b) => {
         if (b.id !== botId || nodeId === b.startNodeId) return b;
         const nodes = { ...b.nodes };
         delete nodes[nodeId];
@@ -294,8 +341,10 @@ export function BotProvider({ children }) {
           });
         });
         return { ...b, nodes, updatedAt: Date.now() };
-      })
-    );
+      });
+      saveToBackendNow(clients, next, forms);
+      return next;
+    });
 
   // ---------- WhatsApp Forms Management ----------
   const addForm = (formData) => {
@@ -314,21 +363,31 @@ export function BotProvider({ children }) {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-    setForms((prev) => [...prev, newForm]);
+    setForms((prev) => {
+      const next = [...prev, newForm];
+      saveToBackendNow(clients, bots, next);
+      return next;
+    });
     return newForm;
   };
 
   const updateForm = (formId, patch) => {
-    setForms((prev) =>
-      prev.map((f) => (f.id === formId ? { ...f, ...patch, updatedAt: Date.now() } : f))
-    );
+    setForms((prev) => {
+      const next = prev.map((f) => (f.id === formId ? { ...f, ...patch, updatedAt: Date.now() } : f));
+      saveToBackendNow(clients, bots, next);
+      return next;
+    });
   };
 
   const deleteForm = (formId) => {
     if (isFormInUse(formId)) {
       return false;
     }
-    setForms((prev) => prev.filter((f) => f.id !== formId));
+    setForms((prev) => {
+      const next = prev.filter((f) => f.id !== formId);
+      saveToBackendNow(clients, bots, next);
+      return next;
+    });
     return true;
   };
 
@@ -342,7 +401,11 @@ export function BotProvider({ children }) {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-    setForms((prev) => [...prev, clone]);
+    setForms((prev) => {
+      const next = [...prev, clone];
+      saveToBackendNow(clients, bots, next);
+      return next;
+    });
   };
 
   const isFormInUse = (formId) => {
@@ -355,13 +418,15 @@ export function BotProvider({ children }) {
   };
 
   const toggleFormStatus = (formId) => {
-    setForms((prev) =>
-      prev.map((f) =>
+    setForms((prev) => {
+      const next = prev.map((f) =>
         f.id === formId
           ? { ...f, status: f.status === 'inactive' ? 'active' : 'inactive', updatedAt: Date.now() }
           : f
-      )
-    );
+      );
+      saveToBackendNow(clients, bots, next);
+      return next;
+    });
   };
 
   const value = {
@@ -386,6 +451,7 @@ export function BotProvider({ children }) {
     duplicateForm,
     isFormInUse,
     toggleFormStatus,
+    saveToBackendNow,
     stateHydrated,
   };
 

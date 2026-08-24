@@ -437,15 +437,16 @@ export const deleteChatbotRule = asyncHandler(async (req: Request, res: Response
 });
 
 export const testChatbotRule = asyncHandler(async (req: Request, res: Response) => {
-  const { messageText, phone = "+919999900000" } = req.body;
+  const { messageText, phone = "+919999900000", interactiveReply } = req.body;
   await processChatbotInbound(req.tenantId!, {
     kind: "message",
     from: phone,
     text: messageText,
-    messageType: "text",
+    interactiveReply,
+    messageType: interactiveReply ? "interactive" : "text",
     timestamp: new Date(),
   });
-  ok(res, { tested: true, phone, messageText });
+  ok(res, { tested: true, phone, messageText, interactiveReply });
 });
 
 /* ───────── Campaigns ───────── */
