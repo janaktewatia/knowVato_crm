@@ -122,6 +122,28 @@ function evalBranchRules(branch, vars) {
   }
 }
 
+function nowTime() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function extractInlineButtons(text) {
+  if (!text) return { cleanText: '', options: [] };
+  const match = text.match(/\[buttons?:\s*([^\]]+)\]/i);
+  if (!match) return { cleanText: text, options: [] };
+
+  const options = match[1]
+    .split('|')
+    .map((v) => v.trim())
+    .filter(Boolean);
+
+  const cleanText = text
+    .replace(match[0], '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  return { cleanText, options };
+}
+
 export default function WhatsAppPreview({ bot }) {
   const { bots = [], forms = [] } = useBots() || {};
   const [messages, setMessages] = useState([]);
@@ -155,6 +177,7 @@ export default function WhatsAppPreview({ bot }) {
       {
         from: 'system',
         text: '💬 Type a keyword (e.g. "' + (triggerKeywords[0] || 'hi') + '") to test the bot flow, or click a quick prompt.',
+        at: nowTime(),
       },
     ]);
   };
@@ -304,11 +327,11 @@ export default function WhatsAppPreview({ bot }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentNodeId, currentBotId]);
 
-  const pushBot = (text, buttons, meta = {}) => setMessages((m) => [...m, { from: 'bot', text, buttons, ...meta }]);
-  const pushUser = (text) => setMessages((m) => [...m, { from: 'user', text }]);
-  const pushSystem = (text) => setMessages((m) => [...m, { from: 'system', text }]);
+  const pushBot = (text, buttons, meta = {}) => setMessages((m) => [...m, { from: 'bot', text, buttons, at: nowTime(), ...meta }]);
+  const pushUser = (text) => setMessages((m) => [...m, { from: 'user', text, at: nowTime() }]);
+  const pushSystem = (text) => setMessages((m) => [...m, { from: 'system', text, at: nowTime() }]);
   const pushFormCard = (form, node) =>
-    setMessages((m) => [...m, { from: 'form_card', form, node }]);
+    setMessages((m) => [...m, { from: 'form_card', form, node, at: nowTime() }]);
   const markMediaError = (key) => setMediaErrors((prev) => ({ ...prev, [key]: true }));
 
   const goTo = (nodeId) => setCurrentNodeId(nodeId || null);
@@ -420,7 +443,7 @@ export default function WhatsAppPreview({ bot }) {
     <div className="preview-rail">
       <div className="d-flex align-items-center justify-content-between w-100 mb-3" style={{ maxWidth: 300 }}>
         <div className="fw-bold small text-uppercase text-muted" style={{ letterSpacing: '.05em' }}>
-          <i className="bi bi-phone me-1"></i> Live Preview
+          <i className="bi bi-whatsapp me-1"></i> WhatsApp Web Preview
         </div>
         <button className="btn btn-sm btn-light rounded-pill shadow-xs border" onClick={restart} title="Restart chat">
           <i className="bi bi-arrow-clockwise me-1"></i> Restart
@@ -429,44 +452,54 @@ export default function WhatsAppPreview({ bot }) {
 
       <div className="wa-phone position-relative">
         <div className="wa-screen">
-          {/* Header */}
           <div className="wa-header">
-            <i className="bi bi-arrow-left" style={{ fontSize: 13 }}></i>
-            <div className="rounded-circle bg-light" style={{ width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <i className="bi bi-robot text-dark" style={{ fontSize: 14 }}></i>
+            <div className="wa-avatar">
+              <i className="bi bi-robot"></i>
             </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.2 }}>{activeBotForButtons?.name || bot?.name || 'Chatbot'}</div>
-              <div style={{ fontSize: 10.5, opacity: 0.85 }}>online</div>
+            <div className="wa-header-meta">
+              <div className="wa-header-title">{activeBotForButtons?.name || bot?.name || 'Chatbot'}</div>
+              <div className="wa-header-subtitle">online</div>
+            </div>
+            <div className="wa-header-actions ms-auto">
+              <i className="bi bi-search"></i>
+              <i className="bi bi-three-dots-vertical"></i>
             </div>
           </div>
 
-          {/* Messages */}
           <div className="wa-messages" ref={scrollRef}>
             {messages.map((m, i) => (
               <React.Fragment key={i}>
                 {m.from === 'system' && <div className="wa-bubble system">{m.text}</div>}
 
                 {m.from === 'form_card' && (
-                  <div className="wa-bubble bot p-2" style={{ maxWidth: '90%', borderLeft: '4px solid #0284c7' }}>
-                    <div className="d-flex align-items-center gap-1 text-primary fw-bold mb-1" style={{ fontSize: 11.5 }}>
+                  <div className="wa-bubble bot wa-interactive-card p-2" style={{ maxWidth: '90%' }}>
+                    <div className="d-flex align-items-center gap-1 fw-bold mb-1" style={{ fontSize: 11.5, color: '#0b6a61' }}>
                       <i className="bi bi-ui-checks"></i> WhatsApp Flow Form
                     </div>
                     <div className="fw-bold mb-1" style={{ fontSize: 13 }}>{m.form?.name}</div>
                     <div className="text-muted small mb-2" style={{ fontSize: 11.5 }}>{m.form?.description}</div>
                     <button
-                      className="btn btn-sm btn-primary w-100 rounded-pill py-1 fw-semibold"
+                      className="wa-btn-reply"
                       style={{ fontSize: 12 }}
                       disabled={i !== messages.length - 1}
                       onClick={() => handleOpenForm(m.form, m.node)}
                     >
-                      📝 {m.form?.submitButtonText || 'Fill Form'}
+                      <i className="bi bi-pencil-square me-1"></i>{m.form?.submitButtonText || 'Fill Form'}
                     </button>
+                    <div className="wa-meta">{m.at}</div>
                   </div>
                 )}
 
                 {m.from !== 'system' && m.from !== 'form_card' && (
                   <div className={`wa-bubble ${m.from}`}>
+                    {(() => {
+                      const inlineButtons = extractInlineButtons(m.text || '');
+                      const hasNodeButtons = Array.isArray(m.buttons) && m.buttons.length > 0;
+                      const parsedButtons = inlineButtons.options || [];
+                      const showButtons = hasNodeButtons || parsedButtons.length > 0;
+
+                      return (
+                        <>
                     {m.mediaUrl && (
                       <div className="mb-2">
                         {m.mediaType === 'image' && !mediaErrors[`${i}:${m.mediaUrl}`] && (
@@ -518,21 +551,40 @@ export default function WhatsAppPreview({ bot }) {
                         )}
                       </div>
                     )}
-                    {m.text}
-                    {m.buttons && m.buttons.length > 0 && (
+                    <div>{inlineButtons.cleanText || m.text}</div>
+                    {showButtons && (
                       <div className="wa-buttons">
-                        {m.buttons.map((b) => (
-                          <button
-                            key={b.id || b.label}
-                            className="wa-btn-reply"
-                            disabled={i !== messages.length - 1}
-                            onClick={() => handleButtonClick(b.label || 'Option', currentNode?.connections?.[b.id])}
-                          >
-                            {b.label}
-                          </button>
-                        ))}
+                        {hasNodeButtons &&
+                          m.buttons.map((b) => (
+                            <button
+                              key={b.id || b.label}
+                              className="wa-btn-reply"
+                              disabled={i !== messages.length - 1}
+                              onClick={() => handleButtonClick(b.label || 'Option', currentNode?.connections?.[b.id])}
+                            >
+                              {b.label}
+                            </button>
+                          ))}
+
+                        {!hasNodeButtons &&
+                          parsedButtons.map((label) => (
+                            <button
+                              key={label}
+                              className="wa-btn-reply"
+                              disabled={i !== messages.length - 1}
+                              onClick={() => handleSendMessage(label)}
+                            >
+                              {label}
+                            </button>
+                          ))}
                       </div>
                     )}
+                    <div className="wa-meta">
+                      {m.at} {m.from === 'user' ? <i className="bi bi-check2-all" aria-label="sent"></i> : null}
+                    </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
               </React.Fragment>
@@ -544,7 +596,6 @@ export default function WhatsAppPreview({ bot }) {
             )}
           </div>
 
-          {/* Quick Chips */}
           <div className="wa-chips-row">
             <span className="text-muted" style={{ fontSize: 10.5, alignSelf: 'center', marginRight: 2 }}>
               Quick:
@@ -563,17 +614,20 @@ export default function WhatsAppPreview({ bot }) {
 
           {/* Input Footer */}
           <form className="wa-footer" onSubmit={handleFormSubmit}>
+            <button type="button" className="wa-icon-btn" title="Emoji"><i className="bi bi-emoji-smile"></i></button>
             <input
               value={inputVal}
               disabled={typing}
               onChange={(e) => setInputVal(e.target.value)}
+              placeholder="Type a message"
             />
+            <button type="button" className="wa-icon-btn" title="Attach"><i className="bi bi-paperclip"></i></button>
             <button className="wa-send-btn" type="submit" disabled={!inputVal.trim() || typing}>
               <i className="bi bi-send-fill" style={{ fontSize: 13 }}></i>
             </button>
           </form>
 
-          {/* Interactive In-Phone Form Modal */}
+        {/* Interactive In-Phone Form Modal */}
           {activeFormModal && (
             <div
               className="position-absolute top-0 start-0 w-100 h-100 bg-white d-flex flex-column z-3"

@@ -604,6 +604,47 @@ function matchesKeywords(userText: string, keywords: string[]): boolean {
   return false;
 }
 
+function isDuplicateKeyError(err: any): boolean {
+  return err?.code === 11000 || String(err?.message || "").includes("E11000");
+}
+
+async function upsertBotSessionSafe(payload: {
+  tenant: any;
+  phone: string;
+  botId: string;
+  currentNodeId: string;
+  variables?: Record<string, any>;
+  awaitingType?: "buttons" | "list" | "text" | "form" | null;
+  formState?: any;
+}) {
+  try {
+    return await BotSession.create({
+      tenant: payload.tenant,
+      phone: payload.phone,
+      botId: payload.botId,
+      currentNodeId: payload.currentNodeId,
+      variables: payload.variables || {},
+      awaitingType: payload.awaitingType ?? null,
+      formState: payload.formState ?? null,
+    });
+  } catch (err: any) {
+    if (!isDuplicateKeyError(err)) throw err;
+    return BotSession.findOneAndUpdate(
+      { tenant: payload.tenant, phone: payload.phone },
+      {
+        $set: {
+          botId: payload.botId,
+          currentNodeId: payload.currentNodeId,
+          variables: payload.variables || {},
+          awaitingType: payload.awaitingType ?? null,
+          formState: payload.formState ?? null,
+        },
+      },
+      { new: true, upsert: true }
+    );
+  }
+}
+
 /**
  * Chatbot Engine — processes inbound WhatsApp events and triggers visual bot flows in real-time.
  */
@@ -688,7 +729,7 @@ export async function processChatbotInbound(tenantId: string, event: InboundEven
     (!session || isDirectKeywordMatch || isGenericRestart || matchedNewBot.id !== session.botId)
   ) {
     if (!session) {
-      session = new BotSession({
+      session = await upsertBotSessionSafe({
         tenant: tenantId,
         phone,
         botId: matchedNewBot.id,
@@ -701,8 +742,21 @@ export async function processChatbotInbound(tenantId: string, event: InboundEven
       session.awaitingType = null;
       session.formState = undefined;
       session.variables = { ...session.variables, phone, name: phone };
+      try {
+        await session.save();
+      } catch (err: any) {
+        if (!isDuplicateKeyError(err)) throw err;
+        session = await upsertBotSessionSafe({
+          tenant: tenantId,
+          phone,
+          botId: matchedNewBot.id,
+          currentNodeId: matchedNewBot.startNodeId,
+          variables: { ...session.variables, phone, name: phone },
+          awaitingType: null,
+          formState: null,
+        });
+      }
     }
-    await session.save();
 
     await executeFlow(
       tenantId,
@@ -724,7 +778,7 @@ export async function processChatbotInbound(tenantId: string, event: InboundEven
       await BotSession.deleteOne({ _id: session._id });
       const fallbackBot = bots.find((b) => b.status === "live") || bots[0];
       if (fallbackBot) {
-        session = await BotSession.create({
+        session = await upsertBotSessionSafe({
           tenant: tenantId,
           phone,
           botId: fallbackBot.id,
@@ -891,7 +945,7 @@ export async function processChatbotInbound(tenantId: string, event: InboundEven
   // 5. If no session exists and message wasn't matched above, start live bot or first bot
   const defaultBot = bots.find((b) => b.status === "live") || bots[0];
   if (defaultBot && defaultBot.startNodeId) {
-    session = await BotSession.create({
+    session = await upsertBotSessionSafe({
       tenant: tenantId,
       phone,
       botId: defaultBot.id,

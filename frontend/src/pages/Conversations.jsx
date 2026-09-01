@@ -1,8 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { conversationsApi, templatesApi, leadsApi } from "../api";
 import { useApi } from "../hooks/useApi";
 import { useToast } from "../context/ToastContext";
 import { Spinner, EmptyState, Avatar } from "../components/ui";
+
+function extractInlineButtons(text) {
+  if (!text) return { cleanText: "", options: [] };
+  const match = text.match(/\[buttons?:\s*([^\]]+)\]/i);
+  if (!match) return { cleanText: text, options: [] };
+  const options = match[1]
+    .split("|")
+    .map((v) => v.trim())
+    .filter(Boolean);
+  const cleanText = text.replace(match[0], "").replace(/\s{2,}/g, " ").trim();
+  return { cleanText, options };
+}
 
 export default function Conversations() {
   const toast = useToast();
@@ -10,26 +22,56 @@ export default function Conversations() {
   const templates = useApi(() => templatesApi.list({ status: "Approved" }), []);
   const [activeId, setActiveId] = useState(null);
   const [draft, setDraft] = useState("");
+  const [search, setSearch] = useState("");
   const [interactiveMode, setInteractiveMode] = useState(false);
   const [interactiveBtns, setInteractiveBtns] = useState([
     { id: "btn_1", title: "View Fees" },
     { id: "btn_2", title: "Book Visit" },
   ]);
+  const messagesRef = useRef(null);
+
+  const refreshConversationsSilently = useCallback(async () => {
+    try {
+      const res = await conversationsApi.list({ perPage: 100 });
+      const next = res && Object.prototype.hasOwnProperty.call(res, "data") ? res.data : res;
+      convs.setData(next || []);
+    } catch {
+      // Keep current UI state on background refresh failure.
+    }
+  }, [convs]);
 
   const list = convs.data || [];
   const active = list.find((c) => c._id === activeId) || list[0];
+  const filteredList = list.filter((c) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return [c.name, c.phone, c.last].some((v) => String(v || "").toLowerCase().includes(q));
+  });
   const windowOpen = active ? new Date(active.windowExpiresAt).getTime() > Date.now() : false;
 
   useEffect(() => {
     if (!activeId && list.length) setActiveId(list[0]._id);
   }, [list, activeId]);
 
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      refreshConversationsSilently();
+    }, 2500);
+    return () => clearInterval(id);
+  }, [refreshConversationsSilently]);
+
+  useEffect(() => {
+    if (!messagesRef.current) return;
+    messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+  }, [activeId, active?.messages?.length]);
+
   async function send() {
     if (!draft.trim() || !active) return;
     try {
       await conversationsApi.reply(active._id, { text: draft });
       setDraft("");
-      convs.reload();
+      refreshConversationsSilently();
     } catch (e) {
       toast(e.message, "error");
     }
@@ -46,7 +88,7 @@ export default function Conversations() {
       setDraft("");
       setInteractiveMode(false);
       toast("Interactive Buttons sent");
-      convs.reload();
+      refreshConversationsSilently();
     } catch (e) {
       toast(e.message, "error");
     }
@@ -56,7 +98,7 @@ export default function Conversations() {
     try {
       await conversationsApi.reply(active._id, { template: name });
       toast("Template sent");
-      convs.reload();
+      refreshConversationsSilently();
     } catch (e) {
       toast(e.message, "error");
     }
@@ -71,7 +113,7 @@ export default function Conversations() {
     }
   }
 
-  if (convs.loading) return <Spinner />;
+  if (convs.loading && !convs.data) return <Spinner />;
   if (!list.length)
     return (
       <EmptyState
@@ -84,13 +126,31 @@ export default function Conversations() {
     <div className="chat-grid">
       {/* list */}
       <div className="chat-list">
+        <div className="wa-list-top">
+          <Avatar name="You" size={36} />
+          <div className="wa-list-top-actions ms-auto">
+            <i className="bi bi-circle"></i>
+            <i className="bi bi-chat-left-text"></i>
+            <i className="bi bi-three-dots-vertical"></i>
+          </div>
+        </div>
+
+        <div className="wa-list-search">
+          <i className="bi bi-search"></i>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search or start new chat"
+          />
+        </div>
+
         <div className="p-2 border-bottom small text-secondary d-flex justify-content-between align-items-center">
           <span>Inbox · {list.length}</span>
           <span className="badge text-bg-light">
             <i className="bi bi-arrow-down-left"></i> User-initiated
           </span>
         </div>
-        {list.map((c) => {
+        {filteredList.map((c) => {
           const open = new Date(c.windowExpiresAt).getTime() > Date.now();
           return (
             <div
@@ -98,7 +158,7 @@ export default function Conversations() {
               className={"conv-item" + (active?._id === c._id ? " active" : "")}
               onClick={() => {
                 setActiveId(c._id);
-                if (c.unread) conversationsApi.markRead(c._id).then(convs.reload);
+                if (c.unread) conversationsApi.markRead(c._id).then(refreshConversationsSilently);
               }}
             >
               <Avatar name={c.name} size={40} />
@@ -138,7 +198,7 @@ export default function Conversations() {
       <div className="chat-thread d-flex flex-column" style={{ height: "100%" }}>
         {active && (
           <>
-            <div className="d-flex align-items-center gap-2 p-2 bg-white border-bottom">
+            <div className="wa-thread-head">
               <Avatar name={active.name} size={38} />
               <div className="flex-grow-1">
                 <div className="fw-semibold">{active.name}</div>
@@ -151,12 +211,12 @@ export default function Conversations() {
                   )}
                 </div>
               </div>
-              <button className="btn btn-sm btn-wa" onClick={convertToLead}>
+              <button className="btn btn-sm wa-convert-btn" type="button" onClick={convertToLead}>
                 <i className="bi bi-flag me-1"></i>Convert to lead
               </button>
             </div>
 
-            <div className="messages flex-grow-1 overflow-auto p-3">
+            <div className="messages flex-grow-1 overflow-auto p-3" ref={messagesRef}>
               <div className="text-center mb-3">
                 <span className="badge text-bg-light">
                   Conversation started by {active.name.split(" ")[0]}
@@ -164,15 +224,38 @@ export default function Conversations() {
               </div>
               {(active.messages || []).map((m, i) => (
                 <div key={i} className={"bubble " + (m.from === "me" ? "me" : "them")}>
+                  {(() => {
+                    const inlineButtons = extractInlineButtons(m.text || "");
+                    const directButtons = Array.isArray(m.buttons) ? m.buttons.map((b) => b.title || b.label).filter(Boolean) : [];
+                    const buttons = directButtons.length ? directButtons : inlineButtons.options;
+                    return (
+                      <>
                   {m.type === "template" && (
                     <div className="text-success fw-semibold mb-1" style={{ fontSize: 10 }}>
                       <i className="bi bi-file-text me-1"></i>Template · {m.template}
                     </div>
                   )}
-                  {m.text}
-                  <div className="text-secondary text-end" style={{ fontSize: 9 }}>
-                    {m.time}
+                  {inlineButtons.cleanText || m.text}
+                  {buttons.length > 0 && (
+                    <div className="wa-msg-buttons">
+                      {buttons.map((btn) => (
+                        <button
+                          key={btn}
+                          type="button"
+                          className="wa-msg-btn"
+                          onClick={() => setDraft(btn)}
+                        >
+                          {btn}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="text-secondary text-end" style={{ fontSize: 10 }}>
+                    {m.time} {m.from === "me" ? <i className="bi bi-check2-all"></i> : null}
                   </div>
+                      </>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
@@ -188,7 +271,7 @@ export default function Conversations() {
               <div className="p-2 border-top bg-light">
                 <div className="d-flex justify-content-between align-items-center mb-2">
                   <span className="small fw-semibold">Interactive Buttons Config</span>
-                  <button className="btn btn-sm btn-close" onClick={() => setInteractiveMode(false)}></button>
+                  <button className="btn btn-sm btn-close" type="button" onClick={() => setInteractiveMode(false)}></button>
                 </div>
                 {interactiveBtns.map((b, idx) => (
                   <input
@@ -203,20 +286,25 @@ export default function Conversations() {
                     }}
                   />
                 ))}
-                <button className="btn btn-sm btn-wa w-100 mt-2" onClick={sendInteractive}>
+                <button className="btn btn-sm btn-wa w-100 mt-2" type="button" onClick={sendInteractive}>
                   Send Interactive Message
                 </button>
               </div>
             )}
 
-            <div className="p-2 bg-white border-top d-flex gap-2 align-items-center">
+            <div className="p-2 bg-white border-top d-flex gap-2 align-items-center wa-compose">
               <button
                 className={`btn btn-sm ${interactiveMode ? "btn-secondary" : "btn-outline-secondary"}`}
                 title="Send Interactive Buttons"
+                type="button"
                 disabled={!windowOpen}
                 onClick={() => setInteractiveMode(!interactiveMode)}
               >
                 <i className="bi bi-ui-checks"></i>
+              </button>
+
+              <button className="wa-compose-icon" type="button" title="Emoji">
+                <i className="bi bi-emoji-smile"></i>
               </button>
 
               <input
@@ -225,12 +313,22 @@ export default function Conversations() {
                 value={draft}
                 disabled={!windowOpen}
                 onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !interactiveMode && send()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !interactiveMode) {
+                    e.preventDefault();
+                    send();
+                  }
+                }}
               />
+
+              <button className="wa-compose-icon" type="button" title="Attach">
+                <i className="bi bi-paperclip"></i>
+              </button>
 
               <div className="dropdown">
                 <button
                   className="btn btn-outline-secondary dropdown-toggle"
+                  type="button"
                   data-bs-toggle="dropdown"
                   title="Send template"
                 >
@@ -239,7 +337,7 @@ export default function Conversations() {
                 <ul className="dropdown-menu dropdown-menu-end">
                   {(templates.data || []).map((t) => (
                     <li key={t._id}>
-                      <button className="dropdown-item small" onClick={() => sendTemplate(t.name)}>
+                      <button type="button" className="dropdown-item small" onClick={() => sendTemplate(t.name)}>
                         {t.name}
                       </button>
                     </li>
@@ -247,7 +345,7 @@ export default function Conversations() {
                 </ul>
               </div>
 
-              <button className="btn btn-wa" disabled={!windowOpen} onClick={send}>
+              <button className="btn btn-wa wa-send-btn" type="button" disabled={!windowOpen} onClick={send}>
                 <i className="bi bi-send"></i>
               </button>
             </div>

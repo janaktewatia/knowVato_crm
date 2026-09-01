@@ -171,34 +171,48 @@ export default function AICopilotWidget() {
     <>
       {/* Floating Action Button (Bottom Right) */}
       {!isOpen && (
-        <button
-          className="btn position-fixed d-flex align-items-center gap-2 shadow-lg border-0"
+        <div
+          role="button"
+          tabIndex={0}
+          className="position-fixed d-flex align-items-center gap-1"
           style={{
             bottom: "24px",
             right: "24px",
             zIndex: 9999,
-            background: "linear-gradient(135deg, #059669 0%, #0d9488 50%, #2563eb 100%)",
+            background: "rgba(17, 24, 39, 0.88)",
             color: "#ffffff",
-            borderRadius: "50px",
-            padding: "12px 20px",
-            fontSize: "14px",
+            borderRadius: "999px",
+            padding: "6px 10px",
+            fontSize: "11.5px",
             fontWeight: "600",
-            boxShadow: "0 10px 25px -5px rgba(5, 150, 105, 0.4), 0 8px 10px -6px rgba(5, 150, 105, 0.3)",
+            letterSpacing: "0.02em",
+            boxShadow: "0 8px 16px rgba(2, 6, 23, 0.22)",
             transition: "all 0.25s ease-in-out",
             cursor: "pointer",
+            userSelect: "none",
           }}
           onClick={() => setIsOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setIsOpen(true);
+            }
+          }}
           title="Open KnowVato AI Copilot"
         >
-          <Sparkles className="animate-pulse" style={{ width: 18, height: 18 }} />
-          <span>Ask AI</span>
           <span
-            className="badge rounded-pill bg-white text-dark ms-1"
-            style={{ fontSize: "10px", padding: "3px 6px" }}
+            className="d-inline-flex align-items-center justify-content-center"
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: "50%",
+              background: "linear-gradient(135deg, #10b981 0%, #0ea5a4 100%)",
+            }}
           >
-            Copilot
+            <Sparkles style={{ width: 12, height: 12 }} />
           </span>
-        </button>
+          <span>Ask</span>
+        </div>
       )}
 
       {/* Floating Chat Drawer Window */}
